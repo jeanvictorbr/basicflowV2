@@ -26,11 +26,30 @@ module.exports = [
             {
                 "type": 9,
                 "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_tickets_menu" },
-                "components": [ { "type": 10, "content": "🚨 Tickets" } ]
+                "components": [
+                    { "type": 10, "content": "🚨 Tickets" },
+                    { "type": 10, "content": "Configure todo o sistema de **tickets**." }
+                ]
             },
-            { "type": 10, "content": "Configure todo o sistema de **tickets**." },
             { "type": 14, "divider": true, "spacing": 1 },
-            // Adicione aqui as seções de Uniformes e Bate-Ponto com custom_ids 'open_uniformes_menu' e 'open_ponto_menu'
+            {
+                "type": 9,
+                "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_uniformes_menu" },
+                "components": [
+                    { "type": 10, "content": "👔 Uniformes" },
+                    { "type": 10, "content": "Configure todo o sistema de **uniformes**." }
+                ]
+            },
+            { "type": 14, "divider": true, "spacing": 1 },
+            {
+                "type": 9,
+                "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_ponto_menu" },
+                "components": [
+                    { "type": 10, "content": "⏰ Bate-Ponto" },
+                    { "type": 10, "content": "Configure todo o sistema de **bate-ponto**." }
+                ]
+            },
+            { "type": 14, "divider": true, "spacing": 1 },
             {
                 "type": 1,
                 "components": [
