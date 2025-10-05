@@ -53,9 +53,9 @@ module.exports = [
             {
                 "type": 1,
                 "components": [
-                    { "type": 2, "style": 2, "label": "Novidades", "emoji": { "name": "🎉" }, "disabled": false, "custom_id": "main_novidades" },
+                    { "type": 2, "style": 2, "label": "--------------", "emoji": { "name": "" }, "disabled": true, "custom_id": "main_novidades" },
                     { "type": 2, "style": 4, "label": "Ativar Key", "emoji": null, "disabled": false, "custom_id": "main_ativar_key" },
-                    { "type": 2, "style": 2, "label": "Suporte", "emoji": { "name": "🥇" }, "disabled": false, "custom_id": "main_suporte" }
+                    { "type": 2, "style": 2, "label": "--------------", "emoji": { "name": "" }, "disabled": true, "custom_id": "main_suporte" }
                 ]
             }
         ]
