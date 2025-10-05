@@ -1,35 +1,50 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 require('dotenv').config();
 const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// --- Carregador Dinâmico de Comandos ---
+// --- Carregador de Comandos ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
-    if ('data' in command && 'execute' in command) {
+    if (command.data && command.execute) {
         client.commands.set(command.data.name, command);
     }
 }
 
-// --- Carregador Dinâmico de Handlers de Interação ---
-// Mapeia cada custom_id para sua respectiva função de handler.
+// --- Carregador de Handlers (À PROVA DE FALHAS) ---
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
-['buttons', 'modals', 'selects'].forEach(handlerType => {
-    const handlerFiles = fs.readdirSync(path.join(handlersPath, handlerType)).filter(file => file.endsWith('.js'));
-    for (const file of handlerFiles) {
-        const handler = require(path.join(handlersPath, handlerType, file));
-        // A chave é o custom_id, o valor é a função 'execute'.
-        client.handlers.set(handler.customId, handler.execute);
+const handlerTypes = ['buttons', 'modals', 'selects'];
+
+handlerTypes.forEach(handlerType => {
+    const handlerDir = path.join(handlersPath, handlerType);
+    
+    // CORREÇÃO: Verifica se o diretório existe antes de tentar ler
+    if (fs.existsSync(handlerDir)) {
+        const handlerFiles = fs.readdirSync(handlerDir).filter(file => file.endsWith('.js'));
+        for (const file of handlerFiles) {
+            try {
+                const handler = require(path.join(handlerDir, file));
+                if (handler.customId && handler.execute) {
+                    client.handlers.set(handler.customId, handler.execute);
+                } else {
+                    console.warn(`[AVISO] O handler em ${file} está faltando 'customId' ou 'execute'.`);
+                }
+            } catch (error) {
+                console.error(`Erro ao carregar handler ${file}:`, error);
+            }
+        }
+    } else {
+        // Se a pasta não existe, apenas avisa e continua, sem crashar.
+        console.log(`[INFO] Diretório de handlers '${handlerDir}' não encontrado, pulando.`);
     }
 });
-
 
 // --- Evento de Bot Pronto ---
 client.once(Events.ClientReady, async () => {
@@ -38,7 +53,6 @@ client.once(Events.ClientReady, async () => {
 });
 
 // --- Listener de Interações Simplificado ---
-// Agora ele apenas encontra e executa o handler correto.
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -49,23 +63,20 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
-        // Encontra o handler baseado no customId da interação (seja botão, modal ou select)
         const handler = client.handlers.get(interaction.customId);
         if (!handler) {
             console.warn(`Nenhum handler encontrado para o custom_id: ${interaction.customId}`);
             try {
-                // Responde discretamente sem quebrar a aplicação
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.reply({ content: 'Este botão não tem uma função definida no momento.', ephemeral: true });
                 }
             } catch (error) {
-                console.error('Erro ao responder sobre handler não encontrado:', error);
+                // Ignora erros se a interação já foi respondida
             }
             return;
         }
         
         try {
-            // Executa o handler encontrado
             await handler(interaction, client);
         } catch (error) {
             console.error(`Erro executando handler para ${interaction.customId}:`, error);
