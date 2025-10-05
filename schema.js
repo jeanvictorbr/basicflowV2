@@ -16,7 +16,7 @@ const guildSettingsTable = `
         registros_canal_logs VARCHAR(255),
         registros_tag_aprovado VARCHAR(255),
         registros_status BOOLEAN DEFAULT true,
-        registros_canal_vitrine VARCHAR(255), -- ADICIONADO
+        registros_canal_vitrine VARCHAR(255),
 
         -- Módulo de Tickets
         tickets_canal_abertura VARCHAR(255),
@@ -33,6 +33,18 @@ const guildSettingsTable = `
     );
 `;
 
+// NOVA TABELA ADICIONADA
+const pendingRegistrationsTable = `
+    CREATE TABLE IF NOT EXISTS pending_registrations (
+        message_id VARCHAR(255) PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        guild_id VARCHAR(255) NOT NULL,
+        nome_rp VARCHAR(255) NOT NULL,
+        id_rp VARCHAR(255) NOT NULL
+    );
+`;
+
 module.exports = [
-    guildSettingsTable
+    guildSettingsTable,
+    pendingRegistrationsTable // EXPORTANDO A NOVA TABELA
 ];
