@@ -8,6 +8,7 @@ const guildSettingsTable = `
         ausencias_cargo_ausente VARCHAR(255),
         ausencias_canal_logs VARCHAR(255),
         ausencias_imagem_vitrine VARCHAR(1024),
+        ausencias_canal_vitrine VARCHAR(255), -- ADICIONADO
 
         -- Módulo de Registros
         registros_canal_aprovacoes VARCHAR(255),
