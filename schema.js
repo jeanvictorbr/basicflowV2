@@ -46,6 +46,18 @@ const pendingRegistrationsTable = `
     );
 `;
 
+// NOVA TABELA ADICIONADA
+const ticketsTable = `
+    CREATE TABLE IF NOT EXISTS tickets (
+        channel_id VARCHAR(255) PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        ticket_number SERIAL,
+        claimed_by VARCHAR(255),
+        status VARCHAR(20) DEFAULT 'open'
+    );
+`;
+
 module.exports = [
     guildSettingsTable,
     pendingRegistrationsTable
