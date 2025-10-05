@@ -1,6 +1,8 @@
 // handlers/buttons/registros_set_canal_logs.js
 const { ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/flags.js');
+
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'registros_set_canal_logs',

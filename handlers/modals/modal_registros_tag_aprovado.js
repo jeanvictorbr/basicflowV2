@@ -1,7 +1,9 @@
 // handlers/modals/modal_registros_tag_aprovado.js
 const db = require('../../database.js');
 const generateRegistrosMenu = require('../../ui/registrosMenu.js');
-const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/flags.js');
+
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'modal_registros_tag_aprovado',
