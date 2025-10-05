@@ -1,12 +1,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, ChannelType } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, StringSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 require('dotenv').config();
 const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// --- Carregador de Comandos (sem alterações) ---
+// --- Carregador de Comandos ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -18,21 +18,26 @@ for (const file of commandFiles) {
     }
 }
 
-// --- Evento de Bot Pronto (sem alterações) ---
+// --- Evento de Bot Pronto ---
 client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
     console.log(`Pronto! Logado como ${client.user.tag}`);
 });
 
-
-// --- CÉREBRO DO BOT: LISTENER DE INTERAÇÕES (ATUALIZADO) ---
+// --- CÉREBRO DO BOT: LISTENER DE INTERAÇÕES ---
 client.on(Events.InteractionCreate, async interaction => {
+    if (!interaction.guild) return; // Garante que a interação ocorra em um servidor
     const guildId = interaction.guild.id;
     
     // Função auxiliar para buscar as configurações do DB
     async function getSettings() {
         const result = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
-        return result.rows[0] || {};
+        // Garante que a guild tenha uma linha no DB
+        if (result.rows.length === 0) {
+            await db.query('INSERT INTO guild_settings (guild_id) VALUES ($1)', [guildId]);
+            return { guild_id: guildId };
+        }
+        return result.rows[0];
     }
 
     // --- A. Handler para Comandos de Barra (/) ---
@@ -54,111 +59,94 @@ client.on(Events.InteractionCreate, async interaction => {
         // Carrega os designs dos menus
         const mainMenuComponents = require('./ui/mainMenu.js');
         const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
-        const { ticketsMenuEmbed } = require('./ui/ticketsMenu.js'); // Note que este é um embed + components
+        const generateRegistrosMenu = require('./ui/registrosMenu.js'); // Exemplo
+        const { ticketsMenuEmbed } = require('./ui/ticketsMenu.js'); 
 
-        // --- NAVEGAÇÃO ---
+        // --- NAVEGAÇÃO ENTRE MENUS ---
+        if (customId === 'main_menu_back' || customId === 'back_to_main_config') {
+            return await interaction.update({ embeds: [], components: mainMenuComponents });
+        }
         if (customId === 'open_ausencias_menu') {
-            await interaction.update({ components: generateAusenciasMenu(settings) });
+            return await interaction.update({ components: generateAusenciasMenu(settings) });
+        }
+        if (customId === 'open_registros_menu') {
+            return await interaction.update({ components: generateRegistrosMenu(settings) });
         } 
-        else if (customId === 'open_tickets_menu') {
-            // .update() espera um objeto com embeds e/ou components, o ticketsMenuEmbed já está nesse formato.
-            await interaction.update(ticketsMenuEmbed);
+        if (customId === 'open_tickets_menu') {
+            return await interaction.update(ticketsMenuEmbed);
         }
-        else if (customId === 'main_menu_back' || customId === 'back_to_main_config') {
-            await interaction.update({ embeds: [], components: mainMenuComponents });
-        }
+        
+        // --- BOTÕES "ALTERAR" (ABREM MENUS DE SELEÇÃO) ---
+        if (customId.startsWith('ausencia_set_')) {
+            let options, placeholder, selectMenuId;
+            const target = customId.split('_').pop(); // 'canal', 'cargo', etc.
 
-        // --- BOTÕES "ALTERAR" DO MENU DE AUSÊNCIAS (AGORA USAM .update()) ---
-        else if (customId === 'ausencia_set_canal_aprovacoes' || customId === 'ausencia_set_canal_logs') {
-            const channels = interaction.guild.channels.cache
-                .filter(c => c.type === ChannelType.GuildText)
-                .map(c => ({ label: `#${c.name}`, value: c.id }))
-                .slice(0, 25);
-
-            if (channels.length === 0) {
-                return interaction.reply({ content: 'Não há canais de texto neste servidor para selecionar.', ephemeral: true });
+            if (target === 'canal' || target === 'logs') { // Reutilizado para ambos os canais
+                options = interaction.guild.channels.cache
+                    .filter(c => c.type === ChannelType.GuildText)
+                    .map(c => ({ label: `#${c.name}`, value: c.id }))
+                    .slice(0, 25);
+                placeholder = 'Selecione um canal';
+                selectMenuId = `select_menu_ausencia_${target}`;
+            } else if (target === 'cargo') {
+                options = interaction.guild.roles.cache
+                    .filter(r => r.name !== '@everyone')
+                    .map(r => ({ label: r.name, value: r.id }))
+                    .slice(0, 25);
+                placeholder = 'Selecione um cargo';
+                selectMenuId = 'select_menu_ausencia_cargo';
             }
 
-            const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId(`select_menu_${customId}`)
-                .setPlaceholder('Selecione um canal da lista')
-                .addOptions(channels);
-            
-            const cancelButton = new ButtonBuilder()
-                .setCustomId('open_ausencias_menu') // O botão "Cancelar" simplesmente reabre o menu de ausências
-                .setLabel('Cancelar')
-                .setStyle(ButtonStyle.Secondary);
+            if (options && options.length > 0) {
+                const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId(selectMenuId)
+                    .setPlaceholder(placeholder)
+                    .addOptions(options);
+                
+                const cancelButton = new ButtonBuilder().setCustomId('open_ausencias_menu').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
 
-            // AQUI ESTÁ A MUDANÇA: usamos .update() para transformar o painel no menu de seleção
-            await interaction.update({
-                embeds: [], // Limpa os embeds se houver
-                components: [
-                    new ActionRowBuilder().addComponents(selectMenu),
-                    new ActionRowBuilder().addComponents(cancelButton)
-                ]
-            });
-        }
-        else if (customId === 'ausencia_set_cargo') {
-             const roles = interaction.guild.roles.cache
-                .filter(r => r.name !== '@everyone') // Remove o @everyone
-                .map(r => ({ label: r.name, value: r.id }))
-                .slice(0, 25);
-
-            if (roles.length === 0) {
-                return interaction.reply({ content: 'Não há cargos neste servidor para selecionar.', ephemeral: true });
+                // A LÓGICA CORRETA: edita a mensagem atual para mostrar o menu de seleção
+                return await interaction.update({
+                    embeds: [],
+                    components: [
+                        new ActionRowBuilder().addComponents(selectMenu),
+                        new ActionRowBuilder().addComponents(cancelButton)
+                    ]
+                });
+            } else {
+                 return await interaction.reply({ content: 'Não há opções disponíveis para selecionar.', ephemeral: true });
             }
-
-            const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('select_menu_ausencia_set_cargo')
-                .setPlaceholder('Selecione um cargo da lista')
-                .addOptions(roles);
-            
-            const cancelButton = new ButtonBuilder()
-                .setCustomId('open_ausencias_menu')
-                .setLabel('Cancelar')
-                .setStyle(ButtonStyle.Secondary);
-
-            await interaction.update({
-                embeds: [],
-                components: [
-                    new ActionRowBuilder().addComponents(selectMenu),
-                    new ActionRowBuilder().addComponents(cancelButton)
-                ]
-            });
         }
-        // Placeholder para botões futuros, evitando o crash
-        else {
-             await interaction.reply({ content: 'Este botão ainda não foi configurado.', ephemeral: true });
-        }
+        
+        // HANDLER GERAL PARA BOTÕES NÃO IMPLEMENTADOS (EVITA CRASH)
+        await interaction.reply({ content: 'Este botão ainda não tem uma função definida.', ephemeral: true });
     }
     
-    // --- C. Handler para Menus de Seleção (ATUALIZADO) ---
+    // --- C. Handler para Menus de Seleção ---
     else if (interaction.isStringSelectMenu()) {
         const customId = interaction.customId;
         const selectedValue = interaction.values[0];
 
         let dbColumn = '';
-        if (customId === 'select_menu_ausencia_set_canal_aprovacoes') dbColumn = 'ausencias_canal_aprovacoes';
-        if (customId === 'select_menu_ausencia_set_canal_logs') dbColumn = 'ausencias_canal_logs';
-        if (customId === 'select_menu_ausencia_set_cargo') dbColumn = 'ausencias_cargo_ausente';
+        if (customId === 'select_menu_ausencia_canal') dbColumn = 'ausencias_canal_aprovacoes';
+        if (customId === 'select_menu_ausencia_logs') dbColumn = 'ausencias_canal_logs';
+        if (customId === 'select_menu_ausencia_cargo') dbColumn = 'ausencias_cargo_ausente';
 
         if (dbColumn) {
-            // 1. Salva a nova configuração no banco de dados
+            // 1. Salva no DB
             await db.query(
-                `INSERT INTO guild_settings (guild_id, ${dbColumn}) VALUES ($1, $2)
-                 ON CONFLICT (guild_id) DO UPDATE SET ${dbColumn} = $2`,
-                [guildId, selectedValue]
+                `UPDATE guild_settings SET ${dbColumn} = $1 WHERE guild_id = $2`,
+                [selectedValue, guildId]
             );
 
-            // 2. Busca as configurações ATUALIZADAS do banco
+            // 2. Busca configs atualizadas
             const newSettings = await getSettings();
             
-            // 3. Redesenha o menu de ausências com os novos dados
+            // 3. Redesenha o menu de ausências
             const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
-            const updatedMenu = generateAusenciasMenu(newSettings);
-
-            // 4. ATUALIZA A MENSAGEM para voltar ao painel, agora com o valor novo
-            await interaction.update({ components: updatedMenu });
+            
+            // 4. ATUALIZA A MENSAGEM para voltar ao painel, com o valor novo
+            await interaction.update({ components: generateAusenciasMenu(newSettings) });
         }
     }
 });
