@@ -17,12 +17,14 @@ const guildSettingsTable = `
         registros_tag_aprovado VARCHAR(255),
         registros_status BOOLEAN DEFAULT true,
         registros_canal_vitrine VARCHAR(255),
-        registros_imagem_vitrine VARCHAR(1024), -- ADICIONADO
+        registros_imagem_vitrine VARCHAR(1024),
 
         -- Módulo de Tickets
-        tickets_canal_abertura VARCHAR(255),
+        tickets_painel_channel VARCHAR(255), -- RENOMEADO
         tickets_cargo_suporte VARCHAR(255),
         tickets_canal_logs VARCHAR(255),
+        tickets_category VARCHAR(255),       -- ADICIONADO
+        tickets_thumbnail_url VARCHAR(1024), -- ADICIONADO
 
         -- Módulo de Uniformes
         uniformes_cargo_masculino VARCHAR(255),
