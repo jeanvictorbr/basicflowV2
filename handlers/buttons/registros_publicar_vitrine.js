@@ -14,8 +14,9 @@ module.exports = {
 
         const cancelButton = new ButtonBuilder().setCustomId('open_registros_menu').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
 
+        // AQUI ESTAVA O ERRO: ActionRowRowBuilder -> ActionRowBuilder
         await interaction.update({
-            components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowRowBuilder().addComponents(cancelButton)],
+            components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
             flags: V2_FLAG | EPHEMERAL_FLAG
         });
     }
