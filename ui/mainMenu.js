@@ -3,7 +3,7 @@ module.exports = [
     {
         "type": 17, "accent_color": 42751, "spoiler": false,
         "components": [
-            { "type": 10, "content": "# --------------[Hub Principal]--------------" },
+            { "type": 10, "content": "# ------------[Hub Principal]------------" },
             { "type": 14, "divider": true, "spacing": 2 },
             {
                 "type": 9,
@@ -53,9 +53,9 @@ module.exports = [
             {
                 "type": 1,
                 "components": [
-                    { "type": 2, "style": 2, "label": "--------------------------", "disabled": true, "custom_id": "main_novidades" },
+                    { "type": 2, "style": 2, "label": "------------------------", "disabled": true, "custom_id": "main_novidades" },
                     { "type": 2, "style": 4, "label": "Ativar Key", "emoji": null, "disabled": false, "custom_id": "main_ativar_key" },
-                    { "type": 2, "style": 2, "label": "--------------------------", "disabled": true, "custom_id": "main_suporte" }
+                    { "type": 2, "style": 2, "label": "------------------------", "disabled": true, "custom_id": "main_suporte" }
                 ]
             }
         ]

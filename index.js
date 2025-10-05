@@ -46,6 +46,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
 });
 
+// Em index.js, substitua o listener de interações por este:
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -56,7 +57,14 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
-        const handler = client.handlers.get(interaction.customId);
+        // Lógica para handlers dinâmicos (como o de editar uniforme)
+        let handler;
+        if (interaction.customId.startsWith('modal_uniformes_edit_')) {
+            handler = client.handlers.get('modal_uniformes_edit_');
+        } else {
+            handler = client.handlers.get(interaction.customId);
+        }
+        
         if (!handler) {
             console.warn(`Nenhum handler encontrado para: ${interaction.customId}`);
             try {

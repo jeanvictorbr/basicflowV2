@@ -26,9 +26,9 @@ const guildSettingsTable = `
         tickets_category VARCHAR(255),
         tickets_thumbnail_url VARCHAR(1024),
 
-        -- Módulo de Uniformes
-        uniformes_cargo_masculino VARCHAR(255),
-        uniformes_cargo_feminino VARCHAR(255),
+        -- Módulo de Uniformes (NOVAS COLUNAS)
+        uniformes_thumbnail_url VARCHAR(1024),
+        uniformes_color VARCHAR(7) DEFAULT '#FFFFFF', -- Para Hex Code #RRGGBB
 
         -- Módulo de Bate-Ponto
         ponto_canal_registros VARCHAR(255),
@@ -54,12 +54,25 @@ const ticketsTable = `
         ticket_number SERIAL,
         claimed_by VARCHAR(255),
         status VARCHAR(20) DEFAULT 'open',
-        action_log TEXT DEFAULT '' -- ADICIONADO
+        action_log TEXT DEFAULT ''
+    );
+`;
+
+// TABELA COMPLETAMENTE NOVA PARA OS UNIFORMES
+const uniformsTable = `
+    CREATE TABLE IF NOT EXISTS uniforms (
+        id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        image_url VARCHAR(1024),
+        role_id VARCHAR(255) NOT NULL
     );
 `;
 
 module.exports = [
     guildSettingsTable,
     pendingRegistrationsTable,
-    ticketsTable
+    ticketsTable,
+    uniformsTable // EXPORTANDO A NOVA TABELA
 ];
