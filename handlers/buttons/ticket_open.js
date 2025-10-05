@@ -1,4 +1,4 @@
-// Crie em: handlers/buttons/ticket_open.js
+// handlers/buttons/ticket_open.js
 const { ChannelType, PermissionsBitField } = require('discord.js');
 const db = require('../../database.js');
 const generateTicketDashboard = require('../../ui/ticketDashboard.js');
@@ -18,7 +18,7 @@ module.exports = {
             return interaction.editReply('A categoria para criar tickets não foi encontrada. Contate um administrador.');
         }
         
-        const channelName = `ticket-${interaction.user.username}`;
+        const channelName = `ticket-${interaction.user.username.substring(0, 20)}`;
         const existingChannel = interaction.guild.channels.cache.find(c => c.name === channelName && c.parentId === category.id);
         if(existingChannel) {
             return interaction.editReply(`Você já possui um ticket aberto em ${existingChannel}.`);
@@ -39,7 +39,7 @@ module.exports = {
             await db.query('INSERT INTO tickets (channel_id, guild_id, user_id) VALUES ($1, $2, $3)', [channel.id, interaction.guild.id, interaction.user.id]);
             
             const dashboard = generateTicketDashboard();
-            await channel.send({ content: `${interaction.user} <@&${settings.tickets_cargo_suporte}>`, components: dashboard });
+            await channel.send({ content: `${interaction.user} <@&${settings.tickets_cargo_suporte}>`, ...dashboard });
 
             await interaction.editReply(`✅ Seu ticket foi criado em ${channel}!`);
         } catch (error) {

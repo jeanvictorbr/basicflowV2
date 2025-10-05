@@ -4,7 +4,6 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 module.exports = function generateTicketDashboard(ticketData = {}) {
     const { status = 'open', claimed_by } = ticketData;
 
-    // Define o conteúdo do embed
     let description = `Bem-vindo! Um membro da equipe de suporte estará com você em breve.`;
     if (claimed_by) description = `> Ticket assumido por <@${claimed_by}>.`;
     if (status === 'locked') description += `\n\n🔒 **Este ticket está trancado.**`;
@@ -16,13 +15,11 @@ module.exports = function generateTicketDashboard(ticketData = {}) {
         .setDescription(description)
         .setTimestamp();
 
-    // Lógica para determinar quais botões mostrar
     const isClaimed = !!claimed_by;
     const isLocked = status === 'locked';
     const isClosed = status === 'closed';
 
     const components = [];
-
     if (!isClosed) {
         const mainRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_claim').setLabel(isClaimed ? "Assumido" : "Assumir").setStyle(ButtonStyle.Secondary).setEmoji('🙋‍♂️').setDisabled(isClaimed),
