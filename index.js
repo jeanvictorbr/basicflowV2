@@ -47,6 +47,10 @@ client.once(Events.ClientReady, async () => {
 
 // --- Listener de Interações Simplificado ---
 client.on(Events.InteractionCreate, async interaction => {
+
+    if (customId === 'open_ausencias_menu') {
+    return interaction.update({ components: generateAusenciasMenu(settings) });
+}
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
