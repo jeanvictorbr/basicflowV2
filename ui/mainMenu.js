@@ -9,7 +9,7 @@ module.exports = [
                 "type": 9,
                 "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_ausencias_menu" },
                 "components": [
-                    { "type": 10, "content": "`🏖️ Ausências`" },
+                    { "type": 10, "content": "🛫` Ausências`" },
                     { "type": 10, "content": "Configure todo o sistema de **ausências** do basicflow." }
                 ]
             },
@@ -18,7 +18,7 @@ module.exports = [
                 "type": 9,
                 "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_registros_menu" },
                 "components": [
-                    { "type": 10, "content": "`📂 Registros`" },
+                    { "type": 10, "content": "📂` Registros`" },
                     { "type": 10, "content": "Configure todo o sistema de **registros**." }
                 ]
             },
@@ -27,7 +27,7 @@ module.exports = [
                 "type": 9,
                 "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_tickets_menu" },
                 "components": [
-                    { "type": 10, "content": "`🚨 Tickets`" },
+                    { "type": 10, "content": "📢` Tickets`" },
                     { "type": 10, "content": "Configure todo o sistema de **tickets**." }
                 ]
             },
@@ -36,7 +36,7 @@ module.exports = [
                 "type": 9,
                 "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_uniformes_menu" },
                 "components": [
-                    { "type": 10, "content": "`👔 Uniformes`" },
+                    { "type": 10, "content": "👕` Uniformes`" },
                     { "type": 10, "content": "Configure todo o sistema de **uniformes**." }
                 ]
             },
@@ -45,7 +45,7 @@ module.exports = [
                 "type": 9,
                 "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "disabled": false, "custom_id": "open_ponto_menu" },
                 "components": [
-                    { "type": 10, "content": "`⏰ Bate-Ponto`" },
+                    { "type": 10, "content": "⏱️` Bate-Ponto`" },
                     { "type": 10, "content": "Configure todo o sistema de **bate-ponto**." }
                 ]
             },
