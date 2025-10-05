@@ -9,23 +9,23 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 // --- Carregador de Comandos ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-for (const file of commandFiles) {
-    const command = require(path.join(commandsPath, file));
-    if (command.data && command.execute) {
-        client.commands.set(command.data.name, command);
+if (fs.existsSync(commandsPath)) {
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+    for (const file of commandFiles) {
+        const command = require(path.join(commandsPath, file));
+        if (command.data && command.execute) {
+            client.commands.set(command.data.name, command);
+        }
     }
 }
 
-// --- Carregador de Handlers (À PROVA DE FALHAS) ---
+// --- Carregador de Handlers ---
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
 const handlerTypes = ['buttons', 'modals', 'selects'];
 
 handlerTypes.forEach(handlerType => {
     const handlerDir = path.join(handlersPath, handlerType);
-    
-    // CORREÇÃO: Verifica se o diretório existe antes de tentar ler
     if (fs.existsSync(handlerDir)) {
         const handlerFiles = fs.readdirSync(handlerDir).filter(file => file.endsWith('.js'));
         for (const file of handlerFiles) {
@@ -33,16 +33,11 @@ handlerTypes.forEach(handlerType => {
                 const handler = require(path.join(handlerDir, file));
                 if (handler.customId && handler.execute) {
                     client.handlers.set(handler.customId, handler.execute);
-                } else {
-                    console.warn(`[AVISO] O handler em ${file} está faltando 'customId' ou 'execute'.`);
                 }
             } catch (error) {
                 console.error(`Erro ao carregar handler ${file}:`, error);
             }
         }
-    } else {
-        // Se a pasta não existe, apenas avisa e continua, sem crashar.
-        console.log(`[INFO] Diretório de handlers '${handlerDir}' não encontrado, pulando.`);
     }
 });
 
@@ -52,7 +47,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`Pronto! Logado como ${client.user.tag}`);
 });
 
-// --- Listener de Interações Simplificado ---
+// --- Listener de Interações ---
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -70,9 +65,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.reply({ content: 'Este botão não tem uma função definida no momento.', ephemeral: true });
                 }
-            } catch (error) {
-                // Ignora erros se a interação já foi respondida
-            }
+            } catch (e) { /* Ignora erro de interação já respondida */ }
             return;
         }
         
