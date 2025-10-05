@@ -1,48 +1,46 @@
 // ui/ticketDashboard.js
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
 module.exports = function generateTicketDashboard(ticketData = {}) {
     const { status = 'open', claimed_by } = ticketData;
+
+    // Define o conteúdo do embed
+    let description = `Bem-vindo! Um membro da equipe de suporte estará com você em breve.`;
+    if (claimed_by) description = `> Ticket assumido por <@${claimed_by}>.`;
+    if (status === 'locked') description += `\n\n🔒 **Este ticket está trancado.**`;
+    if (status === 'closed') description = `Este ticket foi finalizado por <@${claimed_by}>.`;
+
+    const embed = new EmbedBuilder()
+        .setColor(status === 'closed' ? 'Red' : 'Blue')
+        .setTitle('Ticket de Suporte')
+        .setDescription(description)
+        .setTimestamp();
 
     // Lógica para determinar quais botões mostrar
     const isClaimed = !!claimed_by;
     const isLocked = status === 'locked';
     const isClosed = status === 'closed';
 
-    const mainButtons = [
-        { "type": 2, "style": 2, "label": isClaimed ? "Assumido" : "Assumir", "emoji": { "name": "🙋‍♂️" }, "custom_id": "ticket_claim", "disabled": isClaimed },
-        { "type": 2, "style": 1, "label": "Adicionar", "emoji": { "name": "➕" }, "custom_id": "ticket_add_user" },
-        { "type": 2, "style": 1, "label": "Remover", "emoji": { "name": "➖" }, "custom_id": "ticket_remove_user" },
-        { "type": 2, "style": 2, "label": isLocked ? "Destrancar" : "Trancar", "emoji": { "name": isLocked ? "🔓" : "🔒" }, "custom_id": "ticket_lock" }
-    ];
+    const components = [];
 
-    const dangerButtons = [
-        { "type": 2, "style": 4, "label": "Finalizar", "emoji": { "name": "✔️" }, "custom_id": "ticket_close" },
-        { "type": 2, "style": 2, "label": "Alertar", "emoji": { "name": "🔔" }, "custom_id": "ticket_alert" }
-    ];
-    
-    // Botão que só aparece quando o ticket está finalizado
-    const deleteButton = { "type": 2, "style": 4, "label": "Deletar Ticket", "emoji": { "name": "🗑️" }, "custom_id": "ticket_delete" };
-    
-    // Monta o dashboard
-    const components = [
-        { "type": 1, "components": isClosed ? [deleteButton] : mainButtons },
-    ];
     if (!isClosed) {
-        components.push({ "type": 1, "components": dangerButtons });
+        const mainRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('ticket_claim').setLabel(isClaimed ? "Assumido" : "Assumir").setStyle(ButtonStyle.Secondary).setEmoji('🙋‍♂️').setDisabled(isClaimed),
+            new ButtonBuilder().setCustomId('ticket_add_user').setLabel("Adicionar").setStyle(ButtonStyle.Primary).setEmoji('➕'),
+            new ButtonBuilder().setCustomId('ticket_remove_user').setLabel("Remover").setStyle(ButtonStyle.Primary).setEmoji('➖'),
+            new ButtonBuilder().setCustomId('ticket_lock').setLabel(isLocked ? "Destrancar" : "Trancar").setStyle(ButtonStyle.Secondary).setEmoji(isLocked ? '🔓' : '🔒')
+        );
+        const dangerRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('ticket_close').setLabel("Finalizar").setStyle(ButtonStyle.Danger).setEmoji('✔️'),
+            new ButtonBuilder().setCustomId('ticket_alert').setLabel("Alertar").setStyle(ButtonStyle.Secondary).setEmoji('🔔')
+        );
+        components.push(mainRow, dangerRow);
+    } else {
+        const deleteRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('ticket_delete').setLabel("Deletar Ticket").setStyle(ButtonStyle.Danger).setEmoji('🗑️')
+        );
+        components.push(deleteRow);
     }
 
-    // Define o conteúdo da mensagem
-    let content = `**Ticket de Suporte**\nBem-vindo! Um membro da equipe de suporte estará com você em breve.`;
-    if (isClaimed) content = `> Ticket assumido por <@${claimed_by}>.`;
-    if (isLocked) content += `\n\n🔒 **Este ticket está trancado.** Apenas a equipe pode enviar mensagens.`;
-    if (isClosed) content = `Este ticket foi finalizado.`;
-
-    return [
-        {
-            "type": 17,
-            "components": [
-                { "type": 10, "content": content },
-                { "type": 14, "divider": true, "spacing": 1 }
-            ].concat(components) // Adiciona os botões dinamicamente
-        }
-    ];
+    return { embeds: [embed], components };
 };
