@@ -24,7 +24,6 @@ client.once(Events.ClientReady, async () => {
     console.log(`Pronto! Logado como ${client.user.tag}`);
 });
 
-
 // --- CÉREBRO DO BOT: LISTENER DE INTERAÇÕES ---
 client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.guild) return;
@@ -32,7 +31,6 @@ client.on(Events.InteractionCreate, async interaction => {
     
     // Função auxiliar para buscar as configurações do DB
     async function getSettings() {
-        // Garante que a guild tenha uma linha no DB antes de buscar
         await db.query('INSERT INTO guild_settings (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING', [guildId]);
         const result = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
         return result.rows[0];
@@ -40,10 +38,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // --- A. Handler para Comandos de Barra (/) ---
     if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
-        if (!command) return;
-        try { await command.execute(interaction); } 
-        catch (error) { console.error(error); }
+        // ... (seu código aqui)
     }
     
     // --- B. Handler para Cliques em Botões ---
@@ -55,7 +50,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const mainMenuComponents = require('./ui/mainMenu.js');
         const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
 
-        // --- NAVEGAÇÃO PRINCIPAL ---
+        // --- NAVEGAÇÃO ---
         if (customId === 'main_menu_back') {
             return interaction.update({ embeds: [], components: mainMenuComponents });
         }
@@ -65,27 +60,26 @@ client.on(Events.InteractionCreate, async interaction => {
         
         // --- BOTÕES "ALTERAR" DO MENU DE AUSÊNCIAS ---
         const ausenciasPrefix = 'ausencia_set_';
-        if (customId.startsWith(ausenciasPrefix)) {
-            const target = customId.substring(ausenciasPrefix.length); // canal_aprovacoes, cargo, etc.
-            
-            // Lógica para abrir MODAL para a imagem
-            if (target === 'imagem') {
+        if (customId.startsWith(ausenciasPrefix) || customId === 'ausencia_publicar_vitrine') {
+            const target = customId.substring('ausencia_'.length);
+
+            // Abre MODAL para a imagem
+            if (target === 'set_imagem') {
                 const modal = new ModalBuilder().setCustomId('modal_ausencia_imagem').setTitle('Alterar Imagem da Vitrine');
-                const input = new TextInputBuilder().setCustomId('input_url').setLabel('URL da nova imagem').setStyle(TextInputStyle.Short).setPlaceholder('https://i.imgur.com/seu-link.png').setRequired(true);
-                modal.addComponents(new ActionRowBuilder().addComponents(input));
-                return interaction.showModal(modal);
+                const input = new TextInputBuilder().setCustomId('input_url').setLabel('URL da nova imagem (PNG/JPG)').setStyle(TextInputStyle.Short).setPlaceholder(settings.ausencias_imagem_vitrine || 'https://i.imgur.com/seu-link.png').setRequired(true);
+                return interaction.showModal(new ActionRowBuilder().addComponents(input));
             }
 
-            // Lógica para abrir SELECT MENU para canais e cargos
+            // Abre SELECT MENU para canais e cargos
             let options, placeholder, selectMenuId;
-            if (target.includes('canal')) {
+            if (target.includes('canal') || target.includes('publicar')) {
                 options = interaction.guild.channels.cache.filter(c => c.type === ChannelType.GuildText).map(c => ({ label: `#${c.name}`, value: c.id })).slice(0, 25);
                 placeholder = 'Selecione um canal';
-                selectMenuId = `select_menu_ausencia_${target}`;
-            } else if (target === 'cargo') {
+                selectMenuId = `select_${customId}`;
+            } else if (target.includes('cargo')) {
                 options = interaction.guild.roles.cache.filter(r => r.name !== '@everyone').map(r => ({ label: r.name, value: r.id })).slice(0, 25);
                 placeholder = 'Selecione um cargo';
-                selectMenuId = 'select_menu_ausencia_cargo';
+                selectMenuId = `select_${customId}`;
             }
 
             if (!options || options.length === 0) {
@@ -101,7 +95,6 @@ client.on(Events.InteractionCreate, async interaction => {
             });
         }
         
-        // --- Placeholder para outros botões ---
         await interaction.reply({ content: 'Este módulo ainda não foi configurado.', ephemeral: true });
     }
     
@@ -110,31 +103,38 @@ client.on(Events.InteractionCreate, async interaction => {
         const customId = interaction.customId;
         const selectedValue = interaction.values[0];
 
+        // Lógica para salvar a configuração
         let dbColumn = '';
-        if (customId === 'select_menu_ausencia_canal_aprovacoes') dbColumn = 'ausencias_canal_aprovacoes';
-        if (customId === 'select_menu_ausencia_canal_logs') dbColumn = 'ausencias_canal_logs';
-        if (customId === 'select_menu_ausencia_cargo') dbColumn = 'ausencias_cargo_ausente';
-
+        if (customId === 'select_ausencia_set_canal_aprovacoes') dbColumn = 'ausencias_canal_aprovacoes';
+        if (customId === 'select_ausencia_set_canal_logs') dbColumn = 'ausencias_canal_logs';
+        if (customId === 'select_ausencia_set_cargo') dbColumn = 'ausencias_cargo_ausente';
+        
         if (dbColumn) {
             await db.query(`UPDATE guild_settings SET ${dbColumn} = $1 WHERE guild_id = $2`, [selectedValue, guildId]);
-            
             const newSettings = await getSettings();
             const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
-            await interaction.update({ components: generateAusenciasMenu(newSettings) });
+            return interaction.update({ components: generateAusenciasMenu(newSettings) });
+        }
+
+        // Lógica para o botão "Publicar Vitrine"
+        if (customId === 'select_ausencia_publicar_vitrine') {
+            const targetChannel = await client.channels.fetch(selectedValue);
+            if (targetChannel) {
+                await targetChannel.send("Aqui seria a sua vitrine de ausências!"); // Lógica da vitrine aqui
+                return interaction.update({ content: `✅ Vitrine publicada com sucesso no canal ${targetChannel}!`, embeds: [], components: [] });
+            }
         }
     }
     
     // --- D. Handler para Modais ---
     else if (interaction.isModalSubmit()) {
-        const customId = interaction.customId;
-
-        if (customId === 'modal_ausencia_imagem') {
+        if (interaction.customId === 'modal_ausencia_imagem') {
             const imageUrl = interaction.fields.getTextInputValue('input_url');
             await db.query(`UPDATE guild_settings SET ausencias_imagem_vitrine = $1 WHERE guild_id = $2`, [imageUrl, guildId]);
             
             const newSettings = await getSettings();
             const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
-            await interaction.update({ components: generateAusenciasMenu(newSettings) });
+            return interaction.update({ components: generateAusenciasMenu(newSettings) });
         }
     }
 });
