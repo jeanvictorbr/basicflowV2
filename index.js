@@ -1,3 +1,4 @@
+// index.js
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
@@ -47,10 +48,8 @@ client.once(Events.ClientReady, async () => {
 
 // --- Listener de Interações Simplificado ---
 client.on(Events.InteractionCreate, async interaction => {
+    // A linha que causava o erro foi removida daqui.
 
-    if (customId === 'open_ausencias_menu') {
-    return interaction.update({ components: generateAusenciasMenu(settings) });
-}
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
@@ -60,6 +59,7 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
+        // Esta é a lógica correta que já estava funcionando
         const handler = client.handlers.get(interaction.customId);
         if (!handler) {
             console.warn(`Nenhum handler encontrado para o custom_id: ${interaction.customId}`);
