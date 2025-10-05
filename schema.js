@@ -2,8 +2,6 @@
 const guildSettingsTable = `
     CREATE TABLE IF NOT EXISTS guild_settings (
         guild_id VARCHAR(255) PRIMARY KEY,
-        uniformes_vitrine_channel_id VARCHAR(255), -- ADICIONADO
-        uniformes_vitrine_message_id VARCHAR(255)  -- ADICIONADO
 
         -- Módulo de Ausências
         ausencias_canal_aprovacoes VARCHAR(255),
@@ -28,9 +26,11 @@ const guildSettingsTable = `
         tickets_category VARCHAR(255),
         tickets_thumbnail_url VARCHAR(1024),
 
-        -- Módulo de Uniformes (NOVAS COLUNAS)
+        -- Módulo de Uniformes
         uniformes_thumbnail_url VARCHAR(1024),
-        uniformes_color VARCHAR(7) DEFAULT '#FFFFFF', -- Para Hex Code #RRGGBB
+        uniformes_color VARCHAR(7) DEFAULT '#FFFFFF',
+        uniformes_vitrine_channel_id VARCHAR(255),
+        uniformes_vitrine_message_id VARCHAR(255),
 
         -- Módulo de Bate-Ponto
         ponto_canal_registros VARCHAR(255),
@@ -60,7 +60,6 @@ const ticketsTable = `
     );
 `;
 
-// TABELA COMPLETAMENTE NOVA PARA OS UNIFORMES
 const uniformsTable = `
     CREATE TABLE IF NOT EXISTS uniforms (
         id SERIAL PRIMARY KEY,
@@ -68,8 +67,7 @@ const uniformsTable = `
         name VARCHAR(255) NOT NULL,
         description TEXT,
         image_url VARCHAR(1024),
-        preset_code TEXT NOT NULL -- MUDANÇA: de role_id para preset_code
-        
+        preset_code TEXT NOT NULL
     );
 `;
 
@@ -77,5 +75,5 @@ module.exports = [
     guildSettingsTable,
     pendingRegistrationsTable,
     ticketsTable,
-    uniformsTable // EXPORTANDO A NOVA TABELA
+    uniformsTable
 ];
