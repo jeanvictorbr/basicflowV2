@@ -7,7 +7,7 @@ module.exports = {
     async execute(interaction) {
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
         if (!interaction.member.roles.cache.has(settings.tickets_cargo_suporte)) {
-            return interaction.reply({ content: 'Você não tem permissão para adicionar membros a um ticket.', ephemeral: true });
+            return interaction.reply({ content: '❌ Você não tem permissão para adicionar membros a um ticket.', ephemeral: true });
         }
         
         const selectMenu = new UserSelectMenuBuilder().setCustomId('select_ticket_add_user').setPlaceholder('Selecione um membro para adicionar');

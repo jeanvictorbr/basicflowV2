@@ -7,13 +7,11 @@ module.exports = {
     async execute(interaction) {
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
         if (!interaction.member.roles.cache.has(settings.tickets_cargo_suporte)) {
-            return interaction.reply({ content: 'Você não tem permissão para assumir um ticket.', ephemeral: true });
+            return interaction.reply({ content: '❌ Você não tem permissão para assumir um ticket.', ephemeral: true });
         }
 
         await interaction.deferUpdate();
         const newAction = `> Ticket assumido por ${interaction.user}.\n`;
-
-        // Adiciona a ação ao log e atualiza quem assumiu
         await db.query(`UPDATE tickets SET claimed_by = $1, action_log = action_log || $2 WHERE channel_id = $3`, [interaction.user.id, newAction, interaction.channel.id]);
         
         const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [interaction.channel.id])).rows[0];
