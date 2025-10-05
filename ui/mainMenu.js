@@ -3,7 +3,7 @@ module.exports = [
     {
         "type": 17, "accent_color": 42751, "spoiler": false,
         "components": [
-            { "type": 10, "content": "# Hub Principal" },
+            { "type": 10, "content": "# ----Hub Principal----" },
             { "type": 14, "divider": true, "spacing": 2 },
             {
                 "type": 9,
