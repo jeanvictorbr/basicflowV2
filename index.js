@@ -7,7 +7,6 @@ const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// --- Carregador de Comandos ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -18,7 +17,7 @@ for (const file of commandFiles) {
     }
 }
 
-// --- Carregador de Handlers (À PROVA DE FALHAS) ---
+console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
 const handlerTypes = ['buttons', 'modals', 'selects'];
@@ -32,24 +31,22 @@ handlerTypes.forEach(handlerType => {
                 const handler = require(path.join(handlerDir, file));
                 if (handler.customId && handler.execute) {
                     client.handlers.set(handler.customId, handler.execute);
+                    console.log(`[HANDLER] ✅ ${handler.customId}`);
                 }
             } catch (error) {
-                console.error(`Erro ao carregar handler ${file}:`, error);
+                console.error(`[HANDLER] ❌ Erro ao carregar ${file}:`, error);
             }
         }
     }
 });
+console.log('--- Handlers Carregados ---');
 
-// --- Evento de Bot Pronto ---
 client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
-    console.log(`Pronto! Logado como ${client.user.tag}`);
+    console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
 });
 
-// --- Listener de Interações Simplificado ---
 client.on(Events.InteractionCreate, async interaction => {
-    // A linha que causava o erro foi removida daqui.
-
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
@@ -59,22 +56,21 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
-        // Esta é a lógica correta que já estava funcionando
         const handler = client.handlers.get(interaction.customId);
         if (!handler) {
-            console.warn(`Nenhum handler encontrado para o custom_id: ${interaction.customId}`);
+            console.warn(`Nenhum handler encontrado para: ${interaction.customId}`);
             try {
                 if (!interaction.deferred && !interaction.replied) {
-                    await interaction.reply({ content: 'Este botão não tem uma função definida no momento.', ephemeral: true });
+                    await interaction.reply({ content: 'Este botão não tem uma função definida.', ephemeral: true });
                 }
             } catch (e) { /* Ignora */ }
             return;
         }
-        
+
         try {
             await handler(interaction, client);
         } catch (error) {
-            console.error(`Erro executando handler para ${interaction.customId}:`, error);
+            console.error(`Erro executando handler ${interaction.customId}:`, error);
         }
     }
 });

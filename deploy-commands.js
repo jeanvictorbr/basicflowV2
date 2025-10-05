@@ -1,7 +1,8 @@
+// deploy-commands.js
 const { REST, Routes } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
-require('dotenv').config(); // Carrega as variáveis do .env
+require('dotenv').config();
 
 const commands = [];
 const commandsPath = path.join(__dirname, 'commands');
@@ -16,15 +17,12 @@ const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
     try {
-        console.log(`Iniciando o registro de ${commands.length} comandos (/) de aplicação.`);
-
-        // O método put atualiza todos os comandos no servidor com o conjunto atual
+        console.log(`[CMD] Iniciando registro de ${commands.length} comando(s).`);
         const data = await rest.put(
-            Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+            Routes.applicationCommands(process.env.CLIENT_ID),
             { body: commands },
         );
-
-        console.log(`✅ ${data.length} comandos (/) de aplicação registrados com sucesso.`);
+        console.log(`[CMD] ${data.length} comando(s) registrados com sucesso.`);
     } catch (error) {
         console.error(error);
     }

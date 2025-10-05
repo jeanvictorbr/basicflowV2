@@ -1,9 +1,9 @@
 // ui/mainMenu.js
 module.exports = [
     {
-        "type": 17, "accent_color": 16711684, "spoiler": false,
+        "type": 17, "accent_color": 42751, "spoiler": false,
         "components": [
-            { "type": 10, "content": "⚙️**Hub de configurações**⚙️" },
+            { "type": 10, "content": "⚙️   **Hub de configurações** ⚙️" },
             { "type": 14, "divider": true, "spacing": 2 },
             {
                 "type": 9,
@@ -49,13 +49,13 @@ module.exports = [
                     { "type": 10, "content": "Configure todo o sistema de **bate-ponto**." }
                 ]
             },
-            { "type": 14, "divider": true, "spacing": 1 },
+            { "type": 14, "divider": true, "spacing": 2 },
             {
                 "type": 1,
                 "components": [
-                    { "type": 2, "style": 2, "label": "Novidades bot", "emoji": { "name": "🎉" }, "disabled": false, "custom_id": "main_novidades" },
-                    { "type": 2, "style": 4, "label": "Ativar key", "emoji": null, "disabled": false, "custom_id": "main_ativar_key" },
-                    { "type": 2, "style": 2, "label": "🥇Link discord", "emoji": null, "disabled": false, "custom_id": "main_link_discord" }
+                    { "type": 2, "style": 2, "label": "Novidades", "emoji": { "name": "🎉" }, "disabled": false, "custom_id": "main_novidades" },
+                    { "type": 2, "style": 4, "label": "Ativar Key", "emoji": null, "disabled": false, "custom_id": "main_ativar_key" },
+                    { "type": 2, "style": 2, "label": "Suporte", "emoji": { "name": "🥇" }, "disabled": false, "custom_id": "main_suporte" }
                 ]
             }
         ]

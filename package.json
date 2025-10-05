@@ -1,17 +1,18 @@
 {
-  "name": "basicflow",
+  "name": "fivem-bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "Bot multifuncional para servidores FiveM",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^14.22.1",
-    "dotenv": "^17.2.3",
-    "pg": "^8.16.3"
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "pg": "^8.12.0"
   }
 }
