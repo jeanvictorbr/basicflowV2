@@ -17,6 +17,7 @@ const guildSettingsTable = `
         registros_tag_aprovado VARCHAR(255),
         registros_status BOOLEAN DEFAULT true,
         registros_canal_vitrine VARCHAR(255),
+        registros_imagem_vitrine VARCHAR(1024), -- ADICIONADO
 
         -- Módulo de Tickets
         tickets_canal_abertura VARCHAR(255),
@@ -33,7 +34,6 @@ const guildSettingsTable = `
     );
 `;
 
-// NOVA TABELA ADICIONADA
 const pendingRegistrationsTable = `
     CREATE TABLE IF NOT EXISTS pending_registrations (
         message_id VARCHAR(255) PRIMARY KEY,
@@ -46,5 +46,5 @@ const pendingRegistrationsTable = `
 
 module.exports = [
     guildSettingsTable,
-    pendingRegistrationsTable // EXPORTANDO A NOVA TABELA
+    pendingRegistrationsTable
 ];

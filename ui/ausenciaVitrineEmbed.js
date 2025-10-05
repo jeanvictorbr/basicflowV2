@@ -1,18 +1,18 @@
-// ui/ausenciaVitrineEmbed.js
+// ui/registroVitrineEmbed.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-module.exports = function generateVitrine(settings) {
+module.exports = function generateRegistroVitrine(settings) {
     const embed = new EmbedBuilder()
-        .setColor('#FF4500') // Laranja
-        .setTitle('Central de Ausências')
-        .setDescription('Para solicitar uma ausência, clique no botão abaixo e preencha o formulário.')
-        .setImage(settings.ausencias_imagem_vitrine); // Usa a imagem que você configurou
+        .setColor('#0099ff')
+        .setTitle('Sistema de Registro')
+        .setDescription('Seja bem-vindo(a)! Para iniciar seu registro em nosso servidor, por favor, clique no botão abaixo.')
+        .setImage(settings.registros_imagem_vitrine); // ATUALIZADO para usar a imagem configurada
 
     const button = new ButtonBuilder()
-        .setCustomId('ausencia_request_start')
-        .setLabel('Solicitar Ausência')
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji('🏖️');
+        .setCustomId('registros_iniciar_registro')
+        .setLabel('Iniciar Registro')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('📝');
 
     const row = new ActionRowBuilder().addComponents(button);
 
