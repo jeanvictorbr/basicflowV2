@@ -1,0 +1,22 @@
+// handlers/selects/select_ausencia_cargo.js
+const db = require('../../database.js');
+const generateAusenciasMenu = require('../../ui/ausenciasMenu.js');
+
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
+
+module.exports = {
+    customId: 'select_ausencia_cargo',
+    async execute(interaction) {
+        const selectedRoleId = interaction.values[0];
+        await db.query(`UPDATE guild_settings SET ausencias_cargo_ausente = $1 WHERE guild_id = $2`, [selectedRoleId, interaction.guild.id]);
+
+        const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
+        
+        await interaction.update({
+            content: null,
+            components: generateAusenciasMenu(settingsResult.rows[0]),
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
+    }
+};

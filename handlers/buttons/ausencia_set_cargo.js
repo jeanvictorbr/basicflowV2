@@ -1,0 +1,20 @@
+// handlers/buttons/ausencia_set_cargo.js
+const { ActionRowBuilder, RoleSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+
+module.exports = {
+    customId: 'ausencia_set_cargo',
+    async execute(interaction) {
+        const selectMenu = new RoleSelectMenuBuilder()
+            .setCustomId('select_ausencia_cargo')
+            .setPlaceholder('Selecione o cargo para ausentes');
+
+        const cancelButton = new ButtonBuilder().setCustomId('open_ausencias_menu').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
+
+        await interaction.update({
+            content: 'Por favor, selecione o cargo que será atribuído aos membros em ausência.',
+            embeds: [],
+            components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
+            flags: 0
+        });
+    }
+};
