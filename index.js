@@ -9,17 +9,15 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 // --- Carregador de Comandos ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
-if (fs.existsSync(commandsPath)) {
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-    for (const file of commandFiles) {
-        const command = require(path.join(commandsPath, file));
-        if (command.data && command.execute) {
-            client.commands.set(command.data.name, command);
-        }
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+for (const file of commandFiles) {
+    const command = require(path.join(commandsPath, file));
+    if (command.data && command.execute) {
+        client.commands.set(command.data.name, command);
     }
 }
 
-// --- Carregador de Handlers ---
+// --- Carregador de Handlers (À PROVA DE FALHAS) ---
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
 const handlerTypes = ['buttons', 'modals', 'selects'];
@@ -47,7 +45,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`Pronto! Logado como ${client.user.tag}`);
 });
 
-// --- Listener de Interações ---
+// --- Listener de Interações Simplificado ---
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -65,7 +63,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 if (!interaction.deferred && !interaction.replied) {
                     await interaction.reply({ content: 'Este botão não tem uma função definida no momento.', ephemeral: true });
                 }
-            } catch (e) { /* Ignora erro de interação já respondida */ }
+            } catch (e) { /* Ignora */ }
             return;
         }
         
