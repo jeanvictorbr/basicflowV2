@@ -8,8 +8,8 @@ module.exports = {
         .setDescription('Abre o Hub de Configurações do bot.'),
 
     async execute(interaction) {
-        // Usando a estrutura importada diretamente do seu arquivo ui/mainMenu.js
-        // Isso garante que qualquer mudança no design seja refletida aqui automaticamente.
+        // Agora, o comando envia a versão mais atualizada do seu menu,
+        // com os IDs corretos ('open_ausencias_menu', etc.)
         await interaction.reply({
             components: mainMenuComponents,
             ephemeral: true,
