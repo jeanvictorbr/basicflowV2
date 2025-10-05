@@ -14,7 +14,7 @@ module.exports = function generateRegistrosMenu(settings) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 4, "label": "Publicar Vitrine", "custom_id": "registros_publicar_vitrine" },
-                    "components": [{ "type": 10, "content": "**Hub de Registros**" }]
+                    "components": [{ "type": 10, "content": "# Hub de Registros" }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
