@@ -38,7 +38,10 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // --- A. Handler para Comandos de Barra (/) ---
     if (interaction.isChatInputCommand()) {
-        // ... (seu código aqui)
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+        try { await command.execute(interaction); } 
+        catch (error) { console.error(error); }
     }
     
     // --- B. Handler para Cliques em Botões ---
@@ -58,15 +61,14 @@ client.on(Events.InteractionCreate, async interaction => {
             return interaction.update({ components: generateAusenciasMenu(settings) });
         }
         
-        // --- BOTÕES "ALTERAR" DO MENU DE AUSÊNCIAS ---
-        const ausenciasPrefix = 'ausencia_set_';
-        if (customId.startsWith(ausenciasPrefix) || customId === 'ausencia_publicar_vitrine') {
-            const target = customId.substring('ausencia_'.length);
+        // --- BOTÕES "ALTERAR" E "PUBLICAR" DO MENU DE AUSÊNCIAS ---
+        if (customId.startsWith('ausencia_')) {
+            const target = customId.substring('ausencia_'.length); // set_canal_aprovacoes, set_cargo, publicar_vitrine
 
             // Abre MODAL para a imagem
             if (target === 'set_imagem') {
                 const modal = new ModalBuilder().setCustomId('modal_ausencia_imagem').setTitle('Alterar Imagem da Vitrine');
-                const input = new TextInputBuilder().setCustomId('input_url').setLabel('URL da nova imagem (PNG/JPG)').setStyle(TextInputStyle.Short).setPlaceholder(settings.ausencias_imagem_vitrine || 'https://i.imgur.com/seu-link.png').setRequired(true);
+                const input = new TextInputBuilder().setCustomId('input_url').setLabel('URL da nova imagem').setStyle(TextInputStyle.Short).setPlaceholder(settings.ausencias_imagem_vitrine || 'https://i.imgur.com/seu-link.png').setRequired(true);
                 return interaction.showModal(new ActionRowBuilder().addComponents(input));
             }
 
@@ -74,11 +76,11 @@ client.on(Events.InteractionCreate, async interaction => {
             let options, placeholder, selectMenuId;
             if (target.includes('canal') || target.includes('publicar')) {
                 options = interaction.guild.channels.cache.filter(c => c.type === ChannelType.GuildText).map(c => ({ label: `#${c.name}`, value: c.id })).slice(0, 25);
-                placeholder = 'Selecione um canal';
-                selectMenuId = `select_${customId}`;
+                placeholder = 'Selecione um canal da lista';
+                selectMenuId = `select_${customId}`; // Usa o ID do botão para criar um ID de menu único
             } else if (target.includes('cargo')) {
                 options = interaction.guild.roles.cache.filter(r => r.name !== '@everyone').map(r => ({ label: r.name, value: r.id })).slice(0, 25);
-                placeholder = 'Selecione um cargo';
+                placeholder = 'Selecione um cargo da lista';
                 selectMenuId = `select_${customId}`;
             }
 
@@ -88,7 +90,8 @@ client.on(Events.InteractionCreate, async interaction => {
 
             const selectMenu = new StringSelectMenuBuilder().setCustomId(selectMenuId).setPlaceholder(placeholder).addOptions(options);
             const cancelButton = new ButtonBuilder().setCustomId('open_ausencias_menu').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
-
+            
+            // Transforma o painel atual em um menu de seleção
             return interaction.update({
                 embeds: [],
                 components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)]
@@ -103,7 +106,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const customId = interaction.customId;
         const selectedValue = interaction.values[0];
 
-        // Lógica para salvar a configuração
+        // --- LÓGICA PARA SALVAR CONFIGURAÇÕES ---
         let dbColumn = '';
         if (customId === 'select_ausencia_set_canal_aprovacoes') dbColumn = 'ausencias_canal_aprovacoes';
         if (customId === 'select_ausencia_set_canal_logs') dbColumn = 'ausencias_canal_logs';
@@ -113,22 +116,43 @@ client.on(Events.InteractionCreate, async interaction => {
             await db.query(`UPDATE guild_settings SET ${dbColumn} = $1 WHERE guild_id = $2`, [selectedValue, guildId]);
             const newSettings = await getSettings();
             const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
+            // Retorna ao menu de ausências, agora com a informação atualizada
             return interaction.update({ components: generateAusenciasMenu(newSettings) });
         }
 
-        // Lógica para o botão "Publicar Vitrine"
+        // --- LÓGICA PARA O BOTÃO "PUBLICAR VITRINE" ---
         if (customId === 'select_ausencia_publicar_vitrine') {
             const targetChannel = await client.channels.fetch(selectedValue);
             if (targetChannel) {
-                await targetChannel.send("Aqui seria a sua vitrine de ausências!"); // Lógica da vitrine aqui
-                return interaction.update({ content: `✅ Vitrine publicada com sucesso no canal ${targetChannel}!`, embeds: [], components: [] });
+                // Lógica de enviar a vitrine (pode ser um embed, imagem, etc.)
+                await targetChannel.send("Esta é a vitrine de ausências!"); 
+                
+                // CRASH CORRIGIDO AQUI: Cria uma mensagem de sucesso usando componentes V2
+                const successPayload = {
+                    components: [{
+                        type: 17, // Container
+                        components: [{ type: 10, content: `✅ Vitrine publicada com sucesso no canal ${targetChannel}!` }]
+                    }]
+                };
+                await interaction.update(successPayload);
+
+                // Volta para o menu de ausências após 3 segundos
+                setTimeout(async () => {
+                    const newSettings = await getSettings();
+                    const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
+                    await interaction.editReply({ components: generateAusenciasMenu(newSettings) });
+                }, 3000);
+
+                return;
             }
         }
     }
     
     // --- D. Handler para Modais ---
     else if (interaction.isModalSubmit()) {
-        if (interaction.customId === 'modal_ausencia_imagem') {
+        const customId = interaction.customId;
+
+        if (customId === 'modal_ausencia_imagem') {
             const imageUrl = interaction.fields.getTextInputValue('input_url');
             await db.query(`UPDATE guild_settings SET ausencias_imagem_vitrine = $1 WHERE guild_id = $2`, [imageUrl, guildId]);
             

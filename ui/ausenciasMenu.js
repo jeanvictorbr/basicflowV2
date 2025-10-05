@@ -1,9 +1,9 @@
 module.exports = function generateAusenciasMenu(settings) {
     // CORREÇÃO: Os nomes das variáveis agora correspondem EXATAMENTE às colunas do banco de dados.
-    const canalAprovacoes = settings?.ausencias_canal_aprovacoes ? `<#${settings.ausencias_canal_aprovacoes}>` : '`Não definido`';
-    const cargoAusente = settings?.ausencias_cargo_ausente ? `<@&${settings.ausencias_cargo_ausente}>` : '`Não definido`';
-    const canalLogs = settings?.ausencias_canal_logs ? `<#${settings.ausencias_canal_logs}>` : '`Não definido`';
-    const imagemVitrine = settings?.ausencias_imagem_vitrine ?? '`Não definida`';
+    const canalAprovacoes = settings?.ausencias_canal_aprovacoes ? `<#${settings.ausencias_canal_aprovacoes}>` : '`❌ Não definido`';
+    const cargoAusente = settings?.ausencias_cargo_ausente ? `<@&${settings.ausencias_cargo_ausente}>` : '`❌ Não definido`';
+    const canalLogs = settings?.ausencias_canal_logs ? `<#${settings.ausencias_canal_logs}>` : '`❌ Não definido`';
+    const imagemVitrine = settings?.ausencias_imagem_vitrine ?? '`❌ Não definida`';
 
     return [
         {
