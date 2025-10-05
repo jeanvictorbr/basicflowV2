@@ -1,8 +1,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, StringSelectMenuBuilder, ChannelType } = require('discord.js');
 require('dotenv').config();
-const db = require('./database.js'); // Importa nosso gerenciador de banco de dados
+const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -19,70 +19,121 @@ for (const file of commandFiles) {
 }
 
 client.once(Events.ClientReady, async () => {
-    // Inicializa o banco de dados quando o bot fica online
     await db.initializeDatabase();
     console.log(`Pronto! Logado como ${client.user.tag}`);
 });
 
 client.on(Events.InteractionCreate, async interaction => {
+    const guildId = interaction.guild.id;
+    
+    // Função para buscar as configurações do DB
+    async function getSettings() {
+        const result = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
+        return result.rows[0] || {};
+    }
+
+    // --- A. Handler para Comandos de Barra (/) ---
     if (interaction.isChatInputCommand()) {
-        // ... (seu handler de comandos continua igual)
+        const command = client.commands.get(interaction.commandName);
+        if (!command) return;
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            console.error(error);
+            await interaction.reply({ content: 'Ocorreu um erro ao executar este comando!', ephemeral: true });
+        }
     }
     
+    // --- B. Handler para Cliques em Botões ---
     else if (interaction.isButton()) {
         const customId = interaction.customId;
-        const guildId = interaction.guild.id;
 
-        // Pega as configurações do banco de dados para este servidor
-        const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
-        const settings = settingsResult.rows[0] || {}; // Usa um objeto vazio se não houver configs
-
-        // --- NAVEGAÇÃO ---
-        if (customId === '91e0639b02934906d94100b10afbfaa8') { // Botão "Abrir" Ausências
+        // --- NAVEGAÇÃO ENTRE MENUS ---
+        if (customId === 'open_ausencias_menu') {
+            const settings = await getSettings();
             const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
-            const ausenciasMenuComponents = generateAusenciasMenu(settings); // Passa as configs do DB
-            await interaction.update({ components: ausenciasMenuComponents });
+            await interaction.update({ components: generateAusenciasMenu(settings) });
+        } 
+        else if (customId === 'open_tickets_menu') {
+            // Carrega a interface estática do menu de tickets
+            const { ticketsMenuEmbed } = require('./ui/ticketsMenu.js');
+            await interaction.update(ticketsMenuEmbed); // .update espera um objeto com embeds e/ou components
         }
-        else if (customId === 'main_menu_back') { // Botão "Voltar"
+        else if (customId === 'main_menu_back' || customId === 'back_to_main_config') {
             const mainMenuComponents = require('./ui/mainMenu.js');
             await interaction.update({ components: mainMenuComponents });
         }
-        
-        // --- BOTÕES "ALTERAR" (ABREM MODAIS) ---
-        else if (customId === 'ausencia_set_canal_aprovacoes') {
-            const modal = new ModalBuilder().setCustomId('modal_ausencia_canal_aprovacoes').setTitle('Configurar Canal de Aprovações');
-            const input = new TextInputBuilder().setCustomId('input_canal').setLabel('ID ou menção do novo canal').setStyle(TextInputStyle.Short).setPlaceholder(settings.ausencias_canal_aprovacoes || 'Nenhum canal definido').setRequired(true);
-            modal.addComponents(new ActionRowBuilder().addComponents(input));
-            await interaction.showModal(modal);
+
+        // --- BOTÕES "ALTERAR" DO MENU DE AUSÊNCIAS (AGORA ABREM MENUS DE SELEÇÃO) ---
+        else if (customId === 'ausencia_set_canal_aprovacoes' || customId === 'ausencia_set_canal_logs') {
+            const channels = interaction.guild.channels.cache
+                .filter(c => c.type === ChannelType.GuildText)
+                .map(c => ({ label: c.name, value: c.id }))
+                .slice(0, 25); // Limite de 25 opções
+
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`select_menu_${customId}`) // ID dinâmico para sabermos o que configurar
+                .setPlaceholder('Selecione um canal')
+                .addOptions(channels);
+            
+            await interaction.reply({
+                content: `Selecione abaixo o novo canal para **${customId.includes('aprovacoes') ? 'Aprovações de Ausência' : 'Logs de Ausência'}**:`,
+                components: [new ActionRowBuilder().addComponents(selectMenu)],
+                ephemeral: true
+            });
         }
-        // Adicione aqui a lógica para abrir os outros modais (cargo, logs, etc.)
+        else if (customId === 'ausencia_set_cargo') {
+             const roles = interaction.guild.roles.cache
+                .map(r => ({ label: r.name, value: r.id }))
+                .slice(1, 26); // Remove @everyone e limita a 25
+
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('select_menu_ausencia_set_cargo')
+                .setPlaceholder('Selecione um cargo')
+                .addOptions(roles);
+
+            await interaction.reply({
+                content: 'Selecione abaixo o novo **Cargo para Ausentes**:',
+                components: [new ActionRowBuilder().addComponents(selectMenu)],
+                ephemeral: true
+            });
+        }
+        // Adicione aqui placeholders para os botões não implementados para evitar falhas
+        else {
+             await interaction.reply({ content: 'Este botão ainda não foi configurado.', ephemeral: true });
+        }
     }
     
-    else if (interaction.isModalSubmit()) {
+    // --- C. Handler para Menus de Seleção ---
+    else if (interaction.isStringSelectMenu()) {
         const customId = interaction.customId;
-        const guildId = interaction.guild.id;
+        const selectedValue = interaction.values[0];
 
-        if (customId === 'modal_ausencia_canal_aprovacoes') {
-            const novoCanal = interaction.fields.getTextInputValue('input_canal');
+        let dbColumn = '';
+        if (customId === 'select_menu_ausencia_set_canal_aprovacoes') dbColumn = 'ausencias_canal_aprovacoes';
+        if (customId === 'select_menu_ausencia_set_canal_logs') dbColumn = 'ausencias_canal_logs';
+        if (customId === 'select_menu_ausencia_set_cargo') dbColumn = 'ausencias_cargo_ausente';
 
-            // 1. SALVA NO BANCO DE DADOS (UPSERT: Insere se não existir, atualiza se existir)
+        if (dbColumn) {
             await db.query(
-                `INSERT INTO guild_settings (guild_id, ausencias_canal_aprovacoes) 
-                 VALUES ($1, $2) 
-                 ON CONFLICT (guild_id) 
-                 DO UPDATE SET ausencias_canal_aprovacoes = $2`,
-                [guildId, novoCanal]
+                `INSERT INTO guild_settings (guild_id, ${dbColumn}) VALUES ($1, $2)
+                 ON CONFLICT (guild_id) DO UPDATE SET ${dbColumn} = $2`,
+                [guildId, selectedValue]
             );
 
-            // 2. RECARREGA O MENU COM A NOVA INFORMAÇÃO DO BANCO
-            const newSettingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
-            const newSettings = newSettingsResult.rows[0];
+            // Responde ao usuário que a seleção funcionou e deleta a mensagem do menu
+            await interaction.reply({ content: `✅ Configuração salva com sucesso! O novo valor é <#${selectedValue}>.`, ephemeral: true });
             
+            // ATUALIZA O MENU ORIGINAL EM TEMPO REAL
+            // 1. Pega a mensagem original do painel
+            const originalMessage = await interaction.channel.messages.fetch(interaction.message.reference.messageId);
+            // 2. Pega as configs atualizadas
+            const newSettings = await getSettings();
+            // 3. Redesenha o menu de ausências
             const generateAusenciasMenu = require('./ui/ausenciasMenu.js');
-            const updatedMenu = generateAusenciasMenu(newSettings);
-            await interaction.update({ components: updatedMenu });
+            // 4. Edita a mensagem original com o menu atualizado
+            await originalMessage.edit({ components: generateAusenciasMenu(newSettings) });
         }
-        // Adicione aqui a lógica para salvar os dados dos outros modais
     }
 });
 
