@@ -5,7 +5,7 @@ module.exports = function generateUniformesVitrine(interaction, settings, allUni
     const embed = new EmbedBuilder()
         .setColor(settings.uniformes_color || '#FFFFFF')
         .setTitle('Vestiário da Organização')
-        .setThumbnail(settings.uniformes_thumbnail_url || interaction.guild.iconURL()) // AGORA FUNCIONA
+        .setThumbnail(settings.uniformes_thumbnail_url || interaction.guild.iconURL())
         .setDescription('Use o menu abaixo para escolher um uniforme. A imagem e o código do preset aparecerão aqui.');
 
     const selectMenu = new StringSelectMenuBuilder()
@@ -17,14 +17,17 @@ module.exports = function generateUniformesVitrine(interaction, settings, allUni
     if (allUniformes && allUniformes.length > 0) {
         const options = allUniformes.map(uni => ({
             label: uni.name,
-            description: uni.description?.substring(0, 100),
+            // CORREÇÃO DO BUG: Garante que a descrição nunca seja uma string vazia.
+            description: uni.description?.substring(0, 100) || 'Clique para ver mais.',
             value: String(uni.id),
         }));
         selectMenu.addOptions(options);
         components.push(new ActionRowBuilder().addComponents(selectMenu));
+    } else {
+        selectMenu.addOptions([{ label: 'Nenhum uniforme configurado.', value: 'none', default: true }]).setDisabled(true);
+        components.push(new ActionRowBuilder().addComponents(selectMenu));
     }
 
-    // Se um uniforme foi selecionado, mostra seus detalhes
     if (selectedUniform) {
         embed.setImage(selectedUniform.image_url);
         embed.addFields({

@@ -15,9 +15,14 @@ module.exports = {
         const uniforms = (await db.query('SELECT * FROM uniforms WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows;
 
         try {
-            // A CHAMADA AGORA PASSA O OBJETO 'interaction'
-            const vitrineMessage = generateUniformesVitrine(interaction, settings, uniforms, uniforms[0] || null);
-            await channel.send(vitrineMessage);
+            const vitrineMessagePayload = generateUniformesVitrine(interaction, settings, uniforms, uniforms[0] || null);
+            const sentMessage = await channel.send(vitrineMessagePayload);
+            
+            // Salva a localização da vitrine para futuras atualizações
+            await db.query(
+                'UPDATE guild_settings SET uniformes_vitrine_channel_id = $1, uniformes_vitrine_message_id = $2 WHERE guild_id = $3',
+                [channel.id, sentMessage.id, interaction.guild.id]
+            );
             
             await interaction.editReply({ components: generateUniformesMenu(settings), flags: V2_FLAG | EPHEMERAL_FLAG });
             await interaction.followUp({ content: `✅ **Vitrine de uniformes publicada com sucesso em ${channel}!**`, ephemeral: true });

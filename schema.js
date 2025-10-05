@@ -2,6 +2,8 @@
 const guildSettingsTable = `
     CREATE TABLE IF NOT EXISTS guild_settings (
         guild_id VARCHAR(255) PRIMARY KEY,
+        uniformes_vitrine_channel_id VARCHAR(255), -- ADICIONADO
+        uniformes_vitrine_message_id VARCHAR(255)  -- ADICIONADO
 
         -- Módulo de Ausências
         ausencias_canal_aprovacoes VARCHAR(255),
