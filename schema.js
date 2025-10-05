@@ -8,11 +8,14 @@ const guildSettingsTable = `
         ausencias_cargo_ausente VARCHAR(255),
         ausencias_canal_logs VARCHAR(255),
         ausencias_imagem_vitrine VARCHAR(1024),
-        ausencias_canal_vitrine VARCHAR(255), -- ADICIONADO
+        ausencias_canal_vitrine VARCHAR(255),
 
         -- Módulo de Registros
         registros_canal_aprovacoes VARCHAR(255),
-        registros_cargo_novato VARCHAR(255),
+        registros_cargo_aprovado VARCHAR(255), -- RENOMEADO
+        registros_canal_logs VARCHAR(255),     -- ADICIONADO
+        registros_tag_aprovado VARCHAR(255),   -- ADICIONADO
+        registros_status BOOLEAN DEFAULT true, -- ADICIONADO
 
         -- Módulo de Tickets
         tickets_canal_abertura VARCHAR(255),
