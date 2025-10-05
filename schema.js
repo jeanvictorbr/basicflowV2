@@ -66,7 +66,8 @@ const uniformsTable = `
         name VARCHAR(255) NOT NULL,
         description TEXT,
         image_url VARCHAR(1024),
-        role_id VARCHAR(255) NOT NULL
+        preset_code TEXT NOT NULL -- MUDANÇA: de role_id para preset_code
+        
     );
 `;
 

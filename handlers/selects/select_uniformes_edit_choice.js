@@ -1,4 +1,4 @@
-// Crie em: handlers/selects/select_uniformes_edit_choice.js
+// handlers/selects/select_uniformes_edit_choice.js
 const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const db = require('../../database.js');
 module.exports = {
@@ -11,13 +11,13 @@ module.exports = {
         const nameInput = new TextInputBuilder().setCustomId('input_name').setLabel("Nome do Uniforme").setStyle(TextInputStyle.Short).setValue(uniform.name).setRequired(true);
         const descInput = new TextInputBuilder().setCustomId('input_desc').setLabel("Descrição").setStyle(TextInputStyle.Paragraph).setValue(uniform.description || '').setRequired(false);
         const imageInput = new TextInputBuilder().setCustomId('input_image').setLabel("URL da Imagem").setStyle(TextInputStyle.Short).setValue(uniform.image_url || '').setRequired(false);
-        const roleInput = new TextInputBuilder().setCustomId('input_role').setLabel("ID do Cargo associado").setStyle(TextInputStyle.Short).setValue(uniform.role_id).setRequired(true);
+        const presetInput = new TextInputBuilder().setCustomId('input_preset').setLabel("Código do Preset").setStyle(TextInputStyle.Paragraph).setValue(uniform.preset_code).setRequired(true); // MUDANÇA
         
         modal.addComponents(
             new ActionRowBuilder().addComponents(nameInput),
             new ActionRowBuilder().addComponents(descInput),
             new ActionRowBuilder().addComponents(imageInput),
-            new ActionRowBuilder().addComponents(roleInput)
+            new ActionRowBuilder().addComponents(presetInput) // MUDANÇA
         );
         await interaction.showModal(modal);
     }

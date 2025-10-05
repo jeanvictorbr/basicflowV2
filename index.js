@@ -61,9 +61,12 @@ client.on(Events.InteractionCreate, async interaction => {
         let handler;
         if (interaction.customId.startsWith('modal_uniformes_edit_')) {
             handler = client.handlers.get('modal_uniformes_edit_');
+ } else if (interaction.customId.startsWith('uniform_copy_preset_')) { // ADICIONADO
+            handler = client.handlers.get('uniform_copy_preset_');             // ADICIONADO
         } else {
             handler = client.handlers.get(interaction.customId);
         }
+        
         
         if (!handler) {
             console.warn(`Nenhum handler encontrado para: ${interaction.customId}`);
