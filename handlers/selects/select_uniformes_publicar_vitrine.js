@@ -15,7 +15,8 @@ module.exports = {
         const uniforms = (await db.query('SELECT * FROM uniforms WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows;
 
         try {
-            const vitrineMessage = generateUniformesVitrine(settings, uniforms, uniforms[0] || null); // Mostra o primeiro uniforme por padrão
+            // A CHAMADA AGORA PASSA O OBJETO 'interaction'
+            const vitrineMessage = generateUniformesVitrine(interaction, settings, uniforms, uniforms[0] || null);
             await channel.send(vitrineMessage);
             
             await interaction.editReply({ components: generateUniformesMenu(settings), flags: V2_FLAG | EPHEMERAL_FLAG });

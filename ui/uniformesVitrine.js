@@ -1,11 +1,11 @@
 // ui/uniformesVitrine.js
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-module.exports = function generateUniformesVitrine(settings, allUniformes, selectedUniform = null) {
+module.exports = function generateUniformesVitrine(interaction, settings, allUniformes, selectedUniform = null) {
     const embed = new EmbedBuilder()
         .setColor(settings.uniformes_color || '#FFFFFF')
         .setTitle('Vestiário da Organização')
-        .setThumbnail(settings.uniformes_thumbnail_url || interaction.guild.iconURL()) // Usa a thumbnail da guild se a personalizada não existir
+        .setThumbnail(settings.uniformes_thumbnail_url || interaction.guild.iconURL()) // AGORA FUNCIONA
         .setDescription('Use o menu abaixo para escolher um uniforme. A imagem e o código do preset aparecerão aqui.');
 
     const selectMenu = new StringSelectMenuBuilder()
@@ -32,7 +32,7 @@ module.exports = function generateUniformesVitrine(settings, allUniformes, selec
             value: `\`\`\`${selectedUniform.preset_code}\`\`\``
         });
         const copyButton = new ButtonBuilder()
-            .setCustomId(`uniform_copy_preset_${selectedUniform.id}`) // ID dinâmico
+            .setCustomId(`uniform_copy_preset_${selectedUniform.id}`)
             .setLabel('Copiar Código')
             .setStyle(ButtonStyle.Success)
             .setEmoji('📋');
