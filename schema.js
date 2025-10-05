@@ -53,7 +53,8 @@ const ticketsTable = `
         user_id VARCHAR(255) NOT NULL,
         ticket_number SERIAL,
         claimed_by VARCHAR(255),
-        status VARCHAR(20) DEFAULT 'open'
+        status VARCHAR(20) DEFAULT 'open',
+        action_log TEXT DEFAULT '' -- ADICIONADO
     );
 `;
 

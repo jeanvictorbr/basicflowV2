@@ -1,17 +1,32 @@
 // handlers/selects/select_ticket_add_user.js
+const { PermissionsBitField } = require('discord.js');
 const generateTicketDashboard = require('../../ui/ticketDashboard.js');
 const db = require('../../database.js');
 
 module.exports = {
     customId: 'select_ticket_add_user',
     async execute(interaction) {
+        await interaction.deferUpdate();
         const memberId = interaction.values[0];
         const member = await interaction.guild.members.fetch(memberId);
-        await interaction.channel.permissionOverwrites.edit(member, { ViewChannel: true, SendMessages: true });
+
+        // Adiciona permissão ao membro
+        await interaction.channel.permissionOverwrites.edit(member, { 
+            ViewChannel: true, 
+            SendMessages: true,
+            ReadMessageHistory: true,
+            AttachFiles: true
+        });
         
+        const newAction = `> ${member} foi adicionado por ${interaction.user}.\n`;
+        await db.query(`UPDATE tickets SET action_log = action_log || $1 WHERE channel_id = $2`, [newAction, interaction.channel.id]);
+
         const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [interaction.channel.id])).rows[0];
-        const dashboard = generateTicketDashboard(ticketData);
-        await interaction.update({ ...dashboard });
-        await interaction.followUp({ content: `${member} foi adicionado ao ticket por ${interaction.user}.`});
+        const openerMember = await interaction.guild.members.fetch(ticketData.user_id).catch(() => null);
+
+        const dashboard = generateTicketDashboard(ticketData, openerMember);
+        await interaction.editReply({ ...dashboard });
+
+        await interaction.channel.send({ content: `✅ ${member} foi adicionado ao ticket.` });
     }
 };
