@@ -15,9 +15,9 @@ module.exports = {
         const cancelButton = new ButtonBuilder().setCustomId('open_ausencias_menu').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
 
         await interaction.update({
-            content: 'Por favor, selecione o canal onde as ausências serão enviadas para aprovação.',
+            // content: '...' FOI REMOVIDO DAQUI
             components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
-            flags: V2_FLAG | EPHEMERAL_FLAG // CORRIGIDO: Mantendo as flags
+            flags: V2_FLAG | EPHEMERAL_FLAG
         });
     }
 };
