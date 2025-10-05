@@ -12,10 +12,11 @@ const guildSettingsTable = `
 
         -- Módulo de Registros
         registros_canal_aprovacoes VARCHAR(255),
-        registros_cargo_aprovado VARCHAR(255), -- RENOMEADO
-        registros_canal_logs VARCHAR(255),     -- ADICIONADO
-        registros_tag_aprovado VARCHAR(255),   -- ADICIONADO
-        registros_status BOOLEAN DEFAULT true, -- ADICIONADO
+        registros_cargo_aprovado VARCHAR(255),
+        registros_canal_logs VARCHAR(255),
+        registros_tag_aprovado VARCHAR(255),
+        registros_status BOOLEAN DEFAULT true,
+        registros_canal_vitrine VARCHAR(255), -- ADICIONADO
 
         -- Módulo de Tickets
         tickets_canal_abertura VARCHAR(255),
