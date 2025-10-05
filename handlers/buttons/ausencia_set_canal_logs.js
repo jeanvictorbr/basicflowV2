@@ -1,6 +1,9 @@
 // handlers/buttons/ausencia_set_canal_logs.js
 const { ActionRowBuilder, ChannelSelectMenuBuilder, ChannelType, ButtonBuilder, ButtonStyle } = require('discord.js');
 
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
+
 module.exports = {
     customId: 'ausencia_set_canal_logs',
     async execute(interaction) {
@@ -13,9 +16,8 @@ module.exports = {
 
         await interaction.update({
             content: 'Por favor, selecione o canal onde os logs de ausências (aprovações, recusas) serão registrados.',
-            embeds: [],
             components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
-            flags: 0
+            flags: V2_FLAG | EPHEMERAL_FLAG // CORRIGIDO: Mantendo as flags
         });
     }
 };

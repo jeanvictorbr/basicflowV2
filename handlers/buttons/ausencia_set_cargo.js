@@ -1,6 +1,9 @@
 // handlers/buttons/ausencia_set_cargo.js
 const { ActionRowBuilder, RoleSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
+
 module.exports = {
     customId: 'ausencia_set_cargo',
     async execute(interaction) {
@@ -12,9 +15,8 @@ module.exports = {
 
         await interaction.update({
             content: 'Por favor, selecione o cargo que será atribuído aos membros em ausência.',
-            embeds: [],
             components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
-            flags: 0
+            flags: V2_FLAG | EPHEMERAL_FLAG // CORRIGIDO: Mantendo as flags
         });
     }
 };
