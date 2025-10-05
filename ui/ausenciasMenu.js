@@ -14,7 +14,7 @@ module.exports = function generateAusenciasMenu(settings) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 4, "label": "Publicar vitrine", "custom_id": "ausencia_publicar_vitrine" },
-                    "components": [{ "type": 10, "content": "**Hub de Ausências**" }]
+                    "components": [{ "type": 10, "content": "# Hub de Ausências" }]
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
                 {

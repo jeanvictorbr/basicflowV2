@@ -4,7 +4,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 module.exports = function generateRegistroVitrine(settings) {
     const embed = new EmbedBuilder()
         .setColor('#0099ff')
-        .setTitle('Sistema de Registro')
+        .setTitle('# Sistema de Registro')
         .setDescription('Seja bem-vindo(a)! Para iniciar seu registro em nosso servidor, por favor, clique no botão abaixo.')
         .setImage(settings.registros_imagem_vitrine); // ATUALIZADO para usar a imagem configurada
 

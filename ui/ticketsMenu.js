@@ -12,7 +12,7 @@ module.exports = function generateTicketsMenu(settings) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 4, "label": "Publicar Painel", "custom_id": "tickets_publicar_painel" },
-                    "components": [{ "type": 10, "content": "**Hub de Tickets**" }]
+                    "components": [{ "type": 10, "content": "# Hub de Tickets" }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {

@@ -4,7 +4,7 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 module.exports = function generateTicketPainel(settings) {
     const embed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle('Central de Atendimento')
+        .setTitle('# Central de Atendimento')
         .setDescription('Precisa de ajuda? Clique no botão abaixo para abrir um ticket e nossa equipe de suporte irá atendê-lo.')
         .setThumbnail(settings.tickets_thumbnail_url);
 

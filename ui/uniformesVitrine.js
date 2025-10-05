@@ -4,7 +4,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 module.exports = function generateUniformesVitrine(interaction, settings, allUniformes, selectedUniform = null) {
     const embed = new EmbedBuilder()
         .setColor(settings.uniformes_color || '#FFFFFF')
-        .setTitle('Vestiário da Organização')
+        .setTitle('# Vestiário da Organização')
         .setThumbnail(settings.uniformes_thumbnail_url || interaction.guild.iconURL())
         .setDescription('Use o menu abaixo para escolher um uniforme. A imagem e o código do preset aparecerão aqui.');
 

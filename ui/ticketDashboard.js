@@ -14,7 +14,7 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember,
 
     const embed = new EmbedBuilder()
         .setColor(status === 'closed' ? '#ED4245' : '#3498DB') // Vermelho para fechado, Azul para outros
-        .setTitle('Painel de Gerenciamento do Ticket')
+        .setTitle('# Painel de Gerenciamento do Ticket')
         .setDescription(description)
         .setTimestamp();
 
