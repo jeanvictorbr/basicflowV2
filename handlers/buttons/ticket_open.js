@@ -1,5 +1,5 @@
 // handlers/buttons/ticket_open.js
-const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ChannelType, PermissionsBitField } = require('discord.js');
 const db = require('../../database.js');
 const generateTicketDashboard = require('../../ui/ticketDashboard.js');
 
@@ -18,7 +18,6 @@ module.exports = {
             return interaction.editReply('A categoria para criar tickets não foi encontrada. Contate um administrador.');
         }
         
-        // Verifica se já existe um ticket para o usuário
         const existingTicket = (await db.query('SELECT * FROM tickets WHERE user_id = $1 AND guild_id = $2 AND status != $3', [interaction.user.id, interaction.guild.id, 'closed'])).rows[0];
         if(existingTicket) {
             const channel = interaction.guild.channels.cache.get(existingTicket.channel_id);
@@ -42,31 +41,19 @@ module.exports = {
                 ],
             });
 
-            const initialLog = `> Ticket #${nextTicketNumber} aberto por ${interaction.user}.\n`;
-            await db.query('INSERT INTO tickets (channel_id, guild_id, user_id, action_log) VALUES ($1, $2, $3, $4)', 
-                [channel.id, interaction.guild.id, interaction.user.id, initialLog]
-            );
+            const initialLog = `> Ticket #${nextTicketNumber} aberto por <@${interaction.user.id}>.\n`;
+            await db.query('INSERT INTO tickets (channel_id, guild_id, user_id, action_log) VALUES ($1, $2, $3, $4)', [channel.id, interaction.guild.id, interaction.user.id, initialLog]);
             
             const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [channel.id])).rows[0];
-            const dashboard = generateTicketDashboard(ticketData, interaction.member); 
+            // Gera o dashboard tanto para o admin quanto para o usuário na mesma mensagem
+            const dashboard = generateTicketDashboard(ticketData, interaction.member, interaction.user.id, settings.tickets_cargo_suporte);
             
-            // Envia o dashboard principal para os admins
             await channel.send({ content: `${interaction.user} <@&${settings.tickets_cargo_suporte}>`, ...dashboard });
-
-            // Envia o painel de controle SÓ PARA O USUÁRIO
-            const userControlPanel = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ticket_close_by_user').setLabel('Finalizar Ticket').setStyle(ButtonStyle.Danger).setEmoji('✖️')
-            );
-            await channel.send({ 
-                content: `Olá ${interaction.user}, este é seu painel de controle. Use o botão abaixo se o seu problema foi resolvido.`, 
-                components: [userControlPanel],
-                ephemeral: true 
-            });
-
             await interaction.editReply(`✅ Seu ticket foi criado em ${channel}!`);
+
         } catch (error) {
             console.error("Erro ao criar ticket:", error);
-            await interaction.editReply('Ocorreu um erro ao criar seu ticket. Verifique minhas permissões para criar canais e gerenciar permissões.');
+            await interaction.editReply('Ocorreu um erro ao criar seu ticket. Verifique minhas permissões.');
         }
     }
 };
