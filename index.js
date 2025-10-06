@@ -5,7 +5,7 @@ const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 require('dotenv').config();
 const db = require('./database.js');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] }); // ADICIONADO INTENTS DE MENSAGEM
 
 // Adiciona os gerenciadores de timers para o Bate-Ponto
 client.pontoIntervals = new Map();
@@ -73,8 +73,10 @@ client.on(Events.InteractionCreate, async interaction => {
             handler = client.handlers.get('uniform_copy_preset_');
         } else if (interaction.customId.startsWith('ranking_page_')) {
             handler = client.handlers.get('ranking_page_');
-        } else if (interaction.customId.startsWith('modal_department_details_')) { // NOVA LINHA
-            handler = client.handlers.get('modal_department_details_'); // NOVA LINHA
+        } else if (interaction.customId.startsWith('modal_department_details_')) { 
+            handler = client.handlers.get('modal_department_details_'); 
+        } else if (interaction.customId.startsWith('select_ticket_create_department_')) { // NOVA LINHA
+            handler = client.handlers.get('select_ticket_create_department_'); // NOVA LINHA
         } else {
             handler = client.handlers.get(interaction.customId);
         }
@@ -96,5 +98,21 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
+
+// =======================================================
+// ==      NOVO LISTENER DE MENSAGENS PARA TICKETS      ==
+// =======================================================
+client.on(Events.MessageCreate, async message => {
+    if (message.author.bot) return;
+
+    // Verifica se a mensagem foi enviada em um canal que é um ticket
+    const isTicketChannel = (await db.query('SELECT 1 FROM tickets WHERE channel_id = $1', [message.channel.id])).rows.length > 0;
+    
+    if (isTicketChannel) {
+        // Atualiza o timestamp da última mensagem para a funcionalidade de auto-close
+        await db.query('UPDATE tickets SET last_message_at = NOW() WHERE channel_id = $1', [message.channel.id]);
+    }
+});
+
 
 client.login(process.env.DISCORD_TOKEN);
