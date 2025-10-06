@@ -5,6 +5,8 @@ const { formatDuration } = require('../../utils/formatDuration.js');
 const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
 const generatePontoDashboardV2 = require('../../ui/pontoDashboardPessoalV2.js');
 
+const V2_FLAG = 1 << 15; // Flag adicionada para corrigir o erro
+
 module.exports = {
     customId: 'ponto_end_service',
     async execute(interaction) {
@@ -35,7 +37,7 @@ module.exports = {
             
             activeSession.durationMs = durationMs;
             const finalDashboardPayload = settings.ponto_dashboard_v2_enabled
-                ? { components: generatePontoDashboardV2(interaction, settings, activeSession, 'finalizado'), flags: 1 << 15 }
+                ? { components: generatePontoDashboardV2(interaction, settings, activeSession, 'finalizado'), flags: V2_FLAG }
                 : generatePontoDashboard(interaction, activeSession, 'finalizado');
             await interaction.editReply(finalDashboardPayload);
             

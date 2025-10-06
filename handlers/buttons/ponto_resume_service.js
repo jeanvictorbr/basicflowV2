@@ -4,6 +4,8 @@ const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
 const generatePontoDashboardV2 = require('../../ui/pontoDashboardPessoalV2.js');
 const { scheduleAfkCheck } = require('../../utils/afkCheck.js');
 
+const V2_FLAG = 1 << 15; // Flag adicionada para corrigir o erro
+
 module.exports = {
     customId: 'ponto_resume_service',
     async execute(interaction) {
@@ -24,7 +26,7 @@ module.exports = {
         
         const updatedSession = (await db.query('SELECT * FROM ponto_sessions WHERE session_id = $1', [session.session_id])).rows[0];
         const dashboardPayload = settings.ponto_dashboard_v2_enabled 
-            ? { components: generatePontoDashboardV2(interaction, settings, updatedSession), flags: 1 << 15 }
+            ? { components: generatePontoDashboardV2(interaction, settings, updatedSession), flags: V2_FLAG }
             : generatePontoDashboard(interaction, updatedSession);
             
         await interaction.editReply(dashboardPayload);

@@ -5,6 +5,8 @@ const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
 const generatePontoDashboardV2 = require('../../ui/pontoDashboardPessoalV2.js');
 const { scheduleAfkCheck } = require('../../utils/afkCheck.js');
 
+const V2_FLAG = 1 << 15; // Flag adicionada para corrigir o erro
+
 module.exports = {
     customId: 'ponto_start_service',
     async execute(interaction) {
