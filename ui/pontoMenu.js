@@ -1,4 +1,4 @@
-// ui/pontoMenu.js
+/ ui/pontoMenu.js
 module.exports = function generatePontoMenu(settings, isPremium) {
     const canalLogs = settings?.ponto_canal_registros ? `<#${settings.ponto_canal_registros}>` : '`❌ Não definido`';
     const cargoServico = settings?.ponto_cargo_em_servico ? `<@&${settings.ponto_cargo_em_servico}>` : '`❌ Não definido`';
@@ -16,7 +16,7 @@ module.exports = function generatePontoMenu(settings, isPremium) {
                     "accessory": { "type": 2, "style": 4, "label": "Publicar Painel", "custom_id": "ponto_publicar_painel" },
                     "components": [{ "type": 10, "content": "# Hub de Bate-Ponto" }]
                 },
-                { "type": 14, "divider": true, "spacing": 2 },
+                { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "custom_id": "ponto_set_canal_registros" },
@@ -39,8 +39,15 @@ module.exports = function generatePontoMenu(settings, isPremium) {
                     "type": 1,
                     "components": [
                         { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" },
-                        { "type": 2, "style": 4, "label": "Consultar Jogador", "custom_id": "ponto_consultar_jogador" },
+                        { "type": 2, "style": 2, "label": "Consultar Jogador", "custom_id": "ponto_consultar_jogador", "disabled": false },
                         { "type": 2, "style": status.style, "label": status.label, "emoji": { "name": status.emoji }, "custom_id": "ponto_toggle_status", "disabled": !isConfigured }
+                    ]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 1,
+                    "components": [
+                        { "type": 2, "style": 1, "label": "+ Config. Premium", "emoji": { "name": "✨" }, "custom_id": "ponto_open_premium_menu", "disabled": !isPremium }
                     ]
                 },
                                 // =======================================================

@@ -3,17 +3,16 @@ const guildSettingsTable = `
     CREATE TABLE IF NOT EXISTS guild_settings (
         guild_id VARCHAR(255) PRIMARY KEY,
 
+        -- Sistema de Licenciamento (PREMIUM)
+        premium_status BOOLEAN DEFAULT false,
+        premium_expires_at TIMESTAMPTZ,
+
         -- Módulo de Ausências
         ausencias_canal_aprovacoes VARCHAR(255),
         ausencias_cargo_ausente VARCHAR(255),
         ausencias_canal_logs VARCHAR(255),
         ausencias_imagem_vitrine VARCHAR(1024),
         ausencias_canal_vitrine VARCHAR(255),
-
-        -- Sistema de Licenciamento (PREMIUM)
-        premium_status BOOLEAN DEFAULT false,
-        premium_expires_at TIMESTAMPTZ,
-
 
         -- Módulo de Registros
         registros_canal_aprovacoes VARCHAR(255),
@@ -41,11 +40,15 @@ const guildSettingsTable = `
         ponto_canal_registros VARCHAR(255),
         ponto_cargo_em_servico VARCHAR(255),
         ponto_imagem_vitrine VARCHAR(1024),
-        ponto_status BOOLEAN DEFAULT false
+        ponto_status BOOLEAN DEFAULT false,
+        ponto_afk_check_enabled BOOLEAN DEFAULT false,
+        ponto_afk_check_interval_minutes INTEGER DEFAULT 60,
+        ponto_vitrine_footer TEXT,
+        ponto_vitrine_color VARCHAR(7),
+        ponto_dashboard_v2_enabled BOOLEAN DEFAULT false
     );
 `;
 
-// NOVA TABELA PARA AS CHAVES DE ATIVAÇÃO
 const activationKeysTable = `
     CREATE TABLE IF NOT EXISTS activation_keys (
         key VARCHAR(255) PRIMARY KEY,
@@ -54,7 +57,6 @@ const activationKeysTable = `
         comment TEXT
     );
 `;
-
 
 const pendingRegistrationsTable = `
     CREATE TABLE IF NOT EXISTS pending_registrations (
@@ -89,7 +91,6 @@ const uniformsTable = `
     );
 `;
 
-// TABELA DE SESSÕES APRIMORADA
 const pontoSessionsTable = `
     CREATE TABLE IF NOT EXISTS ponto_sessions (
         session_id SERIAL PRIMARY KEY,
@@ -104,7 +105,6 @@ const pontoSessionsTable = `
     );
 `;
 
-// NOVA TABELA PARA O RANKING
 const pontoLeaderboardTable = `
     CREATE TABLE IF NOT EXISTS ponto_leaderboard (
         id SERIAL PRIMARY KEY,
@@ -115,7 +115,6 @@ const pontoLeaderboardTable = `
     );
 `;
 
-// NOVA TABELA PARA SOLICITAÇÕES DE AUSÊNCIA
 const pendingAbsencesTable = `
     CREATE TABLE IF NOT EXISTS pending_absences (
         message_id VARCHAR(255) PRIMARY KEY,
@@ -129,11 +128,11 @@ const pendingAbsencesTable = `
 
 module.exports = [
     guildSettingsTable,
+    activationKeysTable,
     pendingRegistrationsTable,
     ticketsTable,
     uniformsTable,
     pontoSessionsTable,
     pontoLeaderboardTable,
-    activationKeysTable,
-    pendingAbsencesTable //
+    pendingAbsencesTable
 ];
