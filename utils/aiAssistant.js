@@ -4,7 +4,6 @@ require('dotenv').config();
 const API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
 const hfToken = process.env.HF_TOKEN;
 
-// Verificação de segurança para o token
 if (!hfToken) {
     throw new Error("A variável de ambiente HF_TOKEN não está definida.");
 }
@@ -14,7 +13,6 @@ const defaultPrompt = `Você é um assistente de suporte para um servidor do Dis
 async function getAIResponse(userMessage, customPrompt) {
     try {
         const systemPrompt = customPrompt || defaultPrompt;
-        // Formato específico para modelos de instrução como o Mistral
         const formattedPrompt = `<s>[INST] ${systemPrompt} [/INST]</s>\n[INST] ${userMessage} [/INST]`;
 
         const response = await fetch(API_URL, {
@@ -26,27 +24,40 @@ async function getAIResponse(userMessage, customPrompt) {
             body: JSON.stringify({
                 "inputs": formattedPrompt,
                 "parameters": {
-                    "max_new_tokens": 250, // Limita o tamanho da resposta
-                    "return_full_text": false, // Retorna apenas a resposta da IA, não o prompt
+                    "max_new_tokens": 250,
+                    "return_full_text": false,
                 }
             }),
         });
 
+        // LÓGICA DE TRATAMENTO DE ERROS ROBUSTA
+        const responseBody = await response.text(); // Primeiro, obtemos a resposta como texto
+
         if (!response.ok) {
-            const errorBody = await response.json();
-            // Erro comum quando o modelo está a "acordar"
-            if (errorBody.error && errorBody.estimated_time) {
-                console.warn(`[AI Assistant] Modelo está a carregar. A tentar novamente em ${errorBody.estimated_time} segundos.`);
-                return `🤖 O assistente de IA está a iniciar, por favor aguarde um momento...`;
+            console.error(`[AI Assistant] A API da Hugging Face retornou um erro ${response.status}.`);
+            console.error(`[AI Assistant] Corpo da Resposta:`, responseBody);
+            // Tenta interpretar o erro, se for JSON
+            try {
+                const errorJson = JSON.parse(responseBody);
+                if (errorJson.error && errorJson.estimated_time) {
+                    return `🤖 O assistente de IA está a iniciar, por favor aguarde um momento...`;
+                }
+            } catch (e) {
+                // Se não for JSON, o erro já foi logado.
             }
-            throw new Error(`Erro da API Hugging Face: ${response.statusText} - ${JSON.stringify(errorBody)}`);
+            return null; // Retorna nulo para evitar enviar uma mensagem de erro ao utilizador
+        }
+        
+        try {
+            const result = JSON.parse(responseBody); // Agora, tentamos interpretar como JSON
+            return result[0].generated_text.trim();
+        } catch (e) {
+            console.error("[AI Assistant] A resposta da API não era um JSON válido:", responseBody);
+            return null;
         }
 
-        const result = await response.json();
-        return result[0].generated_text;
-
     } catch (error) {
-        console.error("[AI Assistant] Erro ao gerar resposta da Hugging Face:", error);
+        console.error("[AI Assistant] Erro crítico na função getAIResponse:", error);
         return null;
     }
 }
