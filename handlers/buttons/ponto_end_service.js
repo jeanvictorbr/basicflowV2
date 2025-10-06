@@ -1,0 +1,69 @@
+const { EmbedBuilder } = require('discord.js');
+const db = require('../../database.js');
+
+function formatDuration(ms) {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+
+module.exports = {
+    customId: 'ponto_end_service',
+    async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
+
+        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
+        if (!settings?.ponto_status) {
+            return interaction.editReply({ content: 'O sistema de bate-ponto está desativado.' });
+        }
+
+        const activeSession = (await db.query('SELECT * FROM ponto_sessions WHERE user_id = $1 AND guild_id = $2', [interaction.user.id, interaction.guild.id])).rows[0];
+        if (!activeSession) {
+            return interaction.editReply({ content: 'Você não está em serviço. Bata o ponto de entrada para iniciar.' });
+        }
+        
+        const role = await interaction.guild.roles.fetch(settings.ponto_cargo_em_servico).catch(() => null);
+        if (role) {
+            await interaction.member.roles.remove(role).catch(err => console.error("Não foi possível remover o cargo de serviço:", err));
+        }
+
+        try {
+            const startTime = new Date(activeSession.start_time);
+            const endTime = new Date();
+            const durationMs = endTime - startTime;
+            const durationFormatted = formatDuration(durationMs);
+            
+            const logChannel = await interaction.guild.channels.fetch(settings.ponto_canal_registros);
+            const logMessage = await logChannel.messages.fetch(activeSession.log_message_id).catch(() => null);
+            
+            const finalEmbed = new EmbedBuilder()
+                .setColor('Red')
+                .setAuthor({ name: interaction.member.displayName, iconURL: interaction.user.displayAvatarURL() })
+                .setTitle('⏹️ Fim de Serviço')
+                .addFields(
+                    { name: 'Membro', value: `${interaction.user}`, inline: true },
+                    { name: 'Tempo Total', value: `\`${durationFormatted}\``, inline: true },
+                    { name: 'Início', value: `<t:${Math.floor(startTime.getTime() / 1000)}:f>`, inline: false },
+                    { name: 'Fim', value: `<t:${Math.floor(endTime.getTime() / 1000)}:f>`, inline: false }
+                )
+                .setFooter({ text: `ID do Usuário: ${interaction.user.id}` });
+            
+            if (logMessage) {
+                await logMessage.edit({ embeds: [finalEmbed] });
+            } else {
+                await logChannel.send({ embeds: [finalEmbed] });
+            }
+
+            await db.query('DELETE FROM ponto_sessions WHERE session_id = $1', [activeSession.session_id]);
+            await interaction.editReply({ content: `Você saiu de serviço. Seu tempo total foi de **${durationFormatted}**. Obrigado!` });
+
+        } catch (error) {
+            console.error("Erro ao finalizar serviço:", error);
+            await interaction.editReply({ content: 'Ocorreu um erro ao finalizar seu serviço. Sua sessão foi encerrada, mas o log pode não ter sido atualizado.' });
+            // Garante que a sessão seja encerrada mesmo se o log falhar
+            await db.query('DELETE FROM ponto_sessions WHERE session_id = $1', [activeSession.session_id]);
+        }
+    }
+};

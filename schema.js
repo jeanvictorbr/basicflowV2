@@ -36,6 +36,24 @@ const guildSettingsTable = `
         ponto_canal_registros VARCHAR(255),
         ponto_cargo_em_servico VARCHAR(255)
     );
+
+            -- Módulo de Bate-Ponto
+        ponto_canal_registros VARCHAR(255),
+        ponto_cargo_em_servico VARCHAR(255),
+        ponto_imagem_vitrine VARCHAR(1024),
+        ponto_status BOOLEAN DEFAULT false
+    );
+`;
+
+// NOVA TABELA PARA O BATE-PONTO
+const pontoSessionsTable = `
+    CREATE TABLE IF NOT EXISTS ponto_sessions (
+        session_id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        start_time TIMESTAMPTZ NOT NULL,
+        log_message_id VARCHAR(255)
+    );
 `;
 
 const pendingRegistrationsTable = `
@@ -75,5 +93,6 @@ module.exports = [
     guildSettingsTable,
     pendingRegistrationsTable,
     ticketsTable,
-    uniformsTable
+    uniformsTable,
+    pontoSessionsTable 
 ];
