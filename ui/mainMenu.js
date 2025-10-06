@@ -88,7 +88,7 @@ module.exports = async function generateMainMenu(interaction) {
                 {
                     "type": 10, // Tipo 10 é um componente de Texto
                     // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
-                    "content": "_BasicFlow • Desenvolvido com ❤️ por ZéPiqueno_" 
+                    "content": " ↘ Conheça tambem o PoliceFlow e FactionFlow! o Melhor dos Mundos 🥇" 
                 }
                 // =======================================================
             ]
