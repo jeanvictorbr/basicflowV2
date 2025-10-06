@@ -54,6 +54,7 @@ client.once(Events.ClientReady, async () => {
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
 });
 
+
 // Listener de Interações
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
@@ -75,8 +76,10 @@ client.on(Events.InteractionCreate, async interaction => {
             handler = client.handlers.get('ranking_page_');
         } else if (interaction.customId.startsWith('modal_department_details_')) { 
             handler = client.handlers.get('modal_department_details_'); 
-        } else if (interaction.customId.startsWith('select_ticket_create_department_')) { // NOVA LINHA
-            handler = client.handlers.get('select_ticket_create_department_'); // NOVA LINHA
+        } else if (interaction.customId.startsWith('select_ticket_create_department_')) {
+            handler = client.handlers.get('select_ticket_create_department_');
+        } else if (interaction.customId.startsWith('modal_ticket_greeting_edit_')) { // NOVA LINHA
+            handler = client.handlers.get('modal_ticket_greeting_edit_'); // NOVA LINHA
         } else {
             handler = client.handlers.get(interaction.customId);
         }
@@ -98,6 +101,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
+
 
 // =======================================================
 // ==      NOVO LISTENER DE MENSAGENS PARA TICKETS      ==

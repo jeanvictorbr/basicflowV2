@@ -25,7 +25,7 @@ module.exports = function generateGreetingMenu(settings, messages) {
                     "accessory": { "type": 2, "style": toggleButton.style, "label": toggleButton.label, "emoji": { "name": toggleButton.emoji }, "custom_id": "tickets_greeting_toggle_system" },
                     "components": [{ "type": 10, "content": `**Sistema de Saudações**\n> Status Geral: \`${systemStatus}\`` }]
                 },
-                { "type": 10, "content": summaryText }, // RESUMO ADICIONADO AQUI
+                { "type": 10, "content": summaryText },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": "### Mensagens Cadastradas:" },
                 { "type": 10, "content": messageList },
@@ -34,6 +34,7 @@ module.exports = function generateGreetingMenu(settings, messages) {
                     "type": 1,
                     "components": [
                         { "type": 2, "style": 3, "label": "Adicionar", "emoji": { "name": "➕" }, "custom_id": "tickets_greeting_add" },
+                        { "type": 2, "style": 1, "label": "Editar", "emoji": { "name": "✏️" }, "custom_id": "tickets_greeting_edit", "disabled": messages.length === 0 },
                         { "type": 2, "style": 2, "label": "Ativar/Desativar", "emoji": { "name": "🔄" }, "custom_id": "tickets_greeting_toggle_message", "disabled": messages.length === 0 },
                         { "type": 2, "style": 4, "label": "Remover", "emoji": { "name": "🗑️" }, "custom_id": "tickets_greeting_remove", "disabled": messages.length === 0 }
                     ]

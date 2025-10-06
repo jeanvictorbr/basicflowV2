@@ -1,26 +1,30 @@
 // Crie em: handlers/buttons/tickets_greeting_edit.js
-const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'tickets_greeting_edit',
     async execute(interaction) {
-        const settings = (await db.query('SELECT tickets_greeting_message FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
+        const messages = (await db.query('SELECT id, message FROM ticket_greeting_messages WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+        
+        const options = messages.map(m => ({
+            label: `[ID: ${m.id}]`,
+            description: m.message.substring(0, 100),
+            value: String(m.id)
+        }));
 
-        const modal = new ModalBuilder()
-            .setCustomId('modal_ticket_greeting_edit')
-            .setTitle('Editar Mensagem de Saudação');
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('select_ticket_greeting_edit')
+            .setPlaceholder('Selecione a mensagem que deseja editar')
+            .addOptions(options);
 
-        const messageInput = new TextInputBuilder()
-            .setCustomId('input_greeting_message')
-            .setLabel("Mensagem de boas-vindas")
-            .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder("Use {user} para mencionar o usuário e {server} para o nome do servidor.")
-            .setValue(settings?.tickets_greeting_message || '')
-            .setRequired(true);
-
-        modal.addComponents(new ActionRowBuilder().addComponents(messageInput));
-
-        await interaction.showModal(modal);
+        const cancelButton = new ButtonBuilder().setCustomId('tickets_config_greeting').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
+        
+        await interaction.update({
+            components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
     }
 };
