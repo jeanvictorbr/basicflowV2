@@ -3,19 +3,20 @@ const { OpenAI } = require('openai');
 const { searchKnowledge } = require('./aiKnowledgeBase.js');
 require('dotenv').config();
 
+// ... (configuração da OpenAI como antes) ...
 if (!process.env.OPENAI_API_KEY) {
     throw new Error("A variável de ambiente OPENAI_API_KEY não está definida.");
 }
-
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
 const defaultPrompt = `Você é um assistente de IA amigável e eficiente chamado "Assistente BasicFlow". Você foi integrado a um bot para Discord chamado BasicFlow, desenvolvido por "ze pqueno". A sua principal função é fornecer o primeiro nível de suporte aos utilizadores que abrem um ticket de ajuda neste servidor. Você deve manter uma conversa com o utilizador até que um membro da equipa humana intervenha. Baseie as suas respostas no conhecimento fornecido e no histórico da conversa.`;
 
-async function getAIResponse(guildId, chatHistory, userMessage, customPrompt) {
+// A FUNÇÃO AGORA RECEBE A CONFIGURAÇÃO 'useBaseKnowledge'
+async function getAIResponse(guildId, chatHistory, userMessage, customPrompt, useBaseKnowledge) {
     try {
-        const retrievedKnowledge = await searchKnowledge(guildId, userMessage);
+        const retrievedKnowledge = await searchKnowledge(guildId, userMessage, useBaseKnowledge);
         
         let systemPrompt = customPrompt || defaultPrompt;
         if (retrievedKnowledge) {

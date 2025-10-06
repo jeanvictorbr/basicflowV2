@@ -30,6 +30,7 @@ const guildSettingsTable = `
         tickets_use_departments BOOLEAN DEFAULT false,
         tickets_ai_assistant_enabled BOOLEAN DEFAULT false,
         tickets_ai_assistant_prompt TEXT,
+        tickets_ai_use_base_knowledge BOOLEAN DEFAULT true, -- NOVA COLUNA
         uniformes_thumbnail_url VARCHAR(1024),
         uniformes_color VARCHAR(7) DEFAULT '#FFFFFF',
         uniformes_vitrine_channel_id VARCHAR(255),
@@ -46,6 +47,7 @@ const guildSettingsTable = `
     );
 `;
 
+// ... (o resto do seu schema.js continua igual, com todas as outras tabelas) ...
 const activationKeysTable = `
     CREATE TABLE IF NOT EXISTS activation_keys (
         key VARCHAR(255) PRIMARY KEY,
@@ -181,9 +183,6 @@ const ticketGreetingMessagesTable = `
     );
 `;
 
-// =======================================================
-// ==         NOVA TABELA DA BASE DE CONHECIMENTO       ==
-// =======================================================
 const aiKnowledgeBaseTable = `
     CREATE TABLE IF NOT EXISTS ai_knowledge_base (
         id SERIAL PRIMARY KEY,
@@ -210,5 +209,5 @@ module.exports = [
     ticketDepartmentsTable,
     ticketFeedbackTable,
     ticketGreetingMessagesTable,
-    aiKnowledgeBaseTable // Adicione a nova tabela à lista de exportação
+    aiKnowledgeBaseTable
 ];

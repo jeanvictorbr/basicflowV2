@@ -1,5 +1,4 @@
 // index.js
-// ... (imports e configuração inicial)
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
@@ -96,7 +95,6 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     } else {
         let handler;
-        // Adicione as novas rotas dinâmicas
         if (interaction.customId.startsWith('modal_ai_knowledge_edit_')) {
             handler = client.handlers.get('modal_ai_knowledge_edit_');
         } else if (interaction.customId.startsWith('modal_uniformes_edit_')) {
@@ -142,7 +140,7 @@ client.on(Events.MessageCreate, async message => {
     }
     await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
-    const settings = (await db.query('SELECT tickets_ai_assistant_enabled, tickets_ai_assistant_prompt, tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
+    const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
     
     if (!settings || !settings.tickets_ai_assistant_enabled) return;
 
@@ -167,8 +165,8 @@ client.on(Events.MessageCreate, async message => {
     
     await message.channel.sendTyping();
     
-    // Passa o ID da guild para a busca na base de conhecimento
-    const aiResponse = await getAIResponse(message.guild.id, chatHistory, message.content, settings.tickets_ai_assistant_prompt);
+    const useBaseKnowledge = settings.tickets_ai_use_base_knowledge !== false;
+    const aiResponse = await getAIResponse(message.guild.id, chatHistory, message.content, settings.tickets_ai_assistant_prompt, useBaseKnowledge);
     
     if (aiResponse) {
         await message.channel.send(aiResponse);
