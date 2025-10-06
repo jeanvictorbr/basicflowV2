@@ -22,7 +22,7 @@ module.exports = async function generateMainMenu(interaction) {
             "type": 17, "accent_color": 42751, "spoiler": false,
             "components": [
                 { "type": 10, "content": `## Hub de Configurações - ${interaction.guild.name}` },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 { "type": 10, "content": premiumStatusText },
                 { "type": 14, "divider": true, "spacing": 2 },
                 
@@ -32,7 +32,7 @@ module.exports = async function generateMainMenu(interaction) {
                     "accessory": { "type": 2, "style": 2, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_ausencias_menu" },
                     "components": [{ "type": 10, "content": "🏖️ Ausências" }, { "type": 10, "content": "Configure todo o sistema de **ausências**." }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 2, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_registros_menu" },
@@ -44,7 +44,7 @@ module.exports = async function generateMainMenu(interaction) {
                     "accessory": { "type": 2, "style": 2, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_tickets_menu" },
                     "components": [{ "type": 10, "content": "🚨 Tickets" }, { "type": 10, "content": "Configure todo o sistema de **tickets**." }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 2, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_uniformes_menu" },
