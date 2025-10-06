@@ -1,4 +1,4 @@
-/ ui/pontoMenu.js
+// ui/pontoMenu.js
 module.exports = function generatePontoMenu(settings, isPremium) {
     const canalLogs = settings?.ponto_canal_registros ? `<#${settings.ponto_canal_registros}>` : '`❌ Não definido`';
     const cargoServico = settings?.ponto_cargo_em_servico ? `<@&${settings.ponto_cargo_em_servico}>` : '`❌ Não definido`';
@@ -49,7 +49,7 @@ module.exports = function generatePontoMenu(settings, isPremium) {
                     "components": [
                         { "type": 2, "style": 1, "label": "+ Config. Premium", "emoji": { "name": "✨" }, "custom_id": "ponto_open_premium_menu", "disabled": !isPremium }
                     ]
-                },
+              },
                                 // =======================================================
                 // ==                RODAPÉ ADICIONADO AQUI             ==
                 // =======================================================
