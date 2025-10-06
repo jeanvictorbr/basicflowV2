@@ -2,6 +2,7 @@
 const db = require('../../database.js');
 const generateVitrine = require('../../ui/ausenciaVitrineEmbed.js');
 const generateAusenciasMenu = require('../../ui/ausenciasMenu.js');
+const isPremiumActive = require('../../utils/premiumCheck.js');
 
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
@@ -12,42 +13,37 @@ module.exports = {
         await interaction.deferUpdate();
 
         const selectedChannelId = interaction.values[0];
-        const channel = await interaction.guild.channels.fetch(selectedChannelId);
+        const channel = await interaction.guild.channels.fetch(selectedChannelId).catch(() => null);
 
         if (!channel) {
-            await interaction.followUp({ content: 'Canal não encontrado.', ephemeral: true });
-            return;
+            return interaction.followUp({ content: 'Canal não encontrado.', ephemeral: true });
         }
 
-        const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
-        const settings = settingsResult.rows[0] || {};
+        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         
-        if (!settings.ausencias_imagem_vitrine) {
-             await interaction.editReply({
-                content: '🚨 **Erro:** Você precisa definir uma imagem para a vitrine antes de publicá-la.',
-                components: generateAusenciasMenu(settings),
-                flags: V2_FLAG | EPHEMERAL_FLAG
-            });
-            return;
-        }
+        // A verificação de erro foi removida daqui, corrigindo o crash.
 
         try {
             const vitrineMessage = generateVitrine(settings);
             await channel.send(vitrineMessage);
             
+            // Retorna ao menu de ausências para manter o fluxo
+            const isPremium = await isPremiumActive(interaction.guild.id);
             await interaction.editReply({
-                content: `✅ **Vitrine publicada com sucesso no canal ${channel}!**`,
-                components: generateAusenciasMenu(settings),
+                components: generateAusenciasMenu(settings, isPremium),
                 flags: V2_FLAG | EPHEMERAL_FLAG
             });
+            await interaction.followUp({ content: `✅ **Vitrine publicada com sucesso no canal ${channel}!**`, ephemeral: true });
 
         } catch (error) {
             console.error("Erro ao publicar vitrine:", error);
+            // Em caso de erro, também retorna ao menu de ausências
+            const isPremium = await isPremiumActive(interaction.guild.id);
             await interaction.editReply({
-                content: `❌ **Erro ao publicar no canal ${channel}.** Verifique se eu tenho permissão para enviar mensagens lá.`,
-                components: generateAusenciasMenu(settings),
+                components: generateAusenciasMenu(settings, isPremium),
                 flags: V2_FLAG | EPHEMERAL_FLAG
             });
+            await interaction.followUp({ content: `❌ **Erro ao publicar no canal ${channel}.** Verifique se eu tenho permissão para enviar mensagens lá.`, ephemeral: true });
         }
     }
 };
