@@ -54,10 +54,10 @@ client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
         // Inicia a verificação periódica de tickets inativos
-    // Roda a cada 5 minutos (300000 milissegundos) para maior precisão
+    // Roda a cada 2 minutos (120000 milissegundos) para maior precisão
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
-    }, 150000); 
+    }, 120000); 
 });
 
 
@@ -116,11 +116,16 @@ client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return;
 
     // Verifica se a mensagem foi enviada em um canal que é um ticket
-    const isTicketChannel = (await db.query('SELECT 1 FROM tickets WHERE channel_id = $1', [message.channel.id])).rows.length > 0;
+    const ticket = (await db.query('SELECT warning_sent_at FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
     
-    if (isTicketChannel) {
-        // Atualiza o timestamp da última mensagem para a funcionalidade de auto-close
-        await db.query('UPDATE tickets SET last_message_at = NOW() WHERE channel_id = $1', [message.channel.id]);
+    if (ticket) {
+        // Se um aviso de fechamento JÁ TINHA sido enviado, cancela o fechamento
+        if (ticket.warning_sent_at) {
+            await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
+        }
+
+        // Atualiza o timestamp da última mensagem e anula o aviso de fechamento
+        await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
     }
 });
 
