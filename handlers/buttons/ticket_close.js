@@ -11,12 +11,13 @@ async function requestFeedback(interaction, ticket, opener) {
             .setTitle('Avalie nosso Atendimento')
             .setDescription(`Olá! Parece que seu ticket \`#${String(ticket.ticket_number).padStart(4, '0')}\` no servidor **${interaction.guild.name}** foi finalizado.\n\nPor favor, dedique um momento para avaliar o suporte que você recebeu. Sua opinião é muito importante para nós!`);
 
+        // ADICIONADO O guild.id AO FINAL DO custom_id
         const buttons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`feedback_star_1_${ticket.channel_id}`).setLabel('1').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
-            new ButtonBuilder().setCustomId(`feedback_star_2_${ticket.channel_id}`).setLabel('2').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
-            new ButtonBuilder().setCustomId(`feedback_star_3_${ticket.channel_id}`).setLabel('3').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
-            new ButtonBuilder().setCustomId(`feedback_star_4_${ticket.channel_id}`).setLabel('4').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
-            new ButtonBuilder().setCustomId(`feedback_star_5_${ticket.channel_id}`).setLabel('5').setStyle(ButtonStyle.Success).setEmoji('⭐')
+            new ButtonBuilder().setCustomId(`feedback_star_1_${ticket.channel_id}_${interaction.guild.id}`).setLabel('1').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
+            new ButtonBuilder().setCustomId(`feedback_star_2_${ticket.channel_id}_${interaction.guild.id}`).setLabel('2').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
+            new ButtonBuilder().setCustomId(`feedback_star_3_${ticket.channel_id}_${interaction.guild.id}`).setLabel('3').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
+            new ButtonBuilder().setCustomId(`feedback_star_4_${ticket.channel_id}_${interaction.guild.id}`).setLabel('4').setStyle(ButtonStyle.Secondary).setEmoji('⭐'),
+            new ButtonBuilder().setCustomId(`feedback_star_5_${ticket.channel_id}_${interaction.guild.id}`).setLabel('5').setStyle(ButtonStyle.Success).setEmoji('⭐')
         );
 
         await opener.send({ embeds: [embed], components: [buttons] });
@@ -31,9 +32,10 @@ module.exports = {
     async execute(interaction) {
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
         
-        // Verifica se quem está fechando é o próprio usuário ou um admin
-        const isSupport = interaction.member.roles.cache.has(settings.tickets_cargo_suporte);
         const ticketInfo = (await db.query('SELECT user_id FROM tickets WHERE channel_id = $1', [interaction.channel.id])).rows[0];
+        if (!ticketInfo) return; // Segurança caso o ticket não seja encontrado
+
+        const isSupport = interaction.member.roles.cache.has(settings.tickets_cargo_suporte);
         const isOwner = interaction.user.id === ticketInfo.user_id;
 
         if (!isSupport && !isOwner) {
@@ -72,7 +74,6 @@ module.exports = {
         
         await db.query(`UPDATE tickets SET status = 'closed', claimed_by = $1, closed_at = NOW() WHERE channel_id = $2`, [interaction.user.id, interaction.channel.id]);
         
-        // ENVIO DO FEEDBACK
         if (settings.tickets_feedback_enabled) {
             await requestFeedback(interaction, ticket, opener);
         }
