@@ -52,7 +52,7 @@ handlerTypes.forEach(handlerType => {
 console.log('--- Handlers Carregados ---');
 
 client.once(Events.ClientReady, async () => {
-    await db.initializeDatabase();
+await db.synchronizeDatabase();
     
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {

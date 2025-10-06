@@ -1,213 +1,160 @@
 // schema.js
-const guildSettingsTable = `
-    CREATE TABLE IF NOT EXISTS guild_settings (
-        guild_id VARCHAR(255) PRIMARY KEY,
-        premium_status BOOLEAN DEFAULT false,
-        premium_expires_at TIMESTAMPTZ,
-        ausencias_canal_aprovacoes VARCHAR(255),
-        ausencias_cargo_ausente VARCHAR(255),
-        ausencias_canal_logs VARCHAR(255),
-        ausencias_imagem_vitrine VARCHAR(1024),
-        ausencias_canal_vitrine VARCHAR(255),
-        registros_canal_aprovacoes VARCHAR(255),
-        registros_cargo_aprovado VARCHAR(255),
-        registros_canal_logs VARCHAR(255),
-        registros_tag_aprovado VARCHAR(255),
-        registros_status BOOLEAN DEFAULT true,
-        registros_canal_vitrine VARCHAR(255),
-        registros_imagem_vitrine VARCHAR(1024),
-        tickets_painel_channel VARCHAR(255),
-        tickets_cargo_suporte VARCHAR(255),
-        tickets_canal_logs VARCHAR(255),
-        tickets_category VARCHAR(255),
-        tickets_thumbnail_url VARCHAR(1024),
-        tickets_feedback_enabled BOOLEAN DEFAULT false,
-        tickets_autoclose_enabled BOOLEAN DEFAULT false,
-        tickets_autoclose_hours INTEGER DEFAULT 48,
-        tickets_autoclose_dm_user BOOLEAN DEFAULT true,
-        tickets_autoclose_warn_user BOOLEAN DEFAULT true,
-        tickets_greeting_enabled BOOLEAN DEFAULT false,
-        tickets_use_departments BOOLEAN DEFAULT false,
-        tickets_ai_assistant_enabled BOOLEAN DEFAULT false,
-        tickets_ai_assistant_prompt TEXT,
-        tickets_ai_use_base_knowledge BOOLEAN DEFAULT true, -- NOVA COLUNA
-        uniformes_thumbnail_url VARCHAR(1024),
-        uniformes_color VARCHAR(7) DEFAULT '#FFFFFF',
-        uniformes_vitrine_channel_id VARCHAR(255),
-        uniformes_vitrine_message_id VARCHAR(255),
-        ponto_canal_registros VARCHAR(255),
-        ponto_cargo_em_servico VARCHAR(255),
-        ponto_imagem_vitrine VARCHAR(1024),
-        ponto_status BOOLEAN DEFAULT false,
-        ponto_afk_check_enabled BOOLEAN DEFAULT false,
-        ponto_afk_check_interval_minutes INTEGER DEFAULT 60,
-        ponto_vitrine_footer TEXT,
-        ponto_vitrine_color VARCHAR(7),
-        ponto_dashboard_v2_enabled BOOLEAN DEFAULT false
-    );
-`;
 
-// ... (o resto do seu schema.js continua igual, com todas as outras tabelas) ...
-const activationKeysTable = `
-    CREATE TABLE IF NOT EXISTS activation_keys (
-        key VARCHAR(255) PRIMARY KEY,
-        duration_days INTEGER NOT NULL,
-        uses_left INTEGER DEFAULT 1,
-        comment TEXT
-    );
-`;
+// A "Fonte da Verdade" para a estrutura da nossa base de dados.
+const schema = {
+    guild_settings: {
+        guild_id: { type: 'VARCHAR(255)', primaryKey: true },
+        premium_status: { type: 'BOOLEAN', default: false },
+        premium_expires_at: { type: 'TIMESTAMPTZ' },
+        ausencias_canal_aprovacoes: { type: 'VARCHAR(255)' },
+        ausencias_cargo_ausente: { type: 'VARCHAR(255)' },
+        ausencias_canal_logs: { type: 'VARCHAR(255)' },
+        ausencias_imagem_vitrine: { type: 'VARCHAR(1024)' },
+        ausencias_canal_vitrine: { type: 'VARCHAR(255)' },
+        registros_canal_aprovacoes: { type: 'VARCHAR(255)' },
+        registros_cargo_aprovado: { type: 'VARCHAR(255)' },
+        registros_canal_logs: { type: 'VARCHAR(255)' },
+        registros_tag_aprovado: { type: 'VARCHAR(255)' },
+        registros_status: { type: 'BOOLEAN', default: true },
+        registros_canal_vitrine: { type: 'VARCHAR(255)' },
+        registros_imagem_vitrine: { type: 'VARCHAR(1024)' },
+        tickets_painel_channel: { type: 'VARCHAR(255)' },
+        tickets_cargo_suporte: { type: 'VARCHAR(255)' },
+        tickets_canal_logs: { type: 'VARCHAR(255)' },
+        tickets_category: { type: 'VARCHAR(255)' },
+        tickets_thumbnail_url: { type: 'VARCHAR(1024)' },
+        tickets_feedback_enabled: { type: 'BOOLEAN', default: false },
+        tickets_autoclose_enabled: { type: 'BOOLEAN', default: false },
+        tickets_autoclose_hours: { type: 'INTEGER', default: 48 },
+        tickets_autoclose_dm_user: { type: 'BOOLEAN', default: true },
+        tickets_autoclose_warn_user: { type: 'BOOLEAN', default: true },
+        tickets_greeting_enabled: { type: 'BOOLEAN', default: false },
+        tickets_use_departments: { type: 'BOOLEAN', default: false },
+        tickets_ai_assistant_enabled: { type: 'BOOLEAN', default: false },
+        tickets_ai_assistant_prompt: { type: 'TEXT' },
+        tickets_ai_use_base_knowledge: { type: 'BOOLEAN', default: true },
+        uniformes_thumbnail_url: { type: 'VARCHAR(1024)' },
+        uniformes_color: { type: 'VARCHAR(7)', default: '#FFFFFF' },
+        uniformes_vitrine_channel_id: { type: 'VARCHAR(255)' },
+        uniformes_vitrine_message_id: { type: 'VARCHAR(255)' },
+        ponto_canal_registros: { type: 'VARCHAR(255)' },
+        ponto_cargo_em_servico: { type: 'VARCHAR(255)' },
+        ponto_imagem_vitrine: { type: 'VARCHAR(1024)' },
+        ponto_status: { type: 'BOOLEAN', default: false },
+        ponto_afk_check_enabled: { type: 'BOOLEAN', default: false },
+        ponto_afk_check_interval_minutes: { type: 'INTEGER', default: 60 },
+        ponto_vitrine_footer: { type: 'TEXT' },
+        ponto_vitrine_color: { type: 'VARCHAR(7)' },
+        ponto_dashboard_v2_enabled: { type: 'BOOLEAN', default: false }
+    },
+    activation_keys: {
+        key: { type: 'VARCHAR(255)', primaryKey: true },
+        duration_days: { type: 'INTEGER', notNull: true },
+        uses_left: { type: 'INTEGER', default: 1 },
+        comment: { type: 'TEXT' }
+    },
+    pending_registrations: {
+        message_id: { type: 'VARCHAR(255)', primaryKey: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        nome_rp: { type: 'VARCHAR(255)', notNull: true },
+        id_rp: { type: 'VARCHAR(255)', notNull: true }
+    },
+    tickets: {
+        channel_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        ticket_number: { type: 'SERIAL' },
+        claimed_by: { type: 'VARCHAR(255)' },
+        status: { type: 'VARCHAR(20)', default: 'open' },
+        action_log: { type: 'TEXT', default: '' },
+        closed_at: { type: 'TIMESTAMPTZ' },
+        last_message_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        warning_sent_at: { type: 'TIMESTAMPTZ' }
+    },
+    uniforms: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(255)', notNull: true },
+        description: { type: 'TEXT' },
+        image_url: { type: 'VARCHAR(1024)' },
+        preset_code: { type: 'TEXT', notNull: true }
+    },
+    ponto_sessions: {
+        session_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        start_time: { type: 'TIMESTAMPTZ', notNull: true },
+        log_message_id: { type: 'VARCHAR(255)' },
+        dashboard_message_id: { type: 'VARCHAR(255)' },
+        is_paused: { type: 'BOOLEAN', default: false },
+        last_pause_time: { type: 'TIMESTAMPTZ' },
+        total_paused_ms: { type: 'BIGINT', default: 0 }
+    },
+    ponto_leaderboard: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        total_ms: { type: 'BIGINT', default: 0 },
+        // Adicionamos a constraint UNIQUE aqui para garantir a integridade
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id'] }
+    },
+    pending_absences: {
+        message_id: { type: 'VARCHAR(255)', primaryKey: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        start_date: { type: 'VARCHAR(100)' },
+        end_date: { type: 'VARCHAR(100)' },
+        reason: { type: 'TEXT' }
+    },
+    registrations_history: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        moderator_id: { type: 'VARCHAR(255)', notNull: true },
+        status: { type: 'VARCHAR(20)', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    ponto_history: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        start_time: { type: 'TIMESTAMPTZ', notNull: true },
+        end_time: { type: 'TIMESTAMPTZ', notNull: true },
+        duration_ms: { type: 'BIGINT', notNull: true }
+    },
+    ticket_departments: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        description: { type: 'TEXT' },
+        role_id: { type: 'VARCHAR(255)', notNull: true },
+        emoji: { type: 'VARCHAR(100)' }
+    },
+    ticket_feedback: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        ticket_channel_id: { type: 'VARCHAR(255)', unique: true, notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        claimed_by: { type: 'VARCHAR(255)' },
+        rating: { type: 'INTEGER' },
+        comment: { type: 'TEXT' },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    ticket_greeting_messages: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        message: { type: 'TEXT', notNull: true },
+        is_active: { type: 'BOOLEAN', default: true }
+    },
+    ai_knowledge_base: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        topic: { type: 'VARCHAR(255)', notNull: true },
+        keywords: { type: 'TEXT', notNull: true },
+        content: { type: 'TEXT', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    }
+};
 
-const pendingRegistrationsTable = `
-    CREATE TABLE IF NOT EXISTS pending_registrations (
-        message_id VARCHAR(255) PRIMARY KEY,
-        user_id VARCHAR(255) NOT NULL,
-        guild_id VARCHAR(255) NOT NULL,
-        nome_rp VARCHAR(255) NOT NULL,
-        id_rp VARCHAR(255) NOT NULL
-    );
-`;
-
-const ticketsTable = `
-    CREATE TABLE IF NOT EXISTS tickets (
-        channel_id VARCHAR(255) PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        ticket_number SERIAL,
-        claimed_by VARCHAR(255),
-        status VARCHAR(20) DEFAULT 'open',
-        action_log TEXT DEFAULT '',
-        closed_at TIMESTAMPTZ,
-        last_message_at TIMESTAMPTZ DEFAULT NOW(),
-        warning_sent_at TIMESTAMPTZ
-    );
-`;
-
-const uniformsTable = `
-    CREATE TABLE IF NOT EXISTS uniforms (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        image_url VARCHAR(1024),
-        preset_code TEXT NOT NULL
-    );
-`;
-
-const pontoSessionsTable = `
-    CREATE TABLE IF NOT EXISTS ponto_sessions (
-        session_id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        start_time TIMESTAMPTZ NOT NULL,
-        log_message_id VARCHAR(255),
-        dashboard_message_id VARCHAR(255),
-        is_paused BOOLEAN DEFAULT false,
-        last_pause_time TIMESTAMPTZ,
-        total_paused_ms BIGINT DEFAULT 0
-    );
-`;
-
-const pontoLeaderboardTable = `
-    CREATE TABLE IF NOT EXISTS ponto_leaderboard (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        total_ms BIGINT DEFAULT 0,
-        UNIQUE(guild_id, user_id)
-    );
-`;
-
-const pendingAbsencesTable = `
-    CREATE TABLE IF NOT EXISTS pending_absences (
-        message_id VARCHAR(255) PRIMARY KEY,
-        user_id VARCHAR(255) NOT NULL,
-        guild_id VARCHAR(255) NOT NULL,
-        start_date VARCHAR(100),
-        end_date VARCHAR(100),
-        reason TEXT
-    );
-`;
-
-const registrationsHistoryTable = `
-    CREATE TABLE IF NOT EXISTS registrations_history (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        moderator_id VARCHAR(255) NOT NULL,
-        status VARCHAR(20) NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-    );
-`;
-
-const pontoHistoryTable = `
-    CREATE TABLE IF NOT EXISTS ponto_history (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        start_time TIMESTAMPTZ NOT NULL,
-        end_time TIMESTAMPTZ NOT NULL,
-        duration_ms BIGINT NOT NULL
-    );
-`;
-
-const ticketDepartmentsTable = `
-    CREATE TABLE IF NOT EXISTS ticket_departments (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        name VARCHAR(100) NOT NULL,
-        description TEXT,
-        role_id VARCHAR(255) NOT NULL,
-        emoji VARCHAR(100)
-    );
-`;
-
-const ticketFeedbackTable = `
-    CREATE TABLE IF NOT EXISTS ticket_feedback (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        ticket_channel_id VARCHAR(255) UNIQUE NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        claimed_by VARCHAR(255),
-        rating INTEGER,
-        comment TEXT,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-    );
-`;
-
-const ticketGreetingMessagesTable = `
-    CREATE TABLE IF NOT EXISTS ticket_greeting_messages (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        message TEXT NOT NULL,
-        is_active BOOLEAN DEFAULT true
-    );
-`;
-
-const aiKnowledgeBaseTable = `
-    CREATE TABLE IF NOT EXISTS ai_knowledge_base (
-        id SERIAL PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        topic VARCHAR(255) NOT NULL,
-        keywords TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-    );
-`;
-
-
-module.exports = [
-    guildSettingsTable,
-    activationKeysTable,
-    pendingRegistrationsTable,
-    ticketsTable,
-    uniformsTable,
-    pontoSessionsTable,
-    pontoLeaderboardTable,
-    pendingAbsencesTable,
-    registrationsHistoryTable,
-    pontoHistoryTable,
-    ticketDepartmentsTable,
-    ticketFeedbackTable,
-    ticketGreetingMessagesTable,
-    aiKnowledgeBaseTable
-];
+module.exports = schema;
