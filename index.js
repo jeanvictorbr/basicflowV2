@@ -6,6 +6,7 @@ require('dotenv').config();
 const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+client.pontoIntervals = new Map();
 
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
@@ -62,7 +63,9 @@ client.on(Events.InteractionCreate, async interaction => {
         if (interaction.customId.startsWith('modal_uniformes_edit_')) {
             handler = client.handlers.get('modal_uniformes_edit_');
  } else if (interaction.customId.startsWith('uniform_copy_preset_')) { // ADICIONADO
-            handler = client.handlers.get('uniform_copy_preset_');             // ADICIONADO
+            handler = client.handlers.get('uniform_copy_preset_');    
+} else if (interaction.customId.startsWith('ranking_page_')) { // ADICIONADO
+    handler = client.handlers.get('ranking_page_');             // ADICIONADO         // ADICIONADO
         } else {
             handler = client.handlers.get(interaction.customId);
         }

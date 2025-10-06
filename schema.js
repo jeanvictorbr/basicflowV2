@@ -73,13 +73,29 @@ const uniformsTable = `
     );
 `;
 
+// TABELA DE SESSÕES APRIMORADA
 const pontoSessionsTable = `
     CREATE TABLE IF NOT EXISTS ponto_sessions (
         session_id SERIAL PRIMARY KEY,
         guild_id VARCHAR(255) NOT NULL,
         user_id VARCHAR(255) NOT NULL,
         start_time TIMESTAMPTZ NOT NULL,
-        log_message_id VARCHAR(255)
+        log_message_id VARCHAR(255),
+        dashboard_message_id VARCHAR(255),
+        is_paused BOOLEAN DEFAULT false,
+        last_pause_time TIMESTAMPTZ,
+        total_paused_ms BIGINT DEFAULT 0
+    );
+`;
+
+// NOVA TABELA PARA O RANKING
+const pontoLeaderboardTable = `
+    CREATE TABLE IF NOT EXISTS ponto_leaderboard (
+        id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        total_ms BIGINT DEFAULT 0,
+        UNIQUE(guild_id, user_id)
     );
 `;
 
@@ -88,5 +104,6 @@ module.exports = [
     pendingRegistrationsTable,
     ticketsTable,
     uniformsTable,
-    pontoSessionsTable
+    pontoSessionsTable,
+    pontoLeaderboardTable 
 ];
