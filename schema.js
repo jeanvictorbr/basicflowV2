@@ -115,6 +115,18 @@ const pontoLeaderboardTable = `
     );
 `;
 
+// NOVA TABELA PARA SOLICITAÇÕES DE AUSÊNCIA
+const pendingAbsencesTable = `
+    CREATE TABLE IF NOT EXISTS pending_absences (
+        message_id VARCHAR(255) PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        guild_id VARCHAR(255) NOT NULL,
+        start_date VARCHAR(100),
+        end_date VARCHAR(100),
+        reason TEXT
+    );
+`;
+
 module.exports = [
     guildSettingsTable,
     pendingRegistrationsTable,
@@ -122,5 +134,6 @@ module.exports = [
     uniformsTable,
     pontoSessionsTable,
     pontoLeaderboardTable,
-    activationKeysTable //
+    activationKeysTable,
+    pendingAbsencesTable //
 ];

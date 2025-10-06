@@ -1,5 +1,5 @@
 // handlers/buttons/ticket_open.js
-const { ChannelType, PermissionsBitField } = require('discord.js');
+const { ChannelType, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
 const generateTicketDashboard = require('../../ui/ticketDashboard.js');
 
@@ -45,8 +45,9 @@ module.exports = {
             await db.query('INSERT INTO tickets (channel_id, guild_id, user_id, action_log) VALUES ($1, $2, $3, $4)', [channel.id, interaction.guild.id, interaction.user.id, initialLog]);
             
             const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [channel.id])).rows[0];
-            // Gera o dashboard tanto para o admin quanto para o usuário na mesma mensagem
-            const dashboard = generateTicketDashboard(ticketData, interaction.member, interaction.user.id, settings.tickets_cargo_suporte);
+            
+            // CORREÇÃO: Passa o interaction.member para a verificação de permissão
+            const dashboard = generateTicketDashboard(ticketData, interaction.member, interaction.member, settings.tickets_cargo_suporte);
             
             await channel.send({ content: `${interaction.user} <@&${settings.tickets_cargo_suporte}>`, ...dashboard });
             await interaction.editReply(`✅ Seu ticket foi criado em ${channel}!`);

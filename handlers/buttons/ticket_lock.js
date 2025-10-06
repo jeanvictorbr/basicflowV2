@@ -26,7 +26,9 @@ module.exports = {
         await db.query('UPDATE tickets SET status = $1, action_log = action_log || $2 WHERE channel_id = $3', [newStatus, newAction, interaction.channel.id]);
         
         const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [interaction.channel.id])).rows[0];
-        const dashboard = generateTicketDashboard(ticketData, user, interaction.user.id, settings.tickets_cargo_suporte);
+        
+        // CORREÇÃO: Passa o interaction.member do admin
+        const dashboard = generateTicketDashboard(ticketData, user, interaction.member, settings.tickets_cargo_suporte);
         await interaction.editReply({ ...dashboard });
     }
 };

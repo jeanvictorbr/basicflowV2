@@ -1,5 +1,4 @@
 // handlers/selects/select_ticket_add_user.js
-const { PermissionsBitField } = require('discord.js');
 const generateTicketDashboard = require('../../ui/ticketDashboard.js');
 const db = require('../../database.js');
 
@@ -21,7 +20,8 @@ module.exports = {
         const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [interaction.channel.id])).rows[0];
         const openerMember = await interaction.guild.members.fetch(ticketData.user_id).catch(() => null);
 
-        const dashboard = generateTicketDashboard(ticketData, openerMember, interaction.user.id, settings.tickets_cargo_suporte);
+        // CORREÇÃO: Passa o interaction.member do admin
+        const dashboard = generateTicketDashboard(ticketData, openerMember, interaction.member, settings.tickets_cargo_suporte);
         await interaction.editReply({ ...dashboard });
 
         await interaction.channel.send({ content: `✅ ${member} foi adicionado ao ticket.` });

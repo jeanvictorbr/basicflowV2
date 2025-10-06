@@ -1,20 +1,21 @@
 // ui/ticketDashboard.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-module.exports = function generateTicketDashboard(ticketData = {}, openerMember, interactionMemberId, supportRoleId) {
+module.exports = function generateTicketDashboard(ticketData = {}, openerMember, interactionMember, supportRoleId) {
     const { status = 'open', claimed_by, action_log, user_id } = ticketData;
-    const isSupport = interactionMemberId && supportRoleId ? openerMember.guild.members.cache.get(interactionMemberId)?.roles.cache.has(supportRoleId) : false;
-    const isOpener = interactionMemberId === user_id;
+    
+    // CORREÇÃO: A verificação agora é feita diretamente no membro que interagiu.
+    const isSupport = supportRoleId ? interactionMember?.roles.cache.has(supportRoleId) : false;
+    const isOpener = interactionMember?.id === user_id;
 
-    // Constrói a descrição e o histórico
     let description = `Obrigado por contatar o suporte. Por favor, detalhe seu problema.`;
     if (claimed_by) description = `> Ticket assumido por <@${claimed_by}>.`;
     if (status === 'locked') description += `\n\n🔒 **Este ticket está trancado.**`;
     if (status === 'closed') description = `Este ticket foi finalizado.`;
 
     const embed = new EmbedBuilder()
-        .setColor(status === 'closed' ? '#ED4245' : '#3498DB') // Vermelho para fechado, Azul para outros
-        .setTitle('# Painel de Gerenciamento do Ticket')
+        .setColor(status === 'closed' ? '#ED4245' : '#3498DB')
+        .setTitle('Painel de Gerenciamento do Ticket')
         .setDescription(description)
         .setTimestamp();
 
@@ -27,11 +28,9 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember,
         embed.addFields({ name: 'Histórico de Ações', value: action_log });
     }
     
-    // Define quais botões serão mostrados
     const components = [];
     const isClosed = status === 'closed';
 
-    // Botões visíveis para a EQUIPE DE SUPORTE
     if (isSupport && !isClosed) {
         const adminRow1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_claim').setLabel(claimed_by ? "Assumido" : "Assumir").setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️').setDisabled(!!claimed_by),
@@ -46,7 +45,6 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember,
         components.push(adminRow1, adminRow2);
     }
     
-    // Botão visível para o USUÁRIO que abriu (e somente se não foi assumido)
     if (isOpener && !claimed_by && !isClosed) {
          const userRow = new ActionRowBuilder().addComponents(
              new ButtonBuilder().setCustomId('ticket_user_close').setLabel('Desistir do Ticket').setStyle(ButtonStyle.Danger).setEmoji('✖️')
@@ -54,7 +52,6 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember,
          components.push(userRow);
     }
 
-    // Botão de deletar para a EQUIPE após finalizado
     if (isSupport && isClosed) {
         const deleteRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_delete').setLabel("Deletar Ticket").setStyle(ButtonStyle.Danger).setEmoji('🗑️')

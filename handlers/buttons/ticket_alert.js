@@ -1,5 +1,6 @@
 // handlers/buttons/ticket_alert.js
 const db = require('../../database.js');
+const generateTicketDashboard = require('../../ui/ticketDashboard.js');
 
 module.exports = {
     customId: 'ticket_alert',
@@ -16,11 +17,11 @@ module.exports = {
             await db.query(`UPDATE tickets SET action_log = action_log || $1 WHERE channel_id = $2`, [newAction, interaction.channel.id]);
             await interaction.channel.send(`🔔 <@${ticket.user_id}>, a equipe de suporte precisa da sua atenção!`);
             
-            // Atualiza o dashboard para mostrar a ação no log
             const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [interaction.channel.id])).rows[0];
             const openerMember = await interaction.guild.members.fetch(ticketData.user_id).catch(() => null);
-            const generateTicketDashboard = require('../../ui/ticketDashboard.js');
-            const dashboard = generateTicketDashboard(ticketData, openerMember, interaction.user.id, settings.tickets_cargo_suporte);
+            
+            // CORREÇÃO: Passa o interaction.member do admin
+            const dashboard = generateTicketDashboard(ticketData, openerMember, interaction.member, settings.tickets_cargo_suporte);
             await interaction.editReply({ ...dashboard });
         }
     }
