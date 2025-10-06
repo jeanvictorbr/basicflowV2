@@ -73,8 +73,8 @@ client.on(Events.InteractionCreate, async interaction => {
             handler = client.handlers.get('uniform_copy_preset_');
         } else if (interaction.customId.startsWith('ranking_page_')) {
             handler = client.handlers.get('ranking_page_');
-        } else if (interaction.customId.startsWith('select_ticket_department_role_')) {
-            handler = client.handlers.get('select_ticket_department_role_');
+        } else if (interaction.customId.startsWith('modal_department_details_')) { // NOVA LINHA
+            handler = client.handlers.get('modal_department_details_'); // NOVA LINHA
         } else {
             handler = client.handlers.get(interaction.customId);
         }

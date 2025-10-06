@@ -1,23 +1,26 @@
-// Crie em: handlers/buttons/tickets_department_add.js
-const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+// handlers/buttons/tickets_department_add.js
+const { ActionRowBuilder, RoleSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'tickets_department_add',
     async execute(interaction) {
-        const modal = new ModalBuilder()
-            .setCustomId('modal_ticket_department_add')
-            .setTitle('Adicionar Novo Departamento');
+        const selectMenu = new RoleSelectMenuBuilder()
+            .setCustomId('select_new_department_role')
+            .setPlaceholder('Primeiro, selecione o cargo de suporte para o novo departamento');
 
-        const nameInput = new TextInputBuilder().setCustomId('input_name').setLabel("Nome do Departamento").setStyle(TextInputStyle.Short).setPlaceholder("Ex: Suporte Técnico").setRequired(true);
-        const descInput = new TextInputBuilder().setCustomId('input_desc').setLabel("Descrição (opcional)").setStyle(TextInputStyle.Short).setPlaceholder("Para problemas com o bot, etc.").setRequired(false);
-        const emojiInput = new TextInputBuilder().setCustomId('input_emoji').setLabel("Emoji (opcional)").setStyle(TextInputStyle.Short).setPlaceholder("Ex: 🤖").setRequired(false);
+        const cancelButton = new ButtonBuilder()
+            .setCustomId('tickets_config_departments')
+            .setLabel('Cancelar')
+            .setStyle(ButtonStyle.Secondary);
 
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(nameInput),
-            new ActionRowBuilder().addComponents(descInput),
-            new ActionRowBuilder().addComponents(emojiInput)
-        );
-
-        await interaction.showModal(modal);
+        await interaction.update({
+            components: [
+                new ActionRowBuilder().addComponents(selectMenu),
+                new ActionRowBuilder().addComponents(cancelButton)
+            ],
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
     }
 };
