@@ -17,12 +17,10 @@ async function searchKnowledge(guildId, query, useBaseKnowledge) {
 
     let knowledgeToSearch = [];
 
-    // Adiciona o conhecimento fixo do BasicFlow se a opção estiver ativa
     if (useBaseKnowledge) {
         knowledgeToSearch.push(...baseKnowledge);
     }
 
-    // Busca o conhecimento personalizado do servidor no banco de dados
     const guildKnowledge = (await db.query('SELECT keywords, content FROM ai_knowledge_base WHERE guild_id = $1', [guildId])).rows;
     if (guildKnowledge.length > 0) {
         knowledgeToSearch.push(...guildKnowledge);
@@ -34,7 +32,14 @@ async function searchKnowledge(guildId, query, useBaseKnowledge) {
     const foundTopics = new Set();
 
     knowledgeToSearch.forEach(item => {
-        const keywords = item.keywords.toLowerCase().split(',').map(k => k.trim());
+        let keywords = [];
+        // LÓGICA CORRIGIDA: Verifica se as palavras-chave são uma string ou uma array
+        if (typeof item.keywords === 'string') {
+            keywords = item.keywords.toLowerCase().split(',').map(k => k.trim());
+        } else if (Array.isArray(item.keywords)) {
+            keywords = item.keywords.map(k => k.toLowerCase().trim());
+        }
+
         for (const keyword of keywords) {
             if (queryWords.some(word => keyword.includes(word) || word.includes(keyword))) {
                 foundTopics.add(item.content);
