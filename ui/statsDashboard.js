@@ -1,4 +1,4 @@
-// Crie em: ui/statsDashboard.js
+// ui/statsDashboard.js
 const { formatDuration } = require('../utils/formatDuration.js');
 
 module.exports = function generateStatsDashboard(stats, period) {
@@ -18,38 +18,39 @@ module.exports = function generateStatsDashboard(stats, period) {
                     "type": 10, "content": `> Exibindo dados dos **${periodText}**`
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
+                // Seção Bate-Ponto
                 {
-                    "type": 9,
-                    "components": [
-                        { "type": 10, "content": "⏰ **BATE-PONTO**" },
-                        { "type": 10, "content": `> **Total de Horas:** \`${formatDuration(stats.totalHours)}\`\n> **Membros Ativos:** \`${stats.activeMembersCount}\`` }
-                    ]
+                    "type": 10, "content": "⏰ **BATE-PONTO**"
+                },
+                {
+                    "type": 10, "content": `> **Total de Horas:** \`${formatDuration(stats.totalHours)}\`\n> **Membros Ativos:** \`${stats.activeMembersCount}\``
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
+                // Seção Top 5
                 {
-                    "type": 9,
-                    "components": [
-                        { "type": 10, "content": "🏆 **TOP 5 MAIS ATIVOS**" },
-                        { "type": 10, "content": topMembersText }
-                    ]
+                    "type": 10, "content": "🏆 **TOP 5 MAIS ATIVOS**"
+                },
+                { 
+                    "type": 10, "content": topMembersText 
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
+                // Seção Tickets
                 {
-                    "type": 9,
-                    "components": [
-                        { "type": 10, "content": "🚨 **TICKETS**" },
-                        { "type": 10, "content": `> **Abertos:** \`${stats.ticketsOpened}\`\n> **Fechados:** \`${stats.ticketsClosed}\`` }
-                    ]
+                    "type": 10, "content": "🚨 **TICKETS**"
+                },
+                {
+                    "type": 10, "content": `> **Abertos:** \`${stats.ticketsOpened}\`\n> **Fechados:** \`${stats.ticketsClosed}\``
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
+                // Seção Registros
                 {
-                    "type": 9,
-                    "components": [
-                        { "type": 10, "content": "📂 **REGISTROS**" },
-                        { "type": 10, "content": `> **Aprovados:** \`${stats.regsApproved}\`\n> **Recusados:** \`${stats.regsRejected}\`` }
-                    ]
+                    "type": 10, "content": "📂 **REGISTROS**"
+                },
+                {
+                    "type": 10, "content": `> **Aprovados:** \`${stats.regsApproved}\`\n> **Recusados:** \`${stats.regsRejected}\``
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
+                // Botões de Ação
                 {
                     "type": 1,
                     "components": [
