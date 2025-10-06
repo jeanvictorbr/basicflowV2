@@ -1,65 +1,44 @@
 // utils/aiAssistant.js
+const { OpenAI } = require('openai');
 require('dotenv').config();
 
-const API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2";
-const hfToken = process.env.HF_TOKEN;
-
-if (!hfToken) {
-    throw new Error("A variável de ambiente HF_TOKEN não está definida.");
+// Verificação de segurança para a chave de API
+if (!process.env.OPENAI_API_KEY) {
+    throw new Error("A variável de ambiente OPENAI_API_KEY não está definida.");
 }
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
 const defaultPrompt = `Você é um assistente de suporte para um servidor do Discord chamado BasicFlow. Seu objetivo é dar uma primeira resposta útil e amigável ao utilizador que abriu o ticket. Analise a mensagem do utilizador e, se for uma pergunta comum, tente respondê-la. Se for um problema complexo, peça mais detalhes específicos (como ID no jogo, screenshots, vídeos) para que a equipa humana possa resolver mais rápido. Seja breve, amigável e direto.`;
 
 async function getAIResponse(userMessage, customPrompt) {
     try {
         const systemPrompt = customPrompt || defaultPrompt;
-        const formattedPrompt = `<s>[INST] ${systemPrompt} [/INST]</s>\n[INST] ${userMessage} [/INST]`;
 
-        const response = await fetch(API_URL, {
-            headers: {
-                "Authorization": `Bearer ${hfToken}`,
-                "Content-Type": "application/json",
-            },
-            method: "POST",
-            body: JSON.stringify({
-                "inputs": formattedPrompt,
-                "parameters": {
-                    "max_new_tokens": 250,
-                    "return_full_text": false,
-                }
-            }),
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userMessage }
+            ],
+            model: 'gpt-3.5-turbo',
         });
 
-        // LÓGICA DE TRATAMENTO DE ERROS ROBUSTA
-        const responseBody = await response.text(); // Primeiro, obtemos a resposta como texto
-
-        if (!response.ok) {
-            console.error(`[AI Assistant] A API da Hugging Face retornou um erro ${response.status}.`);
-            console.error(`[AI Assistant] Corpo da Resposta:`, responseBody);
-            // Tenta interpretar o erro, se for JSON
-            try {
-                const errorJson = JSON.parse(responseBody);
-                if (errorJson.error && errorJson.estimated_time) {
-                    return `🤖 O assistente de IA está a iniciar, por favor aguarde um momento...`;
-                }
-            } catch (e) {
-                // Se não for JSON, o erro já foi logado.
-            }
-            return null; // Retorna nulo para evitar enviar uma mensagem de erro ao utilizador
-        }
+        const response = completion.choices[0].message.content;
+        return response.trim();
         
-        try {
-            const result = JSON.parse(responseBody); // Agora, tentamos interpretar como JSON
-            return result[0].generated_text.trim();
-        } catch (e) {
-            console.error("[AI Assistant] A resposta da API não era um JSON válido:", responseBody);
-            return null;
-        }
-
     } catch (error) {
-        console.error("[AI Assistant] Erro crítico na função getAIResponse:", error);
+        if (error.response && error.response.status === 429) {
+            console.error("[AI Assistant] Erro: A conta da OpenAI não tem créditos suficientes. Adicione saldo à sua conta para continuar a usar a IA.");
+            return "O Assistente de IA está temporariamente indisponível por exceder a quota de utilização. A equipa de suporte irá ajudá-lo em breve.";
+        }
+        console.error("[AI Assistant] Erro ao gerar resposta da OpenAI:", error);
         return null;
     }
 }
+
+// Remova ou comente a função listAvailableModels se ainda existir
+// async function listAvailableModels() { ... }
 
 module.exports = { getAIResponse };
