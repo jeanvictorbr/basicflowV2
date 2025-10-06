@@ -5,6 +5,11 @@ module.exports = function generateGreetingMenu(settings, messages) {
         ? { label: 'Desativar Saudações', style: 4, emoji: '✖️' }
         : { label: 'Ativar Saudações', style: 3, emoji: '✔️' };
 
+    // Lógica para o novo resumo
+    const activeCount = messages.filter(m => m.is_active).length;
+    const inactiveCount = messages.length - activeCount;
+    const summaryText = `> **Resumo:** 🟢 \`${activeCount}\` Ativas | 🔴 \`${inactiveCount}\` Inativas`;
+
     const messageList = messages.length > 0
         ? messages.map(m => `> ${m.is_active ? '🟢' : '🔴'} **[ID: ${m.id}]** ${m.message.substring(0, 70)}${m.message.length > 70 ? '...' : ''}`).join('\n')
         : '> Nenhuma mensagem configurada.';
@@ -20,6 +25,7 @@ module.exports = function generateGreetingMenu(settings, messages) {
                     "accessory": { "type": 2, "style": toggleButton.style, "label": toggleButton.label, "emoji": { "name": toggleButton.emoji }, "custom_id": "tickets_greeting_toggle_system" },
                     "components": [{ "type": 10, "content": `**Sistema de Saudações**\n> Status Geral: \`${systemStatus}\`` }]
                 },
+                { "type": 10, "content": summaryText }, // RESUMO ADICIONADO AQUI
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": "### Mensagens Cadastradas:" },
                 { "type": 10, "content": messageList },
