@@ -1,4 +1,4 @@
-// Crie em: ui/ticketsAiMenu.js
+// ui/ticketsAiMenu.js
 module.exports = function generateAiMenu(settings) {
     const systemStatus = settings.tickets_ai_assistant_enabled ? '✅ Ativado' : '❌ Desativado';
     const toggleButton = settings.tickets_ai_assistant_enabled
@@ -12,7 +12,7 @@ module.exports = function generateAiMenu(settings) {
             "type": 17, "accent_color": 8421504,
             "components": [
                 { "type": 10, "content": "## 🤖 Gerenciador do Assistente de IA" },
-                { "type": 10, "content": "> A IA irá ler a primeira mensagem do usuário no ticket e tentar oferecer uma solução inicial ou pedir mais detalhes." },
+                { "type": 10, "content": "> A IA irá ler o ticket e usar a sua base de conhecimento para responder ao usuário." },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
@@ -24,6 +24,12 @@ module.exports = function generateAiMenu(settings) {
                     "type": 9,
                     "accessory": { "type": 2, "style": 1, "label": "Editar Instruções", "emoji": { "name": "✏️" }, "custom_id": "tickets_ai_edit_prompt" },
                     "components": [{ "type": 10, "content": `**Instruções da IA (Prompt)**\n> Status: \`${promptStatus}\`` }]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 9,
+                    "accessory": { "type": 2, "style": 1, "label": "Gerenciar Memória", "emoji": { "name": "📚" }, "custom_id": "tickets_ai_manage_knowledge" },
+                    "components": [{ "type": 10, "content": `**Base de Conhecimento**\n> Gerencie as informações que a IA usa para responder.` }]
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
                 {

@@ -1,4 +1,5 @@
 // index.js
+// ... (imports e configuração inicial)
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
@@ -7,7 +8,6 @@ const { getAIResponse } = require('./utils/aiAssistant.js');
 require('dotenv').config();
 const db = require('./database.js');
 
-// ... (toda a configuração inicial do bot, handlers, etc. - MANTENHA IGUAL)
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers] });
 
 client.pontoIntervals = new Map();
@@ -96,7 +96,10 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     } else {
         let handler;
-        if (interaction.customId.startsWith('modal_uniformes_edit_')) {
+        // Adicione as novas rotas dinâmicas
+        if (interaction.customId.startsWith('modal_ai_knowledge_edit_')) {
+            handler = client.handlers.get('modal_ai_knowledge_edit_');
+        } else if (interaction.customId.startsWith('modal_uniformes_edit_')) {
             handler = client.handlers.get('modal_uniformes_edit_');
         } else if (interaction.customId.startsWith('uniform_copy_preset_')) {
             handler = client.handlers.get('uniform_copy_preset_');
@@ -127,9 +130,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
-// =====================================================================
-// Listener de Mensagens - LÓGICA CONVERSACIONAL DA IA ATUALIZADA
-// =====================================================================
+
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return;
 
@@ -159,17 +160,15 @@ client.on(Events.MessageCreate, async message => {
 
     if (humanSupportHasReplied) return;
     
-    const chatHistory = history
-        .map(msg => ({
-            role: msg.author.id === client.user.id ? 'assistant' : 'user',
-            content: msg.content,
-        }))
-        .reverse();
+    const chatHistory = history.map(msg => ({
+        role: msg.author.id === client.user.id ? 'assistant' : 'user',
+        content: msg.content,
+    })).reverse();
     
     await message.channel.sendTyping();
-
-    // Passamos o histórico E a última mensagem do utilizador para a função de IA
-    const aiResponse = await getAIResponse(chatHistory, message.content, settings.tickets_ai_assistant_prompt);
+    
+    // Passa o ID da guild para a busca na base de conhecimento
+    const aiResponse = await getAIResponse(message.guild.id, chatHistory, message.content, settings.tickets_ai_assistant_prompt);
     
     if (aiResponse) {
         await message.channel.send(aiResponse);

@@ -2,19 +2,13 @@
 const guildSettingsTable = `
     CREATE TABLE IF NOT EXISTS guild_settings (
         guild_id VARCHAR(255) PRIMARY KEY,
-
-        -- Sistema de Licenciamento (PREMIUM)
         premium_status BOOLEAN DEFAULT false,
         premium_expires_at TIMESTAMPTZ,
-
-        -- Módulo de Ausências
         ausencias_canal_aprovacoes VARCHAR(255),
         ausencias_cargo_ausente VARCHAR(255),
         ausencias_canal_logs VARCHAR(255),
         ausencias_imagem_vitrine VARCHAR(1024),
         ausencias_canal_vitrine VARCHAR(255),
-
-        -- Módulo de Registros
         registros_canal_aprovacoes VARCHAR(255),
         registros_cargo_aprovado VARCHAR(255),
         registros_canal_logs VARCHAR(255),
@@ -22,8 +16,6 @@ const guildSettingsTable = `
         registros_status BOOLEAN DEFAULT true,
         registros_canal_vitrine VARCHAR(255),
         registros_imagem_vitrine VARCHAR(1024),
-
-        -- Módulo de Tickets
         tickets_painel_channel VARCHAR(255),
         tickets_cargo_suporte VARCHAR(255),
         tickets_canal_logs VARCHAR(255),
@@ -36,16 +28,12 @@ const guildSettingsTable = `
         tickets_autoclose_warn_user BOOLEAN DEFAULT true,
         tickets_greeting_enabled BOOLEAN DEFAULT false,
         tickets_use_departments BOOLEAN DEFAULT false,
-        tickets_ai_assistant_enabled BOOLEAN DEFAULT false, -- NOVA COLUNA
-        tickets_ai_assistant_prompt TEXT, -- NOVA COLUNA
-
-        -- Módulo de Uniformes
+        tickets_ai_assistant_enabled BOOLEAN DEFAULT false,
+        tickets_ai_assistant_prompt TEXT,
         uniformes_thumbnail_url VARCHAR(1024),
         uniformes_color VARCHAR(7) DEFAULT '#FFFFFF',
         uniformes_vitrine_channel_id VARCHAR(255),
         uniformes_vitrine_message_id VARCHAR(255),
-
-        -- Módulo de Bate-Ponto
         ponto_canal_registros VARCHAR(255),
         ponto_cargo_em_servico VARCHAR(255),
         ponto_imagem_vitrine VARCHAR(1024),
@@ -57,8 +45,7 @@ const guildSettingsTable = `
         ponto_dashboard_v2_enabled BOOLEAN DEFAULT false
     );
 `;
-// ... (O resto do seu schema.js continua igual)
-// Lembre-se que o module.exports deve conter todas as tabelas.
+
 const activationKeysTable = `
     CREATE TABLE IF NOT EXISTS activation_keys (
         key VARCHAR(255) PRIMARY KEY,
@@ -145,7 +132,7 @@ const registrationsHistoryTable = `
         guild_id VARCHAR(255) NOT NULL,
         user_id VARCHAR(255) NOT NULL,
         moderator_id VARCHAR(255) NOT NULL,
-        status VARCHAR(20) NOT NULL, -- 'approved' or 'rejected'
+        status VARCHAR(20) NOT NULL,
         created_at TIMESTAMPTZ DEFAULT NOW()
     );
 `;
@@ -194,6 +181,20 @@ const ticketGreetingMessagesTable = `
     );
 `;
 
+// =======================================================
+// ==         NOVA TABELA DA BASE DE CONHECIMENTO       ==
+// =======================================================
+const aiKnowledgeBaseTable = `
+    CREATE TABLE IF NOT EXISTS ai_knowledge_base (
+        id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        topic VARCHAR(255) NOT NULL,
+        keywords TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+`;
+
 
 module.exports = [
     guildSettingsTable,
@@ -208,5 +209,6 @@ module.exports = [
     pontoHistoryTable,
     ticketDepartmentsTable,
     ticketFeedbackTable,
-    ticketGreetingMessagesTable
+    ticketGreetingMessagesTable,
+    aiKnowledgeBaseTable // Adicione a nova tabela à lista de exportação
 ];
