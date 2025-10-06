@@ -46,6 +46,15 @@ module.exports = {
             const dashboard = generateTicketDashboard(ticketData, interaction.member);
 
             await channel.send({ content: `${interaction.user} <@&${department.role_id}>`, ...dashboard });
+
+            // INSERÇÃO DA MENSAGEM DE SAUDAÇÃO
+            if (settings.tickets_greeting_enabled && settings.tickets_greeting_message) {
+                const greeting = settings.tickets_greeting_message
+                    .replace('{user}', `<@${interaction.user.id}>`)
+                    .replace('{server}', interaction.guild.name);
+                await channel.send({ content: greeting });
+            }
+
             await interaction.editReply({ content: `✅ Seu ticket foi criado em ${channel}!`, components: [] });
 
         } catch (error) {
