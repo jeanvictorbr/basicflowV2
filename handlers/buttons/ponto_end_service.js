@@ -1,9 +1,8 @@
-// Crie/Substitua em: handlers/buttons/ponto_end_service.js
+// handlers/buttons/ponto_end_service.js
 const { EmbedBuilder } = require('discord.js');
 const db = require('../../database.js');
 const { formatDuration } = require('../../utils/formatDuration.js');
-const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js'); // Importa o dashboard
-
+const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
 
 module.exports = {
     customId: 'ponto_end_service',
@@ -13,17 +12,22 @@ module.exports = {
             interaction.client.pontoIntervals.delete(interaction.user.id);
         }
         
-        await interaction.deferReply({ ephemeral: true });
+        // Usando interaction.update() diretamente para o dashboard, então não precisamos do deferReply aqui.
+        // O deferUpdate() será usado dentro da lógica.
+        // await interaction.deferReply({ ephemeral: true });
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
         if (!settings?.ponto_status) {
-            return interaction.editReply({ content: '❌ O sistema de bate-ponto está desativado.' });
+            return interaction.reply({ content: '❌ O sistema de bate-ponto está desativado.', ephemeral: true });
         }
 
         const activeSession = (await db.query('SELECT * FROM ponto_sessions WHERE user_id = $1 AND guild_id = $2', [interaction.user.id, interaction.guild.id])).rows[0];
         if (!activeSession) {
-            return interaction.editReply({ content: '⚠️ Você não está em serviço.' });
+            return interaction.reply({ content: '⚠️ Você não está em serviço.', ephemeral: true });
         }
+        
+        // Adia a atualização aqui, pois sabemos que a interação é válida
+        await interaction.deferUpdate();
         
         const role = await interaction.guild.roles.fetch(settings.ponto_cargo_em_servico).catch(() => null);
         if (role) {
@@ -33,8 +37,7 @@ module.exports = {
         try {
             const startTime = new Date(activeSession.start_time);
             let endTime = new Date();
-            let totalPausedMs = activeSession.total_paused_ms;
-            
+            let totalPausedMs = activeSession.total_paused_ms || 0;
 
             if (activeSession.is_paused) {
                 const lastPauseTime = new Date(activeSession.last_pause_time);
@@ -44,6 +47,11 @@ module.exports = {
             const durationMs = (endTime.getTime() - startTime.getTime()) - totalPausedMs;
             const durationFormatted = formatDuration(durationMs);
             
+            // CORREÇÃO: Usando a variável correta 'activeSession'
+            activeSession.durationMs = durationMs;
+            const finalDashboard = generatePontoDashboard(interaction, activeSession, 'finalizado');
+            await interaction.editReply(finalDashboard);
+            
             const logChannel = await interaction.guild.channels.fetch(settings.ponto_canal_registros);
             const logMessage = await logChannel.messages.fetch(activeSession.log_message_id).catch(() => null);
             
@@ -52,7 +60,7 @@ module.exports = {
                 .setAuthor({ name: interaction.member.displayName, iconURL: interaction.user.displayAvatarURL() })
                 .setTitle('⏹️ Fim de Serviço')
                 .setThumbnail(interaction.user.displayAvatarURL())
-                .setImage('https://media.discordapp.net/attachments/1310610658844475404/1424391049648017571/E99EBFA9-97D6-42F2-922C-6AC4EEC1651A.png?ex=68e46fca&is=68e31e4a&hm=167f4d74e96a1250138270ac9396faec3eb7ed427afb3490510b4f969b4f1a1f&=&format=webp&quality=lossless') // <-- COLOQUE A URL DA SUA IMAGEM AQUI
+                .setImage('https://i.imgur.com/link-da-sua-imagem.png') // <-- Lembre-se de alterar sua imagem aqui
                 .addFields(
                     { name: 'Membro', value: `${interaction.user}`, inline: true },
                     { name: 'Tempo Total', value: `\`${durationFormatted}\``, inline: true },
@@ -76,16 +84,9 @@ module.exports = {
                 DO UPDATE SET total_ms = ponto_leaderboard.total_ms + $3;
             `, [interaction.guild.id, interaction.user.id, durationMs]);
 
-            await interaction.editReply({ content: `Você saiu de serviço. Seu tempo total foi de **${durationFormatted}**. Obrigado!` });
-                    // ATUALIZA O DASHBOARD DO USUÁRIO
-            session.durationMs = durationMs; // Adiciona a duração para a função de UI usar
-            const finalDashboard = generatePontoDashboard(interaction, session, 'finalizado');
-            await interaction.update(finalDashboard);
-
         } catch (error) {
             console.error("Erro ao finalizar serviço:", error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro ao finalizar seu serviço. Sua sessão foi encerrada, mas o log pode não ter sido atualizado.' });
-            await db.query('DELETE FROM ponto_sessions WHERE session_id = $1', [activeSession.session_id]);
+            await interaction.followUp({ content: '❌ Ocorreu um erro ao finalizar seu serviço.', ephemeral: true }).catch(()=>{});
         }
     }
 };
