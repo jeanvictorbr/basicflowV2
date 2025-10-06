@@ -21,7 +21,7 @@ module.exports = {
         // Verifica se é admin
         const isAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator);
 
-        // Formata a lista de cargos
+        // Formata a listaa de cargos
         const roles = member.roles.cache
             .filter(role => role.name !== '@everyone')
             .map(role => `<@&${role.id}>`)
