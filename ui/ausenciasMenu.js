@@ -36,7 +36,7 @@ module.exports = function generateAusenciasMenu(settings, isPremium) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "ausencia_set_imagem", "disabled": !isPremium },
-                    "components": [{ "type": 10, "content": `**📸 Imagem da vitrine**\n> ${imagemVitrine}` }]
+                    "components": [{ "type": 10, "content": `**Imagem da vitrine**\n> ${imagemVitrine}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
