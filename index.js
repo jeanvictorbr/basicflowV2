@@ -7,7 +7,7 @@ const { getAIResponse } = require('./utils/aiAssistant.js');
 require('dotenv').config();
 const db = require('./database.js');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers] });
 
 // Adiciona os gerenciadores de timers para o Bate-Ponto
 client.pontoIntervals = new Map();
@@ -24,7 +24,9 @@ for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
     if (command.data && command.execute) {
         client.commands.set(command.data.name, command);
-        commandsToDeploy.push(command.data.toJSON());
+        if (command.data.name !== 'debugai') { // Não regista o comando de debug em produção
+             commandsToDeploy.push(command.data.toJSON());
+        }
     }
 }
 
@@ -57,22 +59,21 @@ console.log('--- Handlers Carregados ---');
 client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
     
-    // =======================================================
-    // ==         LÓGICA DE REGISTO AUTOMÁTICO DE COMANDOS   ==
-    // =======================================================
+    // Lógica de registo automático de comandos
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
         console.log(`[CMD] Iniciando registo de ${commandsToDeploy.length} comando(s).`);
-
-        // Regista os comandos apenas na guild de desenvolvimento se o ID estiver definido
         if (process.env.DEV_GUILD_ID) {
+            // Adiciona o comando de debug apenas na guild de desenvolvimento
+            const debugCommand = client.commands.get('debugai');
+            if(debugCommand) commandsToDeploy.push(debugCommand.data.toJSON());
+
             await rest.put(
                 Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.DEV_GUILD_ID),
                 { body: commandsToDeploy },
             );
             console.log(`[CMD] Comandos registados com sucesso na guild de desenvolvimento.`);
         } else {
-            // Caso contrário, regista globalmente (pode demorar até 1 hora a propagar)
             await rest.put(
                 Routes.applicationCommands(process.env.CLIENT_ID),
                 { body: commandsToDeploy },
@@ -82,11 +83,9 @@ client.once(Events.ClientReady, async () => {
     } catch (error) {
         console.error('[CMD] Erro ao registar comandos:', error);
     }
-    // =======================================================
 
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
     
-    // Inicia a verificação periódica de tickets inativos
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
     }, 120000); 
@@ -103,7 +102,6 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
-        // Lógica aprimorada para handlers com IDs dinâmicos
         let handler;
         if (interaction.customId.startsWith('modal_uniformes_edit_')) {
             handler = client.handlers.get('modal_uniformes_edit_');
@@ -127,15 +125,7 @@ client.on(Events.InteractionCreate, async interaction => {
             handler = client.handlers.get(interaction.customId);
         }
         
-        if (!handler) {
-            console.warn(`Nenhum handler encontrado para: ${interaction.customId}`);
-            try {
-                if (!interaction.deferred && !interaction.replied) {
-                    await interaction.reply({ content: 'Este botão não tem uma função definida.', ephemeral: true });
-                }
-            } catch (e) { /* Ignora */ }
-            return;
-        }
+        if (!handler) return;
 
         try {
             await handler(interaction, client);
@@ -145,33 +135,54 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-// Listener de Mensagens
+// Listener de Mensagens - LÓGICA CONVERSACIONAL DA IA
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return;
 
     const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
-    
-    if (ticket) {
-        if (ticket.warning_sent_at) {
-            await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
-        }
-        await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
+    if (!ticket) return;
 
-        const messages = await message.channel.messages.fetch({ limit: 5 });
-        const userMessages = messages.filter(m => !m.author.bot);
-        
-        if (userMessages.size === 1) {
-            const settings = (await db.query('SELECT tickets_ai_assistant_enabled, tickets_ai_assistant_prompt FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
-            
-            if (settings && settings.tickets_ai_assistant_enabled) {
-                await message.channel.sendTyping();
-                const aiResponse = await getAIResponse(message.content, settings.tickets_ai_assistant_prompt);
-                
-                if (aiResponse) {
-                    await message.channel.send(`🤖 **Assistente BasicFlow:**\n${aiResponse}`);
-                }
-            }
+    // Atualiza timestamps para o sistema de auto-close
+    if (ticket.warning_sent_at) {
+        await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
+    }
+    await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
+
+    // Início da Lógica da IA Conversacional
+    const settings = (await db.query('SELECT tickets_ai_assistant_enabled, tickets_ai_assistant_prompt, tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
+    
+    // Se a IA não estiver ativa, não faz nada
+    if (!settings || !settings.tickets_ai_assistant_enabled) return;
+
+    // Busca as últimas 10 mensagens
+    const history = await message.channel.messages.fetch({ limit: 10 });
+    
+    // Verifica se um humano com o cargo de suporte já respondeu
+    let humanSupportHasReplied = false;
+    for (const msg of history.values()) {
+        if (msg.author.bot) continue; // Ignora bots
+        if (msg.member && msg.member.roles.cache.has(settings.tickets_cargo_suporte)) {
+            humanSupportHasReplied = true;
+            break;
         }
+    }
+
+    // Se um humano já respondeu, a IA fica em silêncio
+    if (humanSupportHasReplied) return;
+
+    // Formata o histórico para a IA
+    const chatHistory = history
+        .map(msg => ({
+            role: msg.author.id === client.user.id ? 'assistant' : 'user',
+            content: msg.content,
+        }))
+        .reverse(); // Inverte para a ordem cronológica correta (mais antiga primeiro)
+    
+    await message.channel.sendTyping();
+    const aiResponse = await getAIResponse(chatHistory, settings.tickets_ai_assistant_prompt);
+    
+    if (aiResponse) {
+        await message.channel.send(aiResponse);
     }
 });
 
