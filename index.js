@@ -7,6 +7,7 @@ const { getAIResponse } = require('./utils/aiAssistant.js');
 require('dotenv').config();
 const db = require('./database.js');
 
+// ... (toda a configuração inicial do bot, handlers, etc. - MANTENHA IGUAL)
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers] });
 
 client.pontoIntervals = new Map();
@@ -126,8 +127,9 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
-
-// Listener de Mensagens - LÓGICA CONVERSACIONAL DA IA CORRIGIDA
+// =====================================================================
+// Listener de Mensagens - LÓGICA CONVERSACIONAL DA IA ATUALIZADA
+// =====================================================================
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return;
 
@@ -141,29 +143,22 @@ client.on(Events.MessageCreate, async message => {
 
     const settings = (await db.query('SELECT tickets_ai_assistant_enabled, tickets_ai_assistant_prompt, tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
     
-    if (!settings || !settings.tickets_ai_assistant_enabled) {
-        // console.log('[AI DEBUG] Assistente de IA está desativado para esta guild.');
-        return;
-    }
+    if (!settings || !settings.tickets_ai_assistant_enabled) return;
 
     const history = await message.channel.messages.fetch({ limit: 15 });
     
     let humanSupportHasReplied = false;
     for (const msg of history.values()) {
-        // Ignora o próprio bot e o utilizador que abriu o ticket
         if (msg.author.bot || msg.author.id === ticket.user_id) continue;
         
-        // Verifica se o autor da mensagem (que não é o dono do ticket) tem o cargo de suporte
         if (msg.member && msg.member.roles.cache.has(settings.tickets_cargo_suporte)) {
             humanSupportHasReplied = true;
-            // console.log(`[AI DEBUG] Intervenção humana detetada por ${msg.author.tag}. A IA ficará em silêncio.`);
             break;
         }
     }
 
     if (humanSupportHasReplied) return;
     
-    // console.log('[AI DEBUG] Nenhuma intervenção humana. A preparar para responder.');
     const chatHistory = history
         .map(msg => ({
             role: msg.author.id === client.user.id ? 'assistant' : 'user',
@@ -172,13 +167,12 @@ client.on(Events.MessageCreate, async message => {
         .reverse();
     
     await message.channel.sendTyping();
-    const aiResponse = await getAIResponse(chatHistory, settings.tickets_ai_assistant_prompt);
+
+    // Passamos o histórico E a última mensagem do utilizador para a função de IA
+    const aiResponse = await getAIResponse(chatHistory, message.content, settings.tickets_ai_assistant_prompt);
     
     if (aiResponse) {
-        // console.log('[AI DEBUG] Resposta da IA recebida. A enviar para o canal.');
         await message.channel.send(aiResponse);
-    } else {
-        // console.log('[AI DEBUG] A IA não retornou uma resposta.');
     }
 });
 

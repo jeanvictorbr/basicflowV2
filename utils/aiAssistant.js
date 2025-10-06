@@ -1,5 +1,6 @@
 // utils/aiAssistant.js
 const { OpenAI } = require('openai');
+const { searchKnowledge } = require('./aiKnowledgeBase.js'); // NOVO IMPORT
 require('dotenv').config();
 
 if (!process.env.OPENAI_API_KEY) {
@@ -10,14 +11,20 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const defaultPrompt = `Você é um assistente de IA amigável e eficiente chamado "Assistente BasicFlow". Você foi integrado a um bot para Discord chamado BasicFlow, desenvolvido por "ze pqueno". A sua principal função é fornecer o primeiro nível de suporte aos utilizadores que abrem um ticket de ajuda neste servidor. Você deve manter uma conversa com o utilizador até que um membro da equipa humana intervenha.`;
+const defaultPrompt = `Você é um assistente de IA amigável e eficiente chamado "Assistente BasicFlow". Você foi integrado a um bot para Discord chamado BasicFlow, desenvolvido por "ze pqueno". A sua principal função é fornecer o primeiro nível de suporte aos utilizadores que abrem um ticket de ajuda neste servidor. Você deve manter uma conversa com o utilizador até que um membro da equipa humana intervenha. Baseie as suas respostas no conhecimento fornecido e no histórico da conversa.`;
 
-// A FUNÇÃO AGORA ACEITA UM HISTÓRICO DE MENSAGENS
-async function getAIResponse(chatHistory, customPrompt) {
+// A FUNÇÃO AGORA ACEITA A MENSAGEM ATUAL DO UTILIZADOR PARA FAZER A BUSCA
+async function getAIResponse(chatHistory, userMessage, customPrompt) {
     try {
-        const systemPrompt = customPrompt || defaultPrompt;
+        // 1. Busca na base de conhecimento usando a mensagem mais recente do utilizador
+        const retrievedKnowledge = searchKnowledge(userMessage);
+        
+        // 2. Monta o prompt do sistema com o conhecimento encontrado
+        let systemPrompt = customPrompt || defaultPrompt;
+        if (retrievedKnowledge) {
+            systemPrompt += `\n\n--- INFORMAÇÕES RELEVANTES ENCONTRADAS ---\n${retrievedKnowledge}\n--- FIM DAS INFORMAÇÕES ---`;
+        }
 
-        // O histórico é combinado com o prompt do sistema
         const messages = [
             { role: 'system', content: systemPrompt },
             ...chatHistory
