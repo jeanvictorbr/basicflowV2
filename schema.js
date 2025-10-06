@@ -36,6 +36,8 @@ const guildSettingsTable = `
         tickets_autoclose_warn_user BOOLEAN DEFAULT true,
         tickets_greeting_enabled BOOLEAN DEFAULT false,
         tickets_use_departments BOOLEAN DEFAULT false,
+        tickets_ai_assistant_enabled BOOLEAN DEFAULT false, -- NOVA COLUNA
+        tickets_ai_assistant_prompt TEXT, -- NOVA COLUNA
 
         -- Módulo de Uniformes
         uniformes_thumbnail_url VARCHAR(1024),
@@ -55,7 +57,8 @@ const guildSettingsTable = `
         ponto_dashboard_v2_enabled BOOLEAN DEFAULT false
     );
 `;
-
+// ... (O resto do seu schema.js continua igual)
+// Lembre-se que o module.exports deve conter todas as tabelas.
 const activationKeysTable = `
     CREATE TABLE IF NOT EXISTS activation_keys (
         key VARCHAR(255) PRIMARY KEY,
@@ -175,7 +178,7 @@ const ticketFeedbackTable = `
         guild_id VARCHAR(255) NOT NULL,
         ticket_channel_id VARCHAR(255) UNIQUE NOT NULL,
         user_id VARCHAR(255) NOT NULL,
-        claimed_by VARCHAR(255), -- NOVA COLUNA
+        claimed_by VARCHAR(255),
         rating INTEGER,
         comment TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
