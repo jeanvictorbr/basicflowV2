@@ -36,12 +36,15 @@ module.exports = function generateTicketsMenu(settings, isPremium)  {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_cargo_suporte" },
-                    "components": [{ "type": 10, "content": `**Cargo de Suporte**\n> ${cargoSuporte}` }]
+                    "components": [{ "type": 10, "content": `**Cargo de Suporte (Padrão)**\n> ${cargoSuporte}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 1,
-                    "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" }]
+                    "components": [
+                        { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" },
+                        { "type": 2, "style": 1, "label": "+ Config. Premium", "emoji": { "name": "✨" }, "custom_id": "tickets_open_premium_menu", "disabled": !isPremium }
+                    ]
                 },
                                 // =======================================================
                 // ==                RODAPÉ ADICIONADO AQUI             ==
