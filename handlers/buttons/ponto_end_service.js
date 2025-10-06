@@ -4,6 +4,7 @@ const db = require('../../database.js');
 const { formatDuration } = require('../../utils/formatDuration.js');
 const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
 const generatePontoDashboardV2 = require('../../ui/pontoDashboardPessoalV2.js');
+
 const V2_FLAG = 1 << 15;
 
 module.exports = {
@@ -32,9 +33,9 @@ module.exports = {
                 const lastPauseTime = new Date(activeSession.last_pause_time);
                 totalPausedMs += (endTime.getTime() - lastPauseTime.getTime());
             }
-            const durationMs = (endTime.getTime() - startTime.getTime()) - totalPausedMs;
+            // A conversão para Number garante que não haverá erro de tipo
+            const durationMs = (endTime.getTime() - startTime.getTime()) - Number(totalPausedMs);
             
-            // CORREÇÃO: Chama o dashboard correto com o status 'finalizado'
             activeSession.durationMs = durationMs;
             const finalDashboardPayload = settings.ponto_dashboard_v2_enabled
                 ? { components: generatePontoDashboardV2(interaction, settings, activeSession, 'finalizado'), flags: V2_FLAG }
@@ -44,13 +45,20 @@ module.exports = {
             const logChannel = await interaction.guild.channels.fetch(settings.ponto_canal_registros);
             const logMessage = await logChannel.messages.fetch(activeSession.log_message_id).catch(() => null);
             
-            const finalEmbed = new EmbedBuilder().setColor('Red').setAuthor({ name: interaction.member.displayName, iconURL: interaction.user.displayAvatarURL() }).setTitle('⏹️ Fim de Serviço').setThumbnail(interaction.user.displayAvatarURL()).setImage('https://i.imgur.com/link-da-sua-imagem.png').addFields({ name: 'Membro', value: `${interaction.user}`, inline: true }, { name: 'Tempo Total', value: `\`${formatDuration(durationMs)}\``, inline: true }, { name: 'Início', value: `<t:${Math.floor(startTime.getTime() / 1000)}:f>`, inline: false }, { name: 'Fim', value: `<t:${Math.floor(endTime.getTime() / 1000)}:f>`, inline: false }).setFooter({ text: `ID do Usuário: ${interaction.user.id}` });
+            const finalEmbed = new EmbedBuilder().setColor('Red').setAuthor({ name: interaction.member.displayName, iconURL: interaction.user.displayAvatarURL() }).setTitle('⏹️ Fim de Serviço').setThumbnail(interaction.user.displayAvatarURL()).setImage(settings.ponto_imagem_vitrine || 'https://i.imgur.com/link-da-sua-imagem.png').addFields({ name: 'Membro', value: `${interaction.user}`, inline: true }, { name: 'Tempo Total', value: `\`${formatDuration(durationMs)}\``, inline: true }, { name: 'Início', value: `<t:${Math.floor(startTime.getTime() / 1000)}:f>`, inline: false }, { name: 'Fim', value: `<t:${Math.floor(endTime.getTime() / 1000)}:f>`, inline: false }).setFooter({ text: `ID do Usuário: ${interaction.user.id}` });
             
             if (logMessage) await logMessage.edit({ embeds: [finalEmbed] });
             else await logChannel.send({ embeds: [finalEmbed] });
 
             await db.query('DELETE FROM ponto_sessions WHERE session_id = $1', [activeSession.session_id]);
-            await db.query(`INSERT INTO ponto_leaderboard (guild_id, user_id, total_ms) VALUES ($1, $2, $3) ON CONFLICT (guild_id, user_id) DO UPDATE SET total_ms = ponto_leaderboard.total_ms + $3;`, [interaction.guild.id, interaction.user.id, durationMs]);
+            
+            // CORREÇÃO: Usando COALESCE para tratar valores nulos e garantir a soma correta.
+            await db.query(`
+                INSERT INTO ponto_leaderboard (guild_id, user_id, total_ms)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (guild_id, user_id)
+                DO UPDATE SET total_ms = COALESCE(ponto_leaderboard.total_ms, 0) + $3;
+            `, [interaction.guild.id, interaction.user.id, durationMs]);
         } catch (error) {
             console.error("Erro ao finalizar serviço:", error);
             await interaction.followUp({ content: '❌ Ocorreu um erro ao finalizar seu serviço.', ephemeral: true }).catch(()=>{});
