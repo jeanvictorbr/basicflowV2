@@ -1,9 +1,15 @@
 // handlers/buttons/ausencia_set_imagem.js
 const { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const isPremiumActive = require('../../utils/premiumCheck.js');
 
 module.exports = {
     customId: 'ausencia_set_imagem',
     async execute(interaction) {
+        const isPremium = await isPremiumActive(interaction.guild.id);
+        if (!isPremium) {
+            return interaction.reply({ content: 'Esta é uma funcionalidade premium. Ative uma chave para usá-la.', ephemeral: true });
+        }
+        
         const modal = new ModalBuilder()
             .setCustomId('modal_ausencia_imagem')
             .setTitle('Alterar Imagem da Vitrine de Ausências');

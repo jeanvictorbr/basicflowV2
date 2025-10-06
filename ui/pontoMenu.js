@@ -2,6 +2,7 @@
 module.exports = function generatePontoMenu(settings) {
     const canalLogs = settings?.ponto_canal_registros ? `<#${settings.ponto_canal_registros}>` : '`❌ Não definido`';
     const cargoServico = settings?.ponto_cargo_em_servico ? `<@&${settings.ponto_cargo_em_servico}>` : '`❌ Não definido`';
+    const isPremiumActive = require('../utils/premiumCheck.js');
     const imagemVitrine = settings?.ponto_imagem_vitrine ? '`✅ Definida`' : '`❌ Não definida`';
 
     const isConfigured = settings?.ponto_canal_registros && settings?.ponto_cargo_em_servico;
@@ -31,7 +32,7 @@ module.exports = function generatePontoMenu(settings) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "custom_id": "ponto_set_imagem_vitrine" },
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "custom_id": "ponto_set_imagem_vitrine", "disabled": !isPremium },
                     "components": [{ "type": 10, "content": `**Imagem do Painel**\n> ${imagemVitrine}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },

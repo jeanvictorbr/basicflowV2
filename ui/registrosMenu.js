@@ -6,7 +6,7 @@ module.exports = function generateRegistrosMenu(settings) {
     const canalLogs = settings?.registros_canal_logs ? `<#${settings.registros_canal_logs}>` : '`❌ Não definido`';
     const imagemVitrine = settings?.registros_imagem_vitrine ? '`✅ Definida`' : '`❌ Não definida`';
     const status = settings?.registros_status === false ? { label: 'Ativar Sistema', style: 3, emoji: '✅' } : { label: 'Desativar Sistema', style: 4, emoji: '🆘' };
-
+    const isPremiumActive = require('../utils/premiumCheck.js');
     return [
         {
             "type": 17, "accent_color": null, "spoiler": false,
@@ -44,7 +44,7 @@ module.exports = function generateRegistrosMenu(settings) {
                 // NOVA SEÇÃO ADICIONADA
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "registros_set_imagem_vitrine" },
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "registros_set_imagem_vitrine","disabled": !isPremium },
                     "components": [{ "type": 10, "content": `**Imagem da Vitrine**\n> ${imagemVitrine}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },

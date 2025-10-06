@@ -2,7 +2,7 @@
 module.exports = function generateUniformesMenu(settings) {
     const thumbnail = settings?.uniformes_thumbnail_url ? '`✅ Definida`' : '`❌ Não definida`';
     const color = settings?.uniformes_color ? `\`${settings.uniformes_color}\`` : '`🎨 Padrão (#FFFFFF)`';
-
+    const isPremiumActive = require('../utils/premiumCheck.js');
     return [
         {
             "type": 17, "accent_color": null, "spoiler": false,
@@ -26,7 +26,7 @@ module.exports = function generateUniformesMenu(settings) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "uniformes_set_thumbnail" },
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "uniformes_set_thumbnail", "disabled": !isPremium },
                     "components": [{ "type": 10, "content": `**Thumbnail da Vitrine**\n> ${thumbnail}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },

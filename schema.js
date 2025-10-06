@@ -10,6 +10,11 @@ const guildSettingsTable = `
         ausencias_imagem_vitrine VARCHAR(1024),
         ausencias_canal_vitrine VARCHAR(255),
 
+        -- Sistema de Licenciamento (PREMIUM)
+        premium_status BOOLEAN DEFAULT false,
+        premium_expires_at TIMESTAMPTZ,
+
+
         -- Módulo de Registros
         registros_canal_aprovacoes VARCHAR(255),
         registros_cargo_aprovado VARCHAR(255),
@@ -39,6 +44,17 @@ const guildSettingsTable = `
         ponto_status BOOLEAN DEFAULT false
     );
 `;
+
+// NOVA TABELA PARA AS CHAVES DE ATIVAÇÃO
+const activationKeysTable = `
+    CREATE TABLE IF NOT EXISTS activation_keys (
+        key VARCHAR(255) PRIMARY KEY,
+        duration_days INTEGER NOT NULL,
+        uses_left INTEGER DEFAULT 1,
+        comment TEXT
+    );
+`;
+
 
 const pendingRegistrationsTable = `
     CREATE TABLE IF NOT EXISTS pending_registrations (
@@ -105,5 +121,6 @@ module.exports = [
     ticketsTable,
     uniformsTable,
     pontoSessionsTable,
-    pontoLeaderboardTable 
+    pontoLeaderboardTable,
+    activationKeysTable //
 ];
