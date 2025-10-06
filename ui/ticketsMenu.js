@@ -14,7 +14,7 @@ module.exports = function generateTicketsMenu(settings, isPremium)  {
                     "accessory": { "type": 2, "style": 4, "label": "Publicar Painel", "custom_id": "tickets_publicar_painel" },
                     "components": [{ "type": 10, "content": "# Hub de Tickets" }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_category" },
@@ -42,7 +42,17 @@ module.exports = function generateTicketsMenu(settings, isPremium)  {
                 {
                     "type": 1,
                     "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" }]
+                },
+                                // =======================================================
+                // ==                RODAPÉ ADICIONADO AQUI             ==
+                // =======================================================
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 10, // Tipo 10 é um componente de Texto
+                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
+                    "content": " ↘  BasicFlow - Todos os direitos Reservados" 
                 }
+                // =======================================================
             ]
         }
     ];

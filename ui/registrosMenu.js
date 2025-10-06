@@ -14,9 +14,9 @@ module.exports = function generateRegistrosMenu(settings, isPremium) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 4, "label": "Publicar Vitrine", "custom_id": "registros_publicar_vitrine" },
-                    "components": [{ "type": 10, "content": "**Hub de Registros**" }]
+                    "components": [{ "type": 10, "content": "# Hub de Registros" }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "registros_set_canal_aprovacoes" },
@@ -53,7 +53,17 @@ module.exports = function generateRegistrosMenu(settings, isPremium) {
                         { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" },
                         { "type": 2, "style": status.style, "label": status.label, "emoji": { "name": status.emoji }, "custom_id": "registros_toggle_status" }
                     ]
+                },
+                                // =======================================================
+                // ==                RODAPÉ ADICIONADO AQUI             ==
+                // =======================================================
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 10, // Tipo 10 é um componente de Texto
+                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
+                    "content": " ↘   BasicFlow - Todos os direitos Reservados 🥇" 
                 }
+                // =======================================================
             ]
         }
     ];

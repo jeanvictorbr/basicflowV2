@@ -39,7 +39,17 @@ module.exports = function generateUniformesMenu(settings, isPremium) {
                 {
                     "type": 1,
                     "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" }]
+                },
+                                // =======================================================
+                // ==                RODAPÉ ADICIONADO AQUI             ==
+                // =======================================================
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 10, // Tipo 10 é um componente de Texto
+                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
+                    "content": " ↘   A vitrine se atualiza automaticamente " 
                 }
+                // =======================================================
             ]
         }
     ];
