@@ -10,19 +10,24 @@ module.exports = {
         const description = interaction.fields.getTextInputValue('input_desc');
         const emoji = interaction.fields.getTextInputValue('input_emoji');
 
-        // Em vez de salvar direto, guardamos os dados e pedimos para selecionar o cargo
-        const tempDepartmentData = JSON.stringify({ name, description, emoji });
+        // Codifica os dados para serem passados no customId. Usamos chaves curtas para economizar espaço.
+        const departmentData = JSON.stringify({ n: name, d: description, e: emoji });
+        const encodedData = encodeURIComponent(departmentData);
+        
+        // Garante que o customId não exceda o limite de 100 caracteres.
+        const baseCustomId = `select_ticket_department_role_`;
+        if ((baseCustomId + encodedData).length > 100) {
+            return interaction.reply({ content: 'O nome e a descrição do departamento são muito longos. Por favor, tente com textos mais curtos.', ephemeral: true });
+        }
 
         const selectMenu = new RoleSelectMenuBuilder()
-            .setCustomId(`select_ticket_department_role_${Date.now()}`) // ID dinâmico para carregar os dados
+            .setCustomId(baseCustomId + encodedData) // Passa os dados aqui
             .setPlaceholder('Selecione o cargo para este departamento');
         
         const cancelButton = new ButtonBuilder().setCustomId('tickets_config_departments').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
 
-        // Atualiza a interação com a seleção de cargo
+        // Atualiza a interação sem usar o campo 'content'
         await interaction.update({
-            // Usamos um campo "invisível" (content) para passar os dados do modal para o próximo handler
-            content: tempDepartmentData,
             components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
             flags: V2_FLAG | EPHEMERAL_FLAG
         });
