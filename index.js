@@ -6,11 +6,13 @@ require('dotenv').config();
 const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// Adiciona os gerenciadores de timers para o Bate-Ponto
 client.pontoIntervals = new Map();
-// Adiciona os gerenciadores de timers
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 
+// Carregador de Comandos
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -21,6 +23,7 @@ for (const file of commandFiles) {
     }
 }
 
+// Carregador de Handlers
 console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
@@ -45,12 +48,13 @@ handlerTypes.forEach(handlerType => {
 });
 console.log('--- Handlers Carregados ---');
 
+// Evento de Bot Pronto
 client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
 });
 
-// Em index.js, substitua o listener de interações por este:
+// Listener de Interações
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -61,18 +65,17 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
-        // Lógica para handlers dinâmicos (como o de editar uniforme)
+        // Lógica aprimorada para handlers com IDs dinâmicos
         let handler;
         if (interaction.customId.startsWith('modal_uniformes_edit_')) {
             handler = client.handlers.get('modal_uniformes_edit_');
- } else if (interaction.customId.startsWith('uniform_copy_preset_')) { // ADICIONADO
-            handler = client.handlers.get('uniform_copy_preset_');    
-} else if (interaction.customId.startsWith('ranking_page_')) { // ADICIONADO
-    handler = client.handlers.get('ranking_page_');             // ADICIONADO         // ADICIONADO
+        } else if (interaction.customId.startsWith('uniform_copy_preset_')) {
+            handler = client.handlers.get('uniform_copy_preset_');
+        } else if (interaction.customId.startsWith('ranking_page_')) {
+            handler = client.handlers.get('ranking_page_');
         } else {
             handler = client.handlers.get(interaction.customId);
         }
-        
         
         if (!handler) {
             console.warn(`Nenhum handler encontrado para: ${interaction.customId}`);
