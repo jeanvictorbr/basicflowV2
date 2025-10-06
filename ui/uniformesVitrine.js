@@ -4,7 +4,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 module.exports = function generateUniformesVitrine(interaction, settings, allUniformes, selectedUniform = null) {
     const embed = new EmbedBuilder()
         .setColor(settings.uniformes_color || '#FFFFFF')
-        .setTitle('# Vestiário da Organização')
+        .setTitle('Vestiário da Organização')
         .setThumbnail(settings.uniformes_thumbnail_url || interaction.guild.iconURL())
         .setDescription('Use o menu abaixo para escolher um uniforme. A imagem e o código do preset aparecerão aqui.');
 
@@ -17,7 +17,6 @@ module.exports = function generateUniformesVitrine(interaction, settings, allUni
     if (allUniformes && allUniformes.length > 0) {
         const options = allUniformes.map(uni => ({
             label: uni.name,
-            // CORREÇÃO DO BUG: Garante que a descrição nunca seja uma string vazia.
             description: uni.description?.substring(0, 100) || 'Clique para ver mais.',
             value: String(uni.id),
         }));
@@ -29,7 +28,10 @@ module.exports = function generateUniformesVitrine(interaction, settings, allUni
     }
 
     if (selectedUniform) {
-        embed.setImage(selectedUniform.image_url);
+        // CORREÇÃO: A imagem só é adicionada se a URL for válida (não nula ou vazia)
+        if (selectedUniform.image_url) {
+            embed.setImage(selectedUniform.image_url);
+        }
         embed.addFields({
             name: `Código do Preset: \`${selectedUniform.name}\``,
             value: `\`\`\`${selectedUniform.preset_code}\`\`\``

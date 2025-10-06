@@ -1,13 +1,9 @@
 // ui/ticketDashboard.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-module.exports = function generateTicketDashboard(ticketData = {}, openerMember, interactionMember, supportRoleId) {
-    const { status = 'open', claimed_by, action_log, user_id } = ticketData;
+module.exports = function generateTicketDashboard(ticketData = {}, openerMember) {
+    const { status = 'open', claimed_by, action_log } = ticketData;
     
-    // CORREÇÃO: A verificação agora é feita diretamente no membro que interagiu.
-    const isSupport = supportRoleId ? interactionMember?.roles.cache.has(supportRoleId) : false;
-    const isOpener = interactionMember?.id === user_id;
-
     let description = `Obrigado por contatar o suporte. Por favor, detalhe seu problema.`;
     if (claimed_by) description = `> Ticket assumido por <@${claimed_by}>.`;
     if (status === 'locked') description += `\n\n🔒 **Este ticket está trancado.**`;
@@ -31,7 +27,7 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember,
     const components = [];
     const isClosed = status === 'closed';
 
-    if (isSupport && !isClosed) {
+    if (!isClosed) {
         const adminRow1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_claim').setLabel(claimed_by ? "Assumido" : "Assumir").setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️').setDisabled(!!claimed_by),
             new ButtonBuilder().setCustomId('ticket_lock').setLabel(status === 'locked' ? "Destrancar" : "Trancar").setStyle(ButtonStyle.Secondary).setEmoji(status === 'locked' ? '🔓' : '🔒'),
@@ -42,17 +38,11 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember,
             new ButtonBuilder().setCustomId('ticket_remove_user').setLabel("Remover").setStyle(ButtonStyle.Secondary).setEmoji('➖'),
             new ButtonBuilder().setCustomId('ticket_close').setLabel("Finalizar").setStyle(ButtonStyle.Danger).setEmoji('✔️')
         );
-        components.push(adminRow1, adminRow2);
-    }
-    
-    if (isOpener && !claimed_by && !isClosed) {
-         const userRow = new ActionRowBuilder().addComponents(
-             new ButtonBuilder().setCustomId('ticket_user_close').setLabel('Desistir do Ticket').setStyle(ButtonStyle.Danger).setEmoji('✖️')
+        const userRow = new ActionRowBuilder().addComponents(
+             new ButtonBuilder().setCustomId('ticket_user_close').setLabel('Desistir do Ticket').setStyle(ButtonStyle.Danger).setEmoji('✖️').setDisabled(!!claimed_by)
          );
-         components.push(userRow);
-    }
-
-    if (isSupport && isClosed) {
+        components.push(adminRow1, adminRow2, userRow);
+    } else {
         const deleteRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_delete').setLabel("Deletar Ticket").setStyle(ButtonStyle.Danger).setEmoji('🗑️')
         );
