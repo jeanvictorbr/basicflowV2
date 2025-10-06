@@ -1,13 +1,10 @@
 // ui/ausenciasMenu.js
-module.exports = function generateAusenciasMenu(settings) {
-    // Verifica se há configurações salvas e formata o texto para exibição
-    const isPremiumActive = require('../utils/premiumCheck.js');
+module.exports = function generateAusenciasMenu(settings, isPremium) {
     const canalAprovacoes = settings?.ausencias_canal_aprovacoes ? `<#${settings.ausencias_canal_aprovacoes}>` : '`❌ Não definido`';
     const cargoAusente = settings?.ausencias_cargo_ausente ? `<@&${settings.ausencias_cargo_ausente}>` : '`❌ Não definido`';
     const canalLogs = settings?.ausencias_canal_logs ? `<#${settings.ausencias_canal_logs}>` : '`❌ Não definido`';
     const imagemVitrine = settings?.ausencias_imagem_vitrine ? '`✅ Definida`' : '`❌ Não definida`';
-    
-    // Retorna o seu design, agora com os valores dinâmicos e custom_ids padronizados
+
     return [
         {
             "type": 17, "accent_color": 16711680, "spoiler": false,
@@ -15,7 +12,7 @@ module.exports = function generateAusenciasMenu(settings) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 4, "label": "Publicar vitrine", "custom_id": "ausencia_publicar_vitrine" },
-                    "components": [{ "type": 10, "content": "# Hub de Ausências" }]
+                    "components": [{ "type": 10, "content": "**Hub de Ausências**" }]
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
@@ -39,7 +36,7 @@ module.exports = function generateAusenciasMenu(settings) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "ausencia_set_imagem", "disabled": !isPremium },
-                    "components": [{ "type": 10, "content": `**Imagem da vitrine**\n> ${imagemVitrine}` }]
+                    "components": [{ "type": 10, "content": `**📸 Imagem da vitrine**\n> ${imagemVitrine}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {

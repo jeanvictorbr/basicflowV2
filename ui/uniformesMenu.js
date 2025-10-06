@@ -1,8 +1,8 @@
 // ui/uniformesMenu.js
-module.exports = function generateUniformesMenu(settings) {
+module.exports = function generateUniformesMenu(settings, isPremium) {
     const thumbnail = settings?.uniformes_thumbnail_url ? '`✅ Definida`' : '`❌ Não definida`';
     const color = settings?.uniformes_color ? `\`${settings.uniformes_color}\`` : '`🎨 Padrão (#FFFFFF)`';
-    const isPremiumActive = require('../utils/premiumCheck.js');
+
     return [
         {
             "type": 17, "accent_color": null, "spoiler": false,

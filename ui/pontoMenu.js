@@ -1,8 +1,7 @@
 // ui/pontoMenu.js
-module.exports = function generatePontoMenu(settings) {
+module.exports = function generatePontoMenu(settings, isPremium) {
     const canalLogs = settings?.ponto_canal_registros ? `<#${settings.ponto_canal_registros}>` : '`❌ Não definido`';
     const cargoServico = settings?.ponto_cargo_em_servico ? `<@&${settings.ponto_cargo_em_servico}>` : '`❌ Não definido`';
-    const isPremiumActive = require('../utils/premiumCheck.js');
     const imagemVitrine = settings?.ponto_imagem_vitrine ? '`✅ Definida`' : '`❌ Não definida`';
 
     const isConfigured = settings?.ponto_canal_registros && settings?.ponto_cargo_em_servico;
