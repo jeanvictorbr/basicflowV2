@@ -96,6 +96,7 @@ const schema = {
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         user_id: { type: 'VARCHAR(255)', notNull: true },
         total_ms: { type: 'BIGINT', default: 0 },
+        notes: { type: 'TEXT' }, //
         // Adicionamos a constraint UNIQUE aqui para garantir a integridade
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id'] }
     },
