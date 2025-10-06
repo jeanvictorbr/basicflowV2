@@ -1,4 +1,4 @@
-// Crie em: utils/aiAssistant.js
+// utils/aiAssistant.js
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
 
@@ -9,7 +9,8 @@ const defaultPrompt = `Você é um assistente de suporte para um servidor do Dis
 
 async function getAIResponse(userMessage, customPrompt) {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // MODELO ATUALIZADO PARA UMA VERSÃO MAIS RECENTE E ESTÁVEL
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         const prompt = customPrompt || defaultPrompt;
         const fullPrompt = `${prompt}\n\nAqui está a primeira mensagem do utilizador:\n"${userMessage}"`;
