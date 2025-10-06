@@ -1,29 +1,34 @@
 // index.js
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
-const { getAIResponse } = require('./utils/aiAssistant.js'); // NOVO IMPORT
+const { getAIResponse } = require('./utils/aiAssistant.js');
 require('dotenv').config();
 const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages] });
 
+// Adiciona os gerenciadores de timers para o Bate-Ponto
 client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 
-// ... (Carregadores de Comandos e Handlers como antes) ...
+// Carregador de Comandos
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const commandsToDeploy = [];
+
 for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
     if (command.data && command.execute) {
         client.commands.set(command.data.name, command);
+        commandsToDeploy.push(command.data.toJSON());
     }
 }
 
+// Carregador de Handlers
 console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
@@ -48,15 +53,46 @@ handlerTypes.forEach(handlerType => {
 });
 console.log('--- Handlers Carregados ---');
 
-
+// Evento de Bot Pronto
 client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
+    
+    // =======================================================
+    // ==         LÓGICA DE REGISTO AUTOMÁTICO DE COMANDOS   ==
+    // =======================================================
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    try {
+        console.log(`[CMD] Iniciando registo de ${commandsToDeploy.length} comando(s).`);
+
+        // Regista os comandos apenas na guild de desenvolvimento se o ID estiver definido
+        if (process.env.DEV_GUILD_ID) {
+            await rest.put(
+                Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.DEV_GUILD_ID),
+                { body: commandsToDeploy },
+            );
+            console.log(`[CMD] Comandos registados com sucesso na guild de desenvolvimento.`);
+        } else {
+            // Caso contrário, regista globalmente (pode demorar até 1 hora a propagar)
+            await rest.put(
+                Routes.applicationCommands(process.env.CLIENT_ID),
+                { body: commandsToDeploy },
+            );
+            console.log(`[CMD] Comandos registados globalmente com sucesso.`);
+        }
+    } catch (error) {
+        console.error('[CMD] Erro ao registar comandos:', error);
+    }
+    // =======================================================
+
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
+    
+    // Inicia a verificação periódica de tickets inativos
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
     }, 120000); 
 });
 
+// Listener de Interações
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -67,6 +103,7 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
+        // Lógica aprimorada para handlers com IDs dinâmicos
         let handler;
         if (interaction.customId.startsWith('modal_uniformes_edit_')) {
             handler = client.handlers.get('modal_uniformes_edit_');
@@ -108,25 +145,22 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-// LISTENER DE MENSAGENS ATUALIZADO PARA INCLUIR A IA
+// Listener de Mensagens
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return;
 
     const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
     
     if (ticket) {
-        // Lógica de cancelar o auto-fechamento
         if (ticket.warning_sent_at) {
             await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
         }
         await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
-        // LÓGICA DO ASSISTENTE DE IA
-        // Verifica se é a primeira mensagem do utilizador no ticket
         const messages = await message.channel.messages.fetch({ limit: 5 });
         const userMessages = messages.filter(m => !m.author.bot);
         
-        if (userMessages.size === 1) { // Se for exatamente a primeira mensagem do utilizador
+        if (userMessages.size === 1) {
             const settings = (await db.query('SELECT tickets_ai_assistant_enabled, tickets_ai_assistant_prompt FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
             
             if (settings && settings.tickets_ai_assistant_enabled) {
@@ -140,6 +174,5 @@ client.on(Events.MessageCreate, async message => {
         }
     }
 });
-
 
 client.login(process.env.DISCORD_TOKEN);
