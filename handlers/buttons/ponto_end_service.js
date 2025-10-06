@@ -4,8 +4,7 @@ const db = require('../../database.js');
 const { formatDuration } = require('../../utils/formatDuration.js');
 const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
 const generatePontoDashboardV2 = require('../../ui/pontoDashboardPessoalV2.js');
-
-const V2_FLAG = 1 << 15; // Flag adicionada para corrigir o erro
+const V2_FLAG = 1 << 15;
 
 module.exports = {
     customId: 'ponto_end_service',
@@ -35,6 +34,7 @@ module.exports = {
             }
             const durationMs = (endTime.getTime() - startTime.getTime()) - totalPausedMs;
             
+            // CORREÇÃO: Chama o dashboard correto com o status 'finalizado'
             activeSession.durationMs = durationMs;
             const finalDashboardPayload = settings.ponto_dashboard_v2_enabled
                 ? { components: generatePontoDashboardV2(interaction, settings, activeSession, 'finalizado'), flags: V2_FLAG }
