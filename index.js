@@ -2,18 +2,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
-const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js'); // NOVO IMPO
+const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 require('dotenv').config();
 const db = require('./database.js');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] }); // ADICIONADO INTENTS DE MENSAGEM
+// Adicione a intent de DirectMessages se ainda não tiver
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages] });
 
-// Adiciona os gerenciadores de timers para o Bate-Ponto
 client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 
-// Carregador de Comandos
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -24,7 +23,6 @@ for (const file of commandFiles) {
     }
 }
 
-// Carregador de Handlers
 console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
@@ -49,19 +47,14 @@ handlerTypes.forEach(handlerType => {
 });
 console.log('--- Handlers Carregados ---');
 
-// Evento de Bot Pronto
 client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
-        // Inicia a verificação periódica de tickets inativos
-    // Roda a cada 2 minutos (120000 milissegundos) para maior precisão
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
     }, 120000); 
 });
 
-
-// Listener de Interações
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -72,7 +65,6 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error('Erro executando comando:', error);
         }
     } else {
-        // Lógica aprimorada para handlers com IDs dinâmicos
         let handler;
         if (interaction.customId.startsWith('modal_uniformes_edit_')) {
             handler = client.handlers.get('modal_uniformes_edit_');
@@ -84,8 +76,14 @@ client.on(Events.InteractionCreate, async interaction => {
             handler = client.handlers.get('modal_department_details_'); 
         } else if (interaction.customId.startsWith('select_ticket_create_department_')) {
             handler = client.handlers.get('select_ticket_create_department_');
-        } else if (interaction.customId.startsWith('modal_ticket_greeting_edit_')) { // NOVA LINHA
-            handler = client.handlers.get('modal_ticket_greeting_edit_'); // NOVA LINHA
+        } else if (interaction.customId.startsWith('modal_ticket_greeting_edit_')) {
+            handler = client.handlers.get('modal_ticket_greeting_edit_');
+        } else if (interaction.customId.startsWith('feedback_star_')) {
+            handler = client.handlers.get('feedback_star_');
+        } else if (interaction.customId.startsWith('feedback_submit_')) {
+            handler = client.handlers.get('feedback_submit_');
+        } else if (interaction.customId.startsWith('feedback_page_')) { // NOVA LINHA
+            handler = client.handlers.get('feedback_page_'); // NOVA LINHA
         } else {
             handler = client.handlers.get(interaction.customId);
         }
@@ -108,23 +106,15 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-
-// =======================================================
-// ==      NOVO LISTENER DE MENSAGENS PARA TICKETS      ==
-// =======================================================
 client.on(Events.MessageCreate, async message => {
     if (message.author.bot) return;
 
-    // Verifica se a mensagem foi enviada em um canal que é um ticket
     const ticket = (await db.query('SELECT warning_sent_at FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
     
     if (ticket) {
-        // Se um aviso de fechamento JÁ TINHA sido enviado, cancela o fechamento
         if (ticket.warning_sent_at) {
             await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
         }
-
-        // Atualiza o timestamp da última mensagem e anula o aviso de fechamento
         await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
     }
 });

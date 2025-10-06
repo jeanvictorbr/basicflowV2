@@ -1,9 +1,13 @@
-// Crie em: ui/ticketsPremiumMenu.js
+// ui/ticketsPremiumMenu.js
 module.exports = function generateTicketsPremiumMenu(settings) {
     const departmentsStatus = settings.tickets_use_departments ? '✅ Ativado' : '❌ Desativado';
     const greetingStatus = settings.tickets_greeting_enabled ? '✅ Ativado' : '❌ Desativado';
     const feedbackStatus = settings.tickets_feedback_enabled ? '✅ Ativado' : '❌ Desativado';
-    const autoCloseStatus = settings.tickets_autoclose_enabled ? `✅ Ativado (${settings.tickets_autoclose_hours}h)` : '❌ Desativado';
+    const autoCloseStatus = settings.tickets_autoclose_enabled ? `✅ Ativado (${settings.tickets_autoclose_hours || 48}h)` : '❌ Desativado';
+
+    const feedbackButton = settings.tickets_feedback_enabled
+        ? { label: 'Desativar', style: 4, custom_id: 'tickets_feedback_toggle' }
+        : { label: 'Ativar', style: 3, custom_id: 'tickets_feedback_toggle' };
 
     return [
         {
@@ -31,7 +35,7 @@ module.exports = function generateTicketsPremiumMenu(settings) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 1, "label": "Ver Painel", "custom_id": "tickets_view_feedback" },
+                    "accessory": { "type": 2, "style": feedbackButton.style, "label": feedbackButton.label, "custom_id": feedbackButton.custom_id },
                     "components": [{ "type": 10, "content": `**Avaliações de Atendimento**\n> Status: \`${feedbackStatus}\`` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
