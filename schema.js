@@ -33,7 +33,7 @@ const guildSettingsTable = `
         tickets_autoclose_enabled BOOLEAN DEFAULT false,
         tickets_autoclose_hours INTEGER DEFAULT 48,
         tickets_autoclose_dm_user BOOLEAN DEFAULT true,
-        tickets_autoclose_warn_user BOOLEAN DEFAULT true, -- NOVA COLUNA
+        tickets_autoclose_warn_user BOOLEAN DEFAULT true,
         tickets_greeting_enabled BOOLEAN DEFAULT false,
         tickets_use_departments BOOLEAN DEFAULT false,
 
@@ -56,23 +56,6 @@ const guildSettingsTable = `
     );
 `;
 
-const ticketsTable = `
-    CREATE TABLE IF NOT EXISTS tickets (
-        channel_id VARCHAR(255) PRIMARY KEY,
-        guild_id VARCHAR(255) NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        ticket_number SERIAL,
-        claimed_by VARCHAR(255),
-        status VARCHAR(20) DEFAULT 'open',
-        action_log TEXT DEFAULT '',
-        closed_at TIMESTAMPTZ,
-        last_message_at TIMESTAMPTZ DEFAULT NOW(),
-        warning_sent_at TIMESTAMPTZ
-    );
-`;
-
-// ... (Restante do seu schema.js como antes) ...
-
 const activationKeysTable = `
     CREATE TABLE IF NOT EXISTS activation_keys (
         key VARCHAR(255) PRIMARY KEY,
@@ -89,6 +72,21 @@ const pendingRegistrationsTable = `
         guild_id VARCHAR(255) NOT NULL,
         nome_rp VARCHAR(255) NOT NULL,
         id_rp VARCHAR(255) NOT NULL
+    );
+`;
+
+const ticketsTable = `
+    CREATE TABLE IF NOT EXISTS tickets (
+        channel_id VARCHAR(255) PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        ticket_number SERIAL,
+        claimed_by VARCHAR(255),
+        status VARCHAR(20) DEFAULT 'open',
+        action_log TEXT DEFAULT '',
+        closed_at TIMESTAMPTZ,
+        last_message_at TIMESTAMPTZ DEFAULT NOW(),
+        warning_sent_at TIMESTAMPTZ
     );
 `;
 
@@ -177,6 +175,7 @@ const ticketFeedbackTable = `
         guild_id VARCHAR(255) NOT NULL,
         ticket_channel_id VARCHAR(255) UNIQUE NOT NULL,
         user_id VARCHAR(255) NOT NULL,
+        claimed_by VARCHAR(255), -- NOVA COLUNA
         rating INTEGER,
         comment TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()

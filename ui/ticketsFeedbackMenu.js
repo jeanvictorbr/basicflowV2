@@ -8,7 +8,6 @@ function formatRating(rating) {
 module.exports = function generateFeedbackMenu(feedbackData) {
     const { settings, avgRating, totalRatings, feedbacks, page, totalPages } = feedbackData;
 
-    // Lógica para o botão de toggle
     const systemStatus = settings.tickets_feedback_enabled ? '✅ Ativado' : '❌ Desativado';
     const toggleButton = settings.tickets_feedback_enabled
         ? { label: 'Desativar Sistema', style: ButtonStyle.Danger }
@@ -18,8 +17,9 @@ module.exports = function generateFeedbackMenu(feedbackData) {
 
     const feedbackList = feedbacks.length > 0
         ? feedbacks.map(fb => {
+            const attendant = fb.claimed_by ? ` (Atendente: <@${fb.claimed_by}>)` : '';
             const comment = fb.comment ? `\n> └─ "${fb.comment.substring(0, 100)}${fb.comment.length > 100 ? '...' : ''}"` : '';
-            return `> ${formatRating(fb.rating)} por <@${fb.user_id}> em <t:${Math.floor(new Date(fb.created_at).getTime() / 1000)}:R>${comment}`;
+            return `> ${formatRating(fb.rating)} por <@${fb.user_id}> em <t:${Math.floor(new Date(fb.created_at).getTime() / 1000)}:R>${attendant}${comment}`;
         }).join('\n\n')
         : '> Nenhuma avaliação recebida ainda.';
 
@@ -35,7 +35,6 @@ module.exports = function generateFeedbackMenu(feedbackData) {
             "components": [
                 { "type": 10, "content": "## 📊 Painel de Avaliações de Atendimento" },
                 { "type": 14, "divider": true, "spacing": 1 },
-                // SEÇÃO DE CONFIGURAÇÃO ADICIONADA
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": toggleButton.style, "label": toggleButton.label, "custom_id": "tickets_feedback_toggle" },
