@@ -24,7 +24,7 @@ module.exports = function generateTicketsMenu(settings, isPremium)  {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_thumbnail", "disabled": !isPremium  },
-                    "components": [{ "type": 10, "content": `**Thumbnail do Ticket**\n> ${thumbnail}` }]
+                    "components": [{ "type": 10, "content": `**Imagem do Ticket**\n> ${thumbnail}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
