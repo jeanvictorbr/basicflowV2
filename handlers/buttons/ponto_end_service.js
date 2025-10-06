@@ -7,6 +7,19 @@ const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
 module.exports = {
     customId: 'ponto_end_service',
     async execute(interaction) {
+        // >> CANCELA TODOS OS TIMERS <<
+        if (interaction.client.pontoIntervals.has(interaction.user.id)) {
+            clearInterval(interaction.client.pontoIntervals.get(interaction.user.id));
+            interaction.client.pontoIntervals.delete(interaction.user.id);
+        }
+        if (interaction.client.afkCheckTimers.has(interaction.user.id)) {
+            clearTimeout(interaction.client.afkCheckTimers.get(interaction.user.id));
+            interaction.client.afkCheckTimers.delete(interaction.user.id);
+        }
+        if (interaction.client.afkToleranceTimers.has(interaction.user.id)) {
+            clearTimeout(interaction.client.afkToleranceTimers.get(interaction.user.id));
+            interaction.client.afkToleranceTimers.delete(interaction.user.id);
+        }
         if (interaction.client.pontoIntervals.has(interaction.user.id)) {
             clearInterval(interaction.client.pontoIntervals.get(interaction.user.id));
             interaction.client.pontoIntervals.delete(interaction.user.id);

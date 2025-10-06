@@ -7,6 +7,9 @@ const db = require('./database.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.pontoIntervals = new Map();
+// Adiciona os gerenciadores de timers
+client.afkCheckTimers = new Map();
+client.afkToleranceTimers = new Map();
 
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');

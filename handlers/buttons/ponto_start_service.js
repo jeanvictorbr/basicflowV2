@@ -2,11 +2,14 @@
 const { EmbedBuilder } = require('discord.js');
 const db = require('../../database.js');
 const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
-
+const { scheduleAfkCheck } = require('../../utils/afkCheck.js');
 module.exports = {
     customId: 'ponto_start_service',
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
+
+         // INICIA O CRONÔMETRO DO DASHBOARD
+            interaction.client.pontoIntervals.set(interaction.user.id, interval);
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
         if (!settings?.ponto_status || !settings?.ponto_canal_registros || !settings?.ponto_cargo_em_servico) {
@@ -17,6 +20,10 @@ module.exports = {
         if (activeSession) {
             return interaction.editReply({ content: '⚠️ Você já está em serviço. Bata o ponto de saída para finalizar.' });
         }
+         // >> INICIA O CHECK DE INATIVIDADE <<
+            if (settings.ponto_afk_check_enabled) {
+                scheduleAfkCheck(interaction.client, interaction.guild.id, interaction.user.id, settings.ponto_afk_check_interval_minutes);
+            }
         
         const role = await interaction.guild.roles.fetch(settings.ponto_cargo_em_servico).catch(() => null);
         if (!role) {
