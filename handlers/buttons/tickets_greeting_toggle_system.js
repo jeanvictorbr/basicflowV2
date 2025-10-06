@@ -17,7 +17,8 @@ module.exports = {
             const existingMessages = (await db.query('SELECT 1 FROM ticket_greeting_messages WHERE guild_id = $1', [interaction.guild.id])).rows;
             // Se não houver nenhuma mensagem, adiciona a padrão melhorada
             if (existingMessages.length === 0) {
-                const defaultMessage = 'Olá {user}! 👋\n\nSeu ticket foi aberto com sucesso no servidor **{server}**. Para agilizar seu atendimento, por favor, nos forneça o máximo de detalhes possível sobre sua solicitação. Se aplicável, inclua IDs, links ou capturas de tela.';
+                // NOVA MENSAGEM PADRÃO, MAIS COMPLETA E COM MARKDOWN
+                const defaultMessage = `> Olá {user}! 👋\n> \n> Seu ticket foi aberto com sucesso no servidor **{server}**.\n> \n> Para agilizar seu atendimento, por favor, nos forneça o máximo de detalhes possível sobre sua solicitação, como:\n> - **O que aconteceu?**\n> - **IDs, se aplicável.**\n> - **Prints ou vídeos do ocorrido.**\n> \n> *Um membro da equipe irá atendê-lo em breve.*`;
                 await db.query('INSERT INTO ticket_greeting_messages (guild_id, message, is_active) VALUES ($1, $2, true)', [interaction.guild.id, defaultMessage]);
             }
         }
