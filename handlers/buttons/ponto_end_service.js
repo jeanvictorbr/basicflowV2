@@ -2,6 +2,8 @@
 const { EmbedBuilder } = require('discord.js');
 const db = require('../../database.js');
 const { formatDuration } = require('../../utils/formatDuration.js');
+const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js'); // Importa o dashboard
+
 
 module.exports = {
     customId: 'ponto_end_service',
@@ -32,6 +34,7 @@ module.exports = {
             const startTime = new Date(activeSession.start_time);
             let endTime = new Date();
             let totalPausedMs = activeSession.total_paused_ms;
+            
 
             if (activeSession.is_paused) {
                 const lastPauseTime = new Date(activeSession.last_pause_time);
@@ -49,7 +52,7 @@ module.exports = {
                 .setAuthor({ name: interaction.member.displayName, iconURL: interaction.user.displayAvatarURL() })
                 .setTitle('⏹️ Fim de Serviço')
                 .setThumbnail(interaction.user.displayAvatarURL())
-                .setImage('https://i.imgur.com/link-da-sua-imagem.png') // <-- COLOQUE A URL DA SUA IMAGEM AQUI
+                .setImage('https://media.discordapp.net/attachments/1310610658844475404/1424391049648017571/E99EBFA9-97D6-42F2-922C-6AC4EEC1651A.png?ex=68e46fca&is=68e31e4a&hm=167f4d74e96a1250138270ac9396faec3eb7ed427afb3490510b4f969b4f1a1f&=&format=webp&quality=lossless') // <-- COLOQUE A URL DA SUA IMAGEM AQUI
                 .addFields(
                     { name: 'Membro', value: `${interaction.user}`, inline: true },
                     { name: 'Tempo Total', value: `\`${durationFormatted}\``, inline: true },
@@ -74,6 +77,10 @@ module.exports = {
             `, [interaction.guild.id, interaction.user.id, durationMs]);
 
             await interaction.editReply({ content: `Você saiu de serviço. Seu tempo total foi de **${durationFormatted}**. Obrigado!` });
+                    // ATUALIZA O DASHBOARD DO USUÁRIO
+            session.durationMs = durationMs; // Adiciona a duração para a função de UI usar
+            const finalDashboard = generatePontoDashboard(interaction, session, 'finalizado');
+            await interaction.update(finalDashboard);
 
         } catch (error) {
             console.error("Erro ao finalizar serviço:", error);
