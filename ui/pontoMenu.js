@@ -16,7 +16,7 @@ module.exports = function generatePontoMenu(settings, isPremium) {
                     "accessory": { "type": 2, "style": 4, "label": "Publicar Painel", "custom_id": "ponto_publicar_painel" },
                     "components": [{ "type": 10, "content": "# Hub de Bate-Ponto" }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 3, "label": "Alterar", "custom_id": "ponto_set_canal_registros" },
@@ -42,8 +42,18 @@ module.exports = function generatePontoMenu(settings, isPremium) {
                         { "type": 2, "style": 4, "label": "Consultar Jogador", "custom_id": "ponto_consultar_jogador" },
                         { "type": 2, "style": status.style, "label": status.label, "emoji": { "name": status.emoji }, "custom_id": "ponto_toggle_status", "disabled": !isConfigured }
                     ]
+                },
+                                // =======================================================
+                // ==                RODAPÉ ADICIONADO AQUI             ==
+                // =======================================================
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 10, // Tipo 10 é um componente de Texto
+                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
+                    "content": " ↘   Desenvolvido 100% por zépiqueno 🥇" 
                 }
+                // =======================================================
             ]
-        }
+        }   
     ];
 };
