@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
+const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js'); // NOVO IMPO
 require('dotenv').config();
 const db = require('./database.js');
 
@@ -52,6 +53,11 @@ console.log('--- Handlers Carregados ---');
 client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
+        // Inicia a verificação periódica de tickets inativos
+    // Roda a cada 10 minutos (600000 milissegundos)
+    setInterval(() => {
+        checkAndCloseInactiveTickets(client);
+    }, 600000);
 });
 
 
