@@ -84,7 +84,8 @@ const ticketsTable = `
         status VARCHAR(20) DEFAULT 'open',
         action_log TEXT DEFAULT '',
         closed_at TIMESTAMPTZ,
-        last_message_at TIMESTAMPTZ DEFAULT NOW()
+        last_message_at TIMESTAMPTZ DEFAULT NOW(),
+        warning_sent_at TIMESTAMPTZ -- NOVA COLUNA
     );
 `;
 

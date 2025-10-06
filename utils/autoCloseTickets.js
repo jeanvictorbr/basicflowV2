@@ -1,4 +1,4 @@
-// Crie em: utils/autoCloseTickets.js
+// utils/autoCloseTickets.js
 const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const db = require('../database.js');
 
@@ -33,14 +33,14 @@ async function closeTicket(client, guild, channel, settings, closer, reason) {
         }
         
         // Notificar o usuário por DM, se aplicável
-        if (settings.tickets_autoclose_dm_user && opener) {
+        if (settings.tickets_autoclose_dm_user && opener && reason === 'Inatividade') {
             await opener.send(`Olá! Seu ticket \`#${String(ticket.ticket_number).padStart(4, '0')}\` no servidor **${guild.name}** foi fechado automaticamente por inatividade. Se ainda precisar de ajuda, sinta-se à vontade para abrir um novo.`).catch(() => {});
         }
 
         // Deletar o canal
-        await channel.delete('Ticket fechado por inatividade.');
+        await channel.delete(`Ticket fechado: ${reason}`);
         
-        // Atualizar o DB (sem deletar a linha para manter o histórico)
+        // Atualizar o DB
         await db.query(`UPDATE tickets SET status = 'closed', closed_at = NOW() WHERE channel_id = $1`, [channel.id]);
 
     } catch (error) {
@@ -58,22 +58,35 @@ async function checkAndCloseInactiveTickets(client) {
             const guild = await client.guilds.fetch(settings.guild_id).catch(() => null);
             if (!guild) continue;
             
-            const inactiveTickets = (await db.query(
-                `SELECT * FROM tickets WHERE guild_id = $1 AND status = 'open' AND last_message_at < NOW() - INTERVAL '${settings.tickets_autoclose_hours} hours'`,
+            // ETAPA 1: Encontrar e fechar tickets que JÁ FORAM AVISADOS
+            const ticketsToClose = (await db.query(
+                `SELECT * FROM tickets WHERE guild_id = $1 AND status = 'open' AND warning_sent_at IS NOT NULL AND warning_sent_at < NOW() - INTERVAL '20 minutes'`,
                 [settings.guild_id]
             )).rows;
 
-            if (inactiveTickets.length > 0) {
-                console.log(`[Auto-Close] Encontrado(s) ${inactiveTickets.length} ticket(s) inativo(s) no servidor ${guild.name}.`);
-            }
-
-            for (const ticket of inactiveTickets) {
+            for (const ticket of ticketsToClose) {
                 const channel = await guild.channels.fetch(ticket.channel_id).catch(() => null);
                 if (channel) {
+                    console.log(`[Auto-Close] Fechando ticket #${channel.name} por inatividade confirmada.`);
                     await closeTicket(client, guild, channel, settings, client.user, 'Inatividade');
                 } else {
-                    // Se o canal não existe mais, apenas atualiza o status no DB
                     await db.query(`UPDATE tickets SET status = 'closed', closed_at = NOW() WHERE channel_id = $1`, [ticket.channel_id]);
+                }
+            }
+
+            // ETAPA 2: Encontrar tickets inativos e enviar o AVISO
+            const ticketsToWarn = (await db.query(
+                `SELECT * FROM tickets WHERE guild_id = $1 AND status = 'open' AND warning_sent_at IS NULL AND last_message_at < NOW() - INTERVAL '${settings.tickets_autoclose_hours} hours'`,
+                [settings.guild_id]
+            )).rows;
+
+            for (const ticket of ticketsToWarn) {
+                const channel = await guild.channels.fetch(ticket.channel_id).catch(() => null);
+                if (channel) {
+                    console.log(`[Auto-Close] Enviando aviso de inatividade para o ticket #${channel.name}.`);
+                    const warningMessage = `Olá <@${ticket.user_id}>, este ticket não recebe uma nova mensagem há mais de **${settings.tickets_autoclose_hours} horas**.\n\nEle será fechado por inatividade em **20 minutos**. Para cancelar o fechamento, por favor, envie qualquer mensagem neste canal.`;
+                    await channel.send(warningMessage);
+                    await db.query('UPDATE tickets SET warning_sent_at = NOW() WHERE channel_id = $1', [ticket.channel_id]);
                 }
             }
         }

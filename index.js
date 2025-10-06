@@ -54,10 +54,10 @@ client.once(Events.ClientReady, async () => {
     await db.initializeDatabase();
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
         // Inicia a verificação periódica de tickets inativos
-    // Roda a cada 10 minutos (600000 milissegundos)
+    // Roda a cada 5 minutos (300000 milissegundos) para maior precisão
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
-    }, 600000);
+    }, 150000); 
 });
 
 
