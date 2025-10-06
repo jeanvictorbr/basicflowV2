@@ -8,8 +8,8 @@ const defaultPrompt = `Você é um assistente de suporte para um servidor do Dis
 
 async function getAIResponse(userMessage, customPrompt) {
     try {
-        // MUDANÇA FINAL: Usando o modelo mais estável e compatível
-        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+        // Usando o nome de modelo correto e padrão
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
         const prompt = customPrompt || defaultPrompt;
         const fullPrompt = `${prompt}\n\nAqui está a primeira mensagem do utilizador:\n"${userMessage}"`;
