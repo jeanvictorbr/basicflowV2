@@ -1,5 +1,5 @@
 // ui/ticketsMenu.js
-module.exports = function generateTicketsMenu(settings) {
+module.exports = function generateTicketsMenu(settings, isPremium)  {
     const categoria = settings?.tickets_category ? `<#${settings.tickets_category}>` : '`❌ Não definida`';
     const thumbnail = settings?.tickets_thumbnail_url ? '`✅ Definida`' : '`❌ Não definida`';
     const canalLogs = settings?.tickets_canal_logs ? `<#${settings.tickets_canal_logs}>` : '`❌ Não definido`';
@@ -23,7 +23,7 @@ module.exports = function generateTicketsMenu(settings) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_thumbnail" },
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_thumbnail", "disabled": !isPremium  },
                     "components": [{ "type": 10, "content": `**Thumbnail do Ticket**\n> ${thumbnail}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
