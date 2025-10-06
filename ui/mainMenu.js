@@ -29,31 +29,31 @@ module.exports = async function generateMainMenu(interaction) {
                 // ... (Seções dos Módulos: Ausências, Registros, etc.) ...
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_ausencias_menu" },
+                    "accessory": { "type": 2, "style": 6, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_ausencias_menu" },
                     "components": [{ "type": 10, "content": "🏖️ Ausências" }, { "type": 10, "content": "Configure todo o sistema de **ausências**." }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_registros_menu" },
+                    "accessory": { "type": 2, "style": 6, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_registros_menu" },
                     "components": [{ "type": 10, "content": "📂 Registros" }, { "type": 10, "content": "Configure todo o sistema de **registros**." }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_tickets_menu" },
+                    "accessory": { "type": 2, "style": 6, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_tickets_menu" },
                     "components": [{ "type": 10, "content": "🚨 Tickets" }, { "type": 10, "content": "Configure todo o sistema de **tickets**." }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_uniformes_menu" },
+                    "accessory": { "type": 2, "style": 6, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_uniformes_menu" },
                     "components": [{ "type": 10, "content": "👔 Uniformes" }, { "type": 10, "content": "Configure todo o sistema de **uniformes**." }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_ponto_menu" },
+                    "accessory": { "type": 2, "style": 6, "label": "Abrir", "emoji": { "name": "📥" }, "custom_id": "open_ponto_menu" },
                     "components": [{ "type": 10, "content": "⏰ Bate-Ponto" }, { "type": 10, "content": "Configure todo o sistema de **bate-ponto**." }]
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
