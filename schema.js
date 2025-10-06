@@ -76,7 +76,8 @@ const ticketsTable = `
         ticket_number SERIAL,
         claimed_by VARCHAR(255),
         status VARCHAR(20) DEFAULT 'open',
-        action_log TEXT DEFAULT ''
+        action_log TEXT DEFAULT '',
+        closed_at TIMESTAMPTZ
     );
 `;
 
@@ -126,6 +127,33 @@ const pendingAbsencesTable = `
     );
 `;
 
+// =======================================================
+// ==                NOVAS TABELAS ABAIXO               ==
+// =======================================================
+
+const registrationsHistoryTable = `
+    CREATE TABLE IF NOT EXISTS registrations_history (
+        id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        moderator_id VARCHAR(255) NOT NULL,
+        status VARCHAR(20) NOT NULL, -- 'approved' or 'rejected'
+        created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+`;
+
+const pontoHistoryTable = `
+    CREATE TABLE IF NOT EXISTS ponto_history (
+        id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        start_time TIMESTAMPTZ NOT NULL,
+        end_time TIMESTAMPTZ NOT NULL,
+        duration_ms BIGINT NOT NULL
+    );
+`;
+
+
 module.exports = [
     guildSettingsTable,
     activationKeysTable,
@@ -134,5 +162,7 @@ module.exports = [
     uniformsTable,
     pontoSessionsTable,
     pontoLeaderboardTable,
-    pendingAbsencesTable
+    pendingAbsencesTable,
+    registrationsHistoryTable,
+    pontoHistoryTable
 ];

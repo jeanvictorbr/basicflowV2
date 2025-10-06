@@ -43,7 +43,7 @@ module.exports = {
             await logChannel.send({ embeds: [logEmbed], files: [transcriptFile] });
         }
         
-        await db.query(`UPDATE tickets SET status = 'closed', claimed_by = $1 WHERE channel_id = $2`, [interaction.user.id, interaction.channel.id]);
+        await db.query(`UPDATE tickets SET status = 'closed', claimed_by = $1, closed_at = NOW() WHERE channel_id = $2`, [interaction.user.id, interaction.channel.id]);
         
         // Deleta o canal após 10 segundos
         await interaction.channel.send({ content: 'Este ticket foi finalizado e será deletado em 10 segundos.' });

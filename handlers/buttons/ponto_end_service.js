@@ -52,13 +52,20 @@ module.exports = {
 
             await db.query('DELETE FROM ponto_sessions WHERE session_id = $1', [activeSession.session_id]);
             
-            // CORREÇÃO: Usando COALESCE para tratar valores nulos e garantir a soma correta.
+            // ATUALIZA O RANKING GERAL
             await db.query(`
                 INSERT INTO ponto_leaderboard (guild_id, user_id, total_ms)
                 VALUES ($1, $2, $3)
                 ON CONFLICT (guild_id, user_id)
                 DO UPDATE SET total_ms = COALESCE(ponto_leaderboard.total_ms, 0) + $3;
             `, [interaction.guild.id, interaction.user.id, durationMs]);
+            
+            // SALVA NO HISTÓRICO PARA ESTATÍSTICAS
+            await db.query(
+                'INSERT INTO ponto_history (guild_id, user_id, start_time, end_time, duration_ms) VALUES ($1, $2, $3, $4, $5)',
+                [interaction.guild.id, interaction.user.id, startTime, endTime, durationMs]
+            );
+
         } catch (error) {
             console.error("Erro ao finalizar serviço:", error);
             await interaction.followUp({ content: '❌ Ocorreu um erro ao finalizar seu serviço.', ephemeral: true }).catch(()=>{});

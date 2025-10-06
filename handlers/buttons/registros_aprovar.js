@@ -55,7 +55,13 @@ module.exports = {
 
             await interaction.editReply({ embeds: [updatedEmbed], components: [] });
 
-            // 5. Deletar o registro pendente
+            // 5. Salvar no histórico de estatísticas
+            await db.query(
+                'INSERT INTO registrations_history (guild_id, user_id, moderator_id, status) VALUES ($1, $2, $3, $4)',
+                [interaction.guild.id, user_id, interaction.user.id, 'approved']
+            );
+
+            // 6. Deletar o registro pendente
             await db.query('DELETE FROM pending_registrations WHERE message_id = $1', [interaction.message.id]);
 
         } catch (error) {
