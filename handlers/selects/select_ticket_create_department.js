@@ -47,14 +47,22 @@ module.exports = {
 
             await channel.send({ content: `${interaction.user} <@&${department.role_id}>`, ...dashboard });
 
-            // INSERÇÃO DA MENSAGEM DE SAUDAÇÃO
-            if (settings.tickets_greeting_enabled && settings.tickets_greeting_message) {
-                const greeting = settings.tickets_greeting_message
-                    .replace('{user}', `<@${interaction.user.id}>`)
-                    .replace('{server}', interaction.guild.name);
-                await channel.send({ content: greeting });
-            }
-
+// LÓGICA DE SAUDAÇÃO SEQUENCIAL
+if (settings.tickets_greeting_enabled) {
+    const activeMessages = (await db.query('SELECT message FROM ticket_greeting_messages WHERE guild_id = $1 AND is_active = true ORDER BY id ASC', [interaction.guild.id])).rows;
+    
+    // Função para enviar mensagens com atraso
+    const sendSequentially = async () => {
+        for (const msg of activeMessages) {
+            const formattedMessage = msg.message
+                .replace('{user}', `<@${interaction.user.id}>`)
+                .replace('{server}', interaction.guild.name);
+            await channel.send({ content: formattedMessage });
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Atraso de 3 segundos
+        }
+    };
+    sendSequentially(); // Inicia o envio
+}
             await interaction.editReply({ content: `✅ Seu ticket foi criado em ${channel}!`, components: [] });
 
         } catch (error) {

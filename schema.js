@@ -29,13 +29,11 @@ const guildSettingsTable = `
         tickets_canal_logs VARCHAR(255),
         tickets_category VARCHAR(255),
         tickets_thumbnail_url VARCHAR(1024),
-        -- NOVAS COLUNAS PREMIUM DE TICKETS
         tickets_feedback_enabled BOOLEAN DEFAULT false,
         tickets_autoclose_enabled BOOLEAN DEFAULT false,
         tickets_autoclose_hours INTEGER DEFAULT 48,
         tickets_autoclose_dm_user BOOLEAN DEFAULT true,
         tickets_greeting_enabled BOOLEAN DEFAULT false,
-        tickets_greeting_message TEXT DEFAULT '👋 Bem-vindo(a) ao nosso suporte! Por favor, descreva seu problema ou sua dúvida em detalhes para que nossa equipe possa te ajudar o mais rápido possível.',
         tickets_use_departments BOOLEAN DEFAULT false,
 
         -- Módulo de Uniformes
@@ -158,10 +156,6 @@ const pontoHistoryTable = `
     );
 `;
 
-// =======================================================
-// ==         NOVAS TABELAS DE TICKETS ABAIXO           ==
-// =======================================================
-
 const ticketDepartmentsTable = `
     CREATE TABLE IF NOT EXISTS ticket_departments (
         id SERIAL PRIMARY KEY,
@@ -185,6 +179,15 @@ const ticketFeedbackTable = `
     );
 `;
 
+const ticketGreetingMessagesTable = `
+    CREATE TABLE IF NOT EXISTS ticket_greeting_messages (
+        id SERIAL PRIMARY KEY,
+        guild_id VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT true
+    );
+`;
+
 
 module.exports = [
     guildSettingsTable,
@@ -198,5 +201,6 @@ module.exports = [
     registrationsHistoryTable,
     pontoHistoryTable,
     ticketDepartmentsTable,
-    ticketFeedbackTable
+    ticketFeedbackTable,
+    ticketGreetingMessagesTable
 ];
