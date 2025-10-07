@@ -3,24 +3,28 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 function getRuleInfo(rule) {
     let triggerDesc = 'Não definido';
-    switch (rule.trigger_type) {
-        case 'TOXICITY':
-            triggerDesc = `Toxicidade for > \`${rule.trigger_threshold}%\``;
-            break;
-        case 'SPAM_TEXT':
-            triggerDesc = `Repetir mensagem \`${rule.trigger_threshold}\` vezes`;
-            break;
-        case 'MENTION_SPAM':
-            triggerDesc = `Mencionar \`${rule.trigger_threshold}\`+ pessoas`;
-            break;
+    // Adicionamos uma verificação para garantir que os dados existem antes de tentar formatar
+    if (rule.trigger_type && rule.trigger_threshold) {
+        switch (rule.trigger_type) {
+            case 'TOXICITY':
+                triggerDesc = `Toxicidade > \`${rule.trigger_threshold}%\``;
+                break;
+            case 'SPAM_TEXT':
+                triggerDesc = `Repetir msg \`${rule.trigger_threshold}\` vezes`;
+                break;
+            case 'MENTION_SPAM':
+                triggerDesc = `Mencionar \`${rule.trigger_threshold}\`+ pessoas`;
+                break;
+        }
     }
 
     const actions = [];
     if (rule.action_delete_message) actions.push('Apagar Msg');
     if (rule.action_warn_publicly) actions.push('Avisar no Chat');
+    if (rule.action_warn_member_dm) actions.push('Avisar por DM');
     
     const punishmentMap = {
-        'TIMEOUT': `Silenciar (${rule.action_punishment_duration_minutes || 0}m)`,
+        'TIMEOUT': `Silenciar (${rule.action_punishment_duration_minutes || 'N/A'}m)`,
         'KICK': 'Expulsar',
         'BAN': 'Banir'
     };
@@ -42,9 +46,9 @@ module.exports = function generateGuardianRulesMenu(rules) {
                 { "type": 14, "divider": true, "spacing": 1 }
             );
         });
-        ruleComponents.pop(); // Remove a última divisória
+        ruleComponents.pop();
     } else {
-        ruleComponents.push({ "type": 10, "content": "> Nenhuma regra criada ainda. Clique em \"Adicionar Regra\" para começar." });
+        ruleComponents.push({ "type": 10, "content": "> Nenhuma regra criada ainda." });
     }
         
     const actionButtons = new ActionRowBuilder().addComponents(

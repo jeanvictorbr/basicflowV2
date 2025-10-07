@@ -29,14 +29,15 @@ module.exports = {
             return interaction.followUp({ content: 'Para a ação TIMEOUT, você deve fornecer uma duração válida em minutos.', ephemeral: true });
         }
         
-        // --- QUERY DE INSERT CORRIGIDA ---
+        // --- QUERY DE INSERT CORRIGIDA (AGORA COM $9 PARÂMETROS) ---
         await db.query(
-            `INSERT INTO guardian_rules (guild_id, name, trigger_type, trigger_threshold, action_delete_message, action_warn_publicly, action_punishment, action_punishment_duration_minutes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            `INSERT INTO guardian_rules (guild_id, name, trigger_type, trigger_threshold, action_delete_message, action_warn_member_dm, action_warn_publicly, action_punishment, action_punishment_duration_minutes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, // O erro estava aqui, faltava o $9
             [
                 interaction.guild.id, name, triggerType, threshold,
                 actions.includes('DELETAR'),
-                actions.includes('AVISAR_CHAT'), // Corrigido para corresponder à nova ação
+                actions.includes('AVISAR_DM'),
+                actions.includes('AVISAR_CHAT'),
                 punishment,
                 timeoutDuration
             ]
