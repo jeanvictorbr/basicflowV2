@@ -40,6 +40,7 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_ponto_menu" },
             components: [{ type: 10, content: "⏰ Bate-Ponto" }, { type: 10, content: "Configure todo o sistema de **bate-ponto**." }]
         },
+        { type: 14, divider: true, spacing: 2 },
         // --- PAGINA 2 ---
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !isPremium },
