@@ -196,14 +196,14 @@ async function processMessageForGuardian(message) {
     }
 }
 
-async function executeRuleActions(message, policy, step, reason, settings, messageIdsToDelete) {
-    const { member, guild, channel } = message;
+// AGORA, SUBSTITUA A FUNÇÃO executeRuleActions INTEIRA PELA SEGUINTE:
 
-    // Ação de apagar mensagem (continua igual)
+async function executeRuleActions(message, policy, step, reason, settings, messageIdsToDelete) {
+    const { member, guild, channel, client } = message;
+
     if (step.action_delete_message && messageIdsToDelete.length > 0) {
         await channel.bulkDelete(messageIdsToDelete, true).catch(() => {});
     }
-    // Ação de avisar no chat (continua igual)
     if (step.action_warn_publicly) {
         await channel.send(`🛡️ ${member}, sua atividade acionou uma regra de proteção automática (\`${policy.name} - Nível ${step.step_level}\`).`);
     }
@@ -212,23 +212,20 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
     const punishmentId = parseInt(step.action_punishment, 10);
 
     // --- NOVA LÓGICA DE EXECUÇÃO ---
-    // Se a integração estiver ativa E a punição for um ID numérico
     if (settings.guardian_use_mod_punishments && !isNaN(punishmentId)) {
         const customPunishment = (await db.query('SELECT * FROM moderation_punishments WHERE punishment_id = $1 AND guild_id = $2', [punishmentId, guild.id])).rows[0];
         
         if (customPunishment) {
-            // Criamos uma "falsa" interaction para passar para a nossa função de punição
             const fakeInteraction = {
                 guild,
-                user: client.user, // A ação é executada pelo bot
+                user: client.user,
                 member: await guild.members.fetch(client.user.id),
                 deferReply: async () => {},
-                editReply: async () => {},
+                editReply: async () => {}, // A resposta é dada no canal de logs
+                followUp: async () => {},
             };
             
-            // Usamos a nossa função centralizada do módulo de moderação
             await executePunishment(fakeInteraction, customPunishment.action.toLowerCase(), member, reason, customPunishment.duration);
-            
             punishmentDetails = `Punição Personalizada: \`${customPunishment.name}\``;
         } else {
             punishmentDetails = '`Falha: Punição Personalizada não encontrada.`';
@@ -251,7 +248,6 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
         } catch (error) { console.error(`[Guardian AI] Falha ao aplicar punição simples:`, error); punishmentDetails = `Falha ao punir.`; }
     }
 
-    // Lógica de log (continua igual)
     if (settings.guardian_ai_log_channel) {
         const logChannel = await guild.channels.fetch(settings.guardian_ai_log_channel).catch(() => null);
         if (logChannel) {

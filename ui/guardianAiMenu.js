@@ -22,12 +22,12 @@ module.exports = function generateGuardianAiMenu(settings) {
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
-                    "type": 9, "accessory": { "type": 1, "label": "Gerenciar", "custom_id": "guardian_manage_channels", "emoji": { "name": "📺" } },
+                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerir", "custom_id": "guardian_manage_channels", "emoji": { "name": "📺" } },
                     "components": [{ "type": 10, "content": `**Canais Monitorados**\n> \`${monitoredCount}\` canais sendo observados.` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
-                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar", "custom_id": "guardian_open_rules_menu", "emoji": { "name": "📜" } },
+                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerir", "custom_id": "guardian_open_rules_menu", "emoji": { "name": "📜" } },
                     "components": [{ "type": 10, "content": `**Sistema de Regras (Ações)**\n> Defina os gatilhos e as ações punitivas da IA.` }]
                 },
                  { "type": 14, "divider": true, "spacing": 1 },
