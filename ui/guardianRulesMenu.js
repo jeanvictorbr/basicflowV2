@@ -1,48 +1,50 @@
 // ui/guardianRulesMenu.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-function getRuleDescription(rule) {
-    let triggerDesc = '';
+function getRuleInfo(rule) {
+    let triggerDesc = 'Não definido';
     switch (rule.trigger_type) {
         case 'TOXICITY':
-            triggerDesc = `Se a **toxicidade** for > \`${rule.trigger_threshold}%\``;
+            triggerDesc = `Toxicidade for > \`${rule.trigger_threshold}%\``;
             break;
         case 'SPAM_TEXT':
-            triggerDesc = `Se repetir a mesma mensagem \`${rule.trigger_threshold}\` vezes`;
+            triggerDesc = `Repetir mensagem \`${rule.trigger_threshold}\` vezes`;
             break;
         case 'MENTION_SPAM':
-            triggerDesc = `Se mencionar \`${rule.trigger_threshold}\`+ pessoas/cargos`;
+            triggerDesc = `Mencionar \`${rule.trigger_threshold}\`+ pessoas`;
             break;
     }
 
     const actions = [];
-    if (rule.action_delete_message) actions.push('Apagar');
-    if (rule.action_warn_member_dm) actions.push('Avisar DM');
+    if (rule.action_delete_message) actions.push('Apagar Msg');
+    if (rule.action_warn_publicly) actions.push('Avisar no Chat');
     
     const punishmentMap = {
         'TIMEOUT': `Silenciar (${rule.action_punishment_duration_minutes || 0}m)`,
         'KICK': 'Expulsar',
         'BAN': 'Banir'
     };
-    if (rule.action_punishment !== 'NONE' && punishmentMap[rule.action_punishment]) {
-        actions.push(punishmentMap[rule.action_punishment]);
+    if (rule.action_punishment && rule.action_punishment !== 'NONE') {
+        actions.push(punishmentMap[rule.action_punishment] || 'Punição Inválida');
     }
 
-    return `> **Quando:** ${triggerDesc}\n> **Ações:** ${actions.join(' | ') || 'Nenhuma'}`;
+    return { trigger: triggerDesc, actions: actions.join(' | ') || 'Nenhuma' };
 }
 
 module.exports = function generateGuardianRulesMenu(rules) {
-    const ruleComponents = rules.length > 0
-        ? rules.flatMap(rule => [ // flatMap para achatar o array
-            { "type": 10, "content": `**${rule.is_enabled ? '🟢' : '🔴'} ${rule.name}**` },
-            { "type": 10, "content": getRuleDescription(rule) },
-            { "type": 14, "divider": true, "spacing": 1 },
-        ])
-        : [{ "type": 10, "content": "> Nenhuma regra criada ainda. Clique em \"Adicionar Regra\" para começar." }];
+    const ruleComponents = [];
 
-    // Remove a última divisória se existir
-    if (ruleComponents.length > 0 && ruleComponents[ruleComponents.length - 1].type === 14) {
-        ruleComponents.pop();
+    if (rules.length > 0) {
+        rules.forEach(rule => {
+            const { trigger, actions } = getRuleInfo(rule);
+            ruleComponents.push(
+                { "type": 10, "content": `**${rule.is_enabled ? '🟢' : '🔴'} ${rule.name}**\n> **Quando:** ${trigger}\n> **Ações:** ${actions}` },
+                { "type": 14, "divider": true, "spacing": 1 }
+            );
+        });
+        ruleComponents.pop(); // Remove a última divisória
+    } else {
+        ruleComponents.push({ "type": 10, "content": "> Nenhuma regra criada ainda. Clique em \"Adicionar Regra\" para começar." });
     }
         
     const actionButtons = new ActionRowBuilder().addComponents(
@@ -56,14 +58,13 @@ module.exports = function generateGuardianRulesMenu(rules) {
     );
 
     return {
-        // A resposta agora é um único objeto de componente V2, sem 'embeds'
         components: [
             {
                 "type": 17, "accent_color": 15105570,
                 "components": [
                     { "type": 10, "content": "## 📜 Gerenciador de Regras do Guardian AI" },
                     { "type": 14, "divider": true, "spacing": 1 },
-                    ...ruleComponents, // Adiciona as regras formatadas
+                    ...ruleComponents,
                     { "type": 14, "divider": true, "spacing": 2 },
                     { "type": 1, "components": actionButtons.toJSON().components },
                     { "type": 14, "divider": true, "spacing": 1 },
