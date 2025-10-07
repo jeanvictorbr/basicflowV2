@@ -33,7 +33,6 @@ module.exports = {
             return interaction.followUp({ content: 'Para a ação TIMEOUT, você deve fornecer uma duração válida em minutos.', ephemeral: true });
         }
         
-        // Vamos continuar usando a tabela 'guardian_rules' para consistência
         await db.query(
             `INSERT INTO guardian_rules (guild_id, name, trigger_type, trigger_threshold, action_delete_message, action_warn_member_dm, action_warn_publicly, action_punishment, action_punishment_duration_minutes)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,

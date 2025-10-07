@@ -1,4 +1,4 @@
-// Crie em: handlers/buttons/guardian_rule_remove.js
+// handlers/buttons/guardian_rule_remove.js
 const { StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
 const V2_FLAG = 1 << 15;
@@ -7,7 +7,14 @@ const EPHEMERAL_FLAG = 1 << 6;
 module.exports = {
     customId: 'guardian_rule_remove',
     async execute(interaction) {
-       const rules = (await db.query('SELECT id, name FROM guardian_rules_v2 WHERE guild_id = $1', [interaction.guild.id])).rows;
+        const rules = (await db.query('SELECT id, name FROM guardian_rules WHERE guild_id = $1', [interaction.guild.id])).rows;
+        
+        // --- CORREÇÃO DE SEGURANÇA APLICADA ---
+        if (rules.length === 0) {
+            await interaction.reply({ content: 'Não há regras para remover.', ephemeral: true });
+            return;
+        }
+
         const options = rules.map(r => ({ label: r.name, value: String(r.id), description: `ID: ${r.id}` }));
 
         const selectMenu = new StringSelectMenuBuilder()
