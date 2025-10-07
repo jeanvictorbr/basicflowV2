@@ -46,7 +46,13 @@ const schema = {
         ponto_dashboard_v2_enabled: { type: 'BOOLEAN', default: false },
         guardian_ai_enabled: { type: 'BOOLEAN', default: false },
         guardian_ai_alert_channel: { type: 'VARCHAR(255)' },
-        guardian_ai_log_channel: { type: 'VARCHAR(255)' }
+        guardian_ai_log_channel: { type: 'VARCHAR(255)' },
+               // --- NOVAS CONFIGURAÇÕES DO HUB DE ALERTAS ---
+        guardian_ai_alert_enabled: { type: 'BOOLEAN', default: false },
+        guardian_ai_alert_cooldown_minutes: { type: 'INTEGER', default: 5 },
+        guardian_ai_alert_toxicity_threshold: { type: 'INTEGER', default: 75 },
+        guardian_ai_alert_sarcasm_threshold: { type: 'INTEGER', default: 80 },
+        guardian_ai_alert_attack_threshold: { type: 'INTEGER', default: 80 }
     },
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },
@@ -184,6 +190,7 @@ const schema = {
         last_infraction_at: { type: 'TIMESTAMPTZ' },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id', 'policy_id'] }
     },
+    
 
     // A tabela definitiva e corrigida
     guardian_rules: {
@@ -198,7 +205,8 @@ const schema = {
         action_warn_publicly: { type: 'BOOLEAN', default: false },
         action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
         action_punishment_duration_minutes: { type: 'INTEGER' }
-    }
+    },
+    
 };
 
 module.exports = schema;

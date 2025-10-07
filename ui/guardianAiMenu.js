@@ -4,8 +4,8 @@ module.exports = function generateGuardianAiMenu(settings) {
     const toggleButton = settings.guardian_ai_enabled ? { label: 'Desativar Módulo', style: 4 } : { label: 'Ativar Módulo', style: 3 };
 
     const monitoredCount = settings.guardian_ai_monitored_channels ? settings.guardian_ai_monitored_channels.split(',').filter(Boolean).length : 0;
-    const alertChannel = settings.guardian_ai_alert_channel ? `<#${settings.guardian_ai_alert_channel}>` : '`❌ Não definido`';
     const logChannel = settings.guardian_ai_log_channel ? `<#${settings.guardian_ai_log_channel}>` : '`❌ Não definido`';
+    const alertsStatus = settings.guardian_ai_alert_enabled ? '`✅ Ativado`' : '`❌ Desativado`';
 
     return [
         {
@@ -29,13 +29,13 @@ module.exports = function generateGuardianAiMenu(settings) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 1, "label": "Gerenciar Regras", "custom_id": "guardian_open_rules_menu", "emoji": { "name": "📜" } },
-                    "components": [{ "type": 10, "content": `**Sistema de Regras (Ações)**\n> Defina os gatilhos e as ações da IA.` }]
+                    "components": [{ "type": 10, "content": `**Sistema de Regras (Ações)**\n> Defina os gatilhos e as ações punitivas da IA.` }]
                 },
                  { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 1, "label": "Definir Canal", "custom_id": "guardian_set_alert_channel" },
-                    "components": [{ "type": 10, "content": `**Canal de Alertas de Conflito**\n> ${alertChannel}` }]
+                    "accessory": { "type": 2, "style": 1, "label": "Configurar", "custom_id": "guardian_open_alerts_hub" },
+                    "components": [{ "type": 10, "content": `**Hub de Alertas de Conflito**\n> Status: ${alertsStatus}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
