@@ -1,13 +1,25 @@
-// Crie em: handlers/buttons/mod_aplicar_punicao.js
+// Substitua em: handlers/buttons/mod_aplicar_punicao.js
 const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const db = require('../../database.js');
+const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'mod_aplicar_punicao_', // Handler dinâmico
     async execute(interaction) {
-        const targetId = interaction.customId.split('_')[3];
+        await interaction.deferUpdate();
 
+        const targetId = interaction.customId.split('_')[3];
+        const member = await interaction.guild.members.fetch(targetId).catch(() => null);
+        if (!member) {
+            return interaction.followUp({ content: '❌ Membro não encontrado.', ephemeral: true });
+        }
+
+        // 1. Busca os dados necessários novamente
+        const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
+
+        // 2. Cria o novo componente (o menu de seleção)
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId(`select_mod_punicao_${targetId}`)
             .setPlaceholder('Selecione a punição a ser aplicada')
@@ -18,22 +30,14 @@ module.exports = {
                 { label: 'Banir', value: 'ban', emoji: '🚫' },
             ]);
         
-        // Substitui os botões do Dossiê pelo menu de seleção
-        // interaction.message.components[0] é a primeira ActionRow do embed
-        const existingComponents = interaction.message.components[0].components;
-        const updatedComponents = existingComponents.map(component => {
-            if (component.type === 17) { // Componente V2
-                 // Encontra a última ActionRow (a dos botões) e substitui
-                const lastActionRowIndex = component.components.findLastIndex(c => c.type === 1);
-                if (lastActionRowIndex !== -1) {
-                    component.components[lastActionRowIndex] = new ActionRowBuilder().addComponents(selectMenu).toJSON();
-                }
-            }
-            return component;
-        });
+        const customActionRow = new ActionRowBuilder().addComponents(selectMenu).toJSON();
 
-        await interaction.update({
-            components: updatedComponents,
+        // 3. Reconstrói o Dossiê, passando o novo componente para substituir os botões
+        const dossiePayload = generateDossieEmbed(member, history, interaction, customActionRow);
+
+        // 4. Atualiza a mensagem com a estrutura V2 completa e correta
+        await interaction.editReply({
+            components: dossiePayload.components,
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }

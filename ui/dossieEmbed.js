@@ -1,12 +1,12 @@
-// Crie em: ui/dossieEmbed.js
+// Substitua em: ui/dossieEmbed.js
 const { PermissionsBitField } = require('discord.js');
 
-module.exports = function generateDossieEmbed(member, history, interaction) {
+module.exports = function generateDossieEmbed(member, history, interaction, customActionRow = null) {
     // Calcula o resumo das infrações
     const summary = { WARN: 0, TIMEOUT: 0, KICK: 0, BAN: 0 };
     history.forEach(log => {
-        if (summary[log.action] !== undefined) {
-            summary[log.action]++;
+        if (summary[log.action.toUpperCase()] !== undefined) {
+            summary[log.action.toUpperCase()]++;
         }
     });
 
@@ -18,11 +18,19 @@ module.exports = function generateDossieEmbed(member, history, interaction) {
         }).join('\n\n')
         : '> Nenhuma ocorrência encontrada para este membro.';
 
-    // Verifica se o moderador tem permissão para punir (para habilitar/desabilitar o botão)
-    const canPunish = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator) || member.roles.highest.position < interaction.member.roles.highest.position;
+    const canPunish = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator) || (member.roles.highest.position < interaction.member.roles.highest.position);
 
-    return {
-        components: [{
+    // Define a fileira de botões padrão
+    const defaultActionRow = {
+        "type": 1,
+        "components": [
+            { "type": 2, "style": 3, "label": "Aplicar Nova Punição", "emoji": { "name": "⚖️" }, "custom_id": `mod_aplicar_punicao_${member.id}`, "disabled": !canPunish },
+            { "type": 2, "style": 1, "label": "Adicionar Nota", "emoji": { "name": "📝" }, "custom_id": `mod_adicionar_nota_${member.id}`, "disabled": true }
+        ]
+    };
+
+    const components = [
+        {
             "type": 17, "accent_color": 15158332,
             "components": [
                 {
@@ -42,16 +50,13 @@ module.exports = function generateDossieEmbed(member, history, interaction) {
                 { "type": 10, "content": "### Histórico Recente de Moderação" },
                 { "type": 10, "content": historyText },
                 { "type": 14, "divider": true, "spacing": 2 },
-                {
-                    "type": 1,
-                    "components": [
-                        { "type": 2, "style": 3, "label": "Aplicar Nova Punição", "emoji": { "name": "⚖️" }, "custom_id": `mod_aplicar_punicao_${member.id}`, "disabled": !canPunish }, 
-                        { "type": 2, "style": 1, "label": "Adicionar Nota", "emoji": { "name": "📝" }, "custom_id": `mod_adicionar_nota_${member.id}`, "disabled": true }
-                    ]
-                },
-                 { "type": 14, "divider": true, "spacing": 1 },
-                 { "type": 1, "components": [{ "type": 2, "style": 2, "label": "Voltar ao Hub", "emoji": { "name": "↩️" }, "custom_id": "mod_open_hub" }] }
+                // LÓGICA DE ATUALIZAÇÃO: Usa a fileira de ações personalizada se ela for fornecida, senão, usa a padrão.
+                customActionRow ? customActionRow : defaultActionRow,
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 1, "components": [{ "type": 2, "style": 2, "label": "Voltar ao Hub", "emoji": { "name": "↩️" }, "custom_id": "mod_open_hub" }] }
             ]
-        }]
-    };
+        }
+    ];
+
+    return { components };
 };
