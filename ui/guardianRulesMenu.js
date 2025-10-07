@@ -3,7 +3,6 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 function getRuleInfo(rule) {
     let triggerDesc = 'Não definido';
-    // Adicionamos uma verificação para garantir que os dados existem antes de tentar formatar
     if (rule.trigger_type && rule.trigger_threshold) {
         switch (rule.trigger_type) {
             case 'TOXICITY':
@@ -48,7 +47,7 @@ module.exports = function generateGuardianRulesMenu(rules) {
         });
         ruleComponents.pop();
     } else {
-        ruleComponents.push({ "type": 10, "content": "> Nenhuma regra criada ainda." });
+        ruleComponents.push({ "type": 10, "content": "> Nenhuma regra criada ainda. Clique em \"Adicionar Regra\" para começar." });
     }
         
     const actionButtons = new ActionRowBuilder().addComponents(
