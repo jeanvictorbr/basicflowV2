@@ -1,6 +1,8 @@
-// Crie em: ui/moderacaoPremiumHub.js
+// Substitua em: ui/moderacaoPremiumHub.js
 module.exports = function generateModeracaoPremiumHub(settings) {
-    const monitorStatus = settings.mod_monitor_enabled ? `✅ Ativado (Logs em <#${settings.mod_monitor_channel}>)` : '❌ Desativado';
+    // CORREÇÃO: Verifica se o canal do monitor existe antes de tentar exibi-lo
+    const monitorLogChannel = settings.mod_monitor_channel ? `<#${settings.mod_monitor_channel}>` : '`Não definido`';
+    const monitorStatus = settings.mod_monitor_enabled ? `✅ Ativado (Logs em ${monitorLogChannel})` : '❌ Desativado';
     const toggleMonitorButton = settings.mod_monitor_enabled ? { label: 'Desativar Monitor', style: 4 } : { label: 'Ativar Monitor', style: 3 };
 
     return [
@@ -17,12 +19,17 @@ module.exports = function generateModeracaoPremiumHub(settings) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Ver Dashboard", "custom_id": "mod_ver_bans_temporarios" },
-                    "components": [{ "type": 10, "content": `**Dashboard de Banimentos Temporários**\n> Veja e gira todos os bans com tempo definido.` }]
+                    "components": [{ "type": 10, "content": `**Dashboard de Banimentos**\n> Veja e gira todos os bans do servidor.` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": toggleMonitorButton.style, "label": toggleMonitorButton.label, "custom_id": "mod_toggle_monitor" },
                     "components": [{ "type": 10, "content": `**Monitor de Expiração de Punições**\n> Status: ${monitorStatus}` }]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Definir Canal", "custom_id": "mod_set_monitor_channel", "disabled": !settings.mod_monitor_enabled },
+                    "components": [{ "type": 10, "content": "**Canal de Logs do Monitor**\n> Onde as notificações de expiração serão enviadas." }]
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
                 { "type": 1, "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "open_moderacao_menu" }] }
