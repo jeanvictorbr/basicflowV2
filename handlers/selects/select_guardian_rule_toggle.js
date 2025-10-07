@@ -10,11 +10,16 @@ module.exports = {
         await interaction.deferUpdate();
         const ruleId = interaction.values[0];
         
-        // USA A NOVA TABELA 'guardian_rules_v2'
-        await db.query('UPDATE guardian_rules_v2 SET is_enabled = NOT is_enabled WHERE id = $1 AND guild_id = $2', [ruleId, interaction.guild.id]);
+        // Atualiza a regra na tabela correta
+        await db.query('UPDATE guardian_rules SET is_enabled = NOT is_enabled WHERE id = $1 AND guild_id = $2', [ruleId, interaction.guild.id]);
         
-        const rules = (await db.query('SELECT * FROM guardian_rules_v2 WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+        // Busca a lista ATUALIZADA de regras
+        const rules = (await db.query('SELECT * FROM guardian_rules WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+        
+        // Gera o menu com a lista correta
         const menuPayload = generateGuardianRulesMenu(rules);
+
+        // Atualiza a mensagem com o menu corrigido
         await interaction.editReply({
             components: menuPayload.components,
             flags: V2_FLAG | EPHEMERAL_FLAG,
