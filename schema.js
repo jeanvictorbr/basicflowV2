@@ -1,6 +1,4 @@
 // schema.js
-
-// A "Fonte da Verdade" para a estrutura da nossa base de dados.
 const schema = {
     guild_settings: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
@@ -46,32 +44,10 @@ const schema = {
         ponto_vitrine_footer: { type: 'TEXT' },
         ponto_vitrine_color: { type: 'VARCHAR(7)' },
         ponto_dashboard_v2_enabled: { type: 'BOOLEAN', default: false },
-
-        // --- INÍCIO: MÓDULO GUARDIAN AI (Simplificado) ---
         guardian_ai_enabled: { type: 'BOOLEAN', default: false },
         guardian_ai_alert_channel: { type: 'VARCHAR(255)' },
-        guardian_ai_log_channel: { type: 'VARCHAR(255)' } // Novo canal para logs de ações
-        // --- FIM: MÓDULO GUARDIAN AI ---
+        guardian_ai_log_channel: { type: 'VARCHAR(255)' }
     },
-        // --- INÍCIO: NOVA TABELA DO GUARDIAN AI ---
-    guardian_rules: {
-        id: { type: 'SERIAL', primaryKey: true },
-        guild_id: { type: 'VARCHAR(255)', notNull: true },
-        name: { type: 'VARCHAR(100)', notNull: true },
-        is_enabled: { type: 'BOOLEAN', default: true },
-        // Gatilhos (Quando)
-        trigger_type: { type: 'VARCHAR(50)', notNull: true }, // Ex: 'TOXICITY', 'SPAM_TEXT', 'MENTION_SPAM'
-        trigger_threshold: { type: 'INTEGER', notNull: true }, // Ex: 80 (para 80%), 5 (para 5 menções)
-        trigger_window_seconds: { type: 'INTEGER', default: 10 },
-        // Ações (Como)
-        action_delete_message: { type: 'BOOLEAN', default: false },
-        action_warn_member_dm: { type: 'BOOLEAN', default: false },
-        action_warn_message: { type: 'TEXT' }, // Mensagem de aviso a ser enviada
-        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
-        action_warn_publicly: { type: 'BOOLEAN', default: false },  // Ex: 'NONE', 'TIMEOUT_5_MIN', 'KICK', 'BAN'
-        action_punishment_duration_minutes: { type: 'INTEGER' } // Duração para timeout
-    },
-    // --- FIM: NOVA TABELA DO GUARDIAN AI ---
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },
         duration_days: { type: 'INTEGER', notNull: true },
@@ -179,6 +155,21 @@ const schema = {
         keywords: { type: 'TEXT', notNull: true },
         content: { type: 'TEXT', notNull: true },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    guardian_rules: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        is_enabled: { type: 'BOOLEAN', default: true },
+        trigger_type: { type: 'VARCHAR(50)', notNull: true },
+        trigger_threshold: { type: 'INTEGER', notNull: true },
+        trigger_window_seconds: { type: 'INTEGER', default: 10 },
+        action_delete_message: { type: 'BOOLEAN', default: false },
+        action_warn_member_dm: { type: 'BOOLEAN', default: false },
+        action_warn_publicly: { type: 'BOOLEAN', default: false },
+        action_warn_message: { type: 'TEXT' },
+        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
+        action_punishment_duration_minutes: { type: 'INTEGER' }
     }
 };
 
