@@ -52,8 +52,24 @@ const schema = {
         guardian_ai_alert_cooldown_minutes: { type: 'INTEGER', default: 5 },
         guardian_ai_alert_toxicity_threshold: { type: 'INTEGER', default: 75 },
         guardian_ai_alert_sarcasm_threshold: { type: 'INTEGER', default: 80 },
-        guardian_ai_alert_attack_threshold: { type: 'INTEGER', default: 80 }
+        guardian_ai_alert_attack_threshold: { type: 'INTEGER', default: 80 },
+                // --- NOVAS CONFIGURAÇÕES DE MODERAÇÃO ---
+        mod_log_channel: { type: 'VARCHAR(255)' },
+        mod_roles: { type: 'TEXT' }, // IDs dos cargos, separados por vírgula
+        mod_temp_ban_enabled: { type: 'BOOLEAN', default: false }
     },
+        // --- NOVA TABELA PARA HISTÓRICO DE MODERAÇÃO ---
+    moderation_logs: {
+        case_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true }, // ID do membro que sofreu a ação
+        moderator_id: { type: 'VARCHAR(255)', notNull: true }, // ID do staff que aplicou
+        action: { type: 'VARCHAR(50)', notNull: true }, // 'WARN', 'TIMEOUT', 'KICK', 'BAN'
+        reason: { type: 'TEXT', notNull: true },
+        duration: { type: 'VARCHAR(50)' }, // e.g., '1h', '7d', null
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },
         duration_days: { type: 'INTEGER', notNull: true },

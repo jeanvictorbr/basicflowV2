@@ -30,6 +30,12 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_tickets_menu" },
             components: [{ type: 10, content: "🚨 Tickets" }, { type: 10, content: "Configure todo o sistema de **tickets**." }]
         },
+        // --- MÓDULO DE MODERAÇÃO ADICIONADO AQUI ---
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_moderacao_menu" },
+            components: [{ type: 10, content: "⚖️ Moderação" }, { type: 10, content: "Configure as ferramentas da sua **equipa de staff**." }]
+        },
         // --- FIM DA PÁGINA 1 ---
         { type: 14, divider: true, spacing: 2 },
         {
@@ -49,14 +55,10 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         // --- FIM DA PÁGINA 2 ---
     ];
 
-    // AQUI ESTÁ A MUDANÇA
-    const ITEMS_PER_PAGE = 3; 
-
-    // A lógica abaixo agrupa os itens e divisórias corretamente.
-    // Cada "módulo" na verdade são 2 itens no array (o acessório + a divisória).
+    // Lógica de paginação ajustada para 4 itens por página
+    const ITEMS_PER_PAGE = 4; 
     const itemsWithDividersPerPage = ITEMS_PER_PAGE * 2;
     const paginatedModules = allModules.slice(page * itemsWithDividersPerPage, (page + 1) * itemsWithDividersPerPage);
-    // Remove a última divisória se ela for o último item da página, para economizar espaço
     if (paginatedModules.length > 0 && paginatedModules[paginatedModules.length - 1].type === 14) {
         paginatedModules.pop();
     }
