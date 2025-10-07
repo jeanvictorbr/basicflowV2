@@ -4,7 +4,7 @@ const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
-const ms = require('ms'); // ms é uma dependência que já temos, usada no Bate-Ponto
+const ms = require('ms');
 
 module.exports = {
     customId: 'modal_mod_executar_', // Handler dinâmico
@@ -13,8 +13,19 @@ module.exports = {
 
         const [_, __, ___, action, targetId] = interaction.customId.split('_');
         const reason = interaction.fields.getTextInputValue('input_reason');
-        const durationStr = interaction.fields.getTextInputValue('input_duration') || null;
-        let durationMs = durationStr ? ms(durationStr) : null;
+
+        // --- CORREÇÃO APLICADA AQUI ---
+        // Só tenta ler a duração se o campo puder existir
+        let durationStr = null;
+        let durationMs = null;
+        if (action === 'timeout' || action === 'ban') {
+            // Usamos .getField para evitar o erro se o campo não existir (ex: ban permanente)
+            durationStr = interaction.fields.getField('input_duration', false)?.value || null;
+            if (durationStr) {
+                durationMs = ms(durationStr);
+            }
+        }
+        // --- FIM DA CORREÇÃO ---
 
         const targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
         if (!targetMember) {
@@ -30,14 +41,14 @@ module.exports = {
                     await targetMember.send(`⚠️ Você recebeu um aviso no servidor **${interaction.guild.name}**.\n**Motivo:** ${reason}`);
                     break;
                 case 'timeout':
-                    if (!durationMs) throw new Error('Duração inválida para timeout.');
+                    if (!durationMs) throw new Error('Duração inválida ou não fornecida para timeout.');
                     await targetMember.timeout(durationMs, `Moderador: ${interaction.user.tag} | Motivo: ${reason}`);
                     break;
                 case 'kick':
                     await targetMember.kick(`Moderador: ${interaction.user.tag} | Motivo: ${reason}`);
                     break;
                 case 'ban':
-                    await targetMember.ban({ reason: `Moderador: ${interaction.user.tag} | Motivo: ${reason}`, deleteMessageSeconds: durationMs ? 0 : 604800 }); // Apaga 7 dias de msgs em ban permanente
+                    await interaction.guild.bans.create(targetId, { reason: `Moderador: ${interaction.user.tag} | Motivo: ${reason}` });
                     break;
             }
 
