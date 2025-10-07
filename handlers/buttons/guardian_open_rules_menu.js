@@ -9,7 +9,7 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate();
         // --- MUDANÇA AQUI ---
-        const rules = (await db.query('SELECT * FROM guardian_rules_v2 WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+        const rules = (await db.query('SELECT * FROM guardian_rules WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
         const menuPayload = generateGuardianRulesMenu(rules);
         await interaction.editReply({
             components: menuPayload.components,
