@@ -156,6 +156,34 @@ const schema = {
         content: { type: 'TEXT', notNull: true },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
+        // --- NOVAS TABELAS DO SISTEMA DE ESCALONAMENTO ---
+    guardian_policies: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        trigger_type: { type: 'VARCHAR(50)', notNull: true }, // 'SPAM_TEXT', 'MENTION_SPAM', 'TOXICITY'
+        is_enabled: { type: 'BOOLEAN', default: true },
+        reset_interval_hours: { type: 'INTEGER', default: 24 } // Tempo para resetar as infrações de um usuário
+    },
+    guardian_policy_steps: {
+        id: { type: 'SERIAL', primaryKey: true },
+        policy_id: { type: 'INTEGER', notNull: true }, // Chave estrangeira para guardian_policies
+        step_level: { type: 'INTEGER', notNull: true }, // 1, 2, 3...
+        threshold: { type: 'INTEGER', notNull: true }, // Ex: 3 (mensagens), 80 (%)
+        action_delete_message: { type: 'BOOLEAN', default: false },
+        action_warn_publicly: { type: 'BOOLEAN', default: false },
+        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' }, // 'NONE', 'TIMEOUT', 'KICK', 'BAN'
+        action_punishment_duration_minutes: { type: 'INTEGER' }
+    },
+    guardian_infractions: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        policy_id: { type: 'INTEGER', notNull: true }, // Chave estrangeira para guardian_policies
+        infraction_count: { type: 'INTEGER', default: 0 },
+        last_infraction_at: { type: 'TIMESTAMPTZ' },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id', 'policy_id'] }
+    },
 
     // A tabela definitiva e corrigida
     guardian_rules: {
