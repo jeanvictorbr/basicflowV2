@@ -157,7 +157,7 @@ const schema = {
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
 
-    // Tabela definitiva do Guardian
+    // A tabela definitiva e corrigida
     guardian_rules: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -166,6 +166,7 @@ const schema = {
         trigger_type: { type: 'VARCHAR(50)', notNull: true },
         trigger_threshold: { type: 'INTEGER', notNull: true },
         action_delete_message: { type: 'BOOLEAN', default: false },
+        action_warn_member_dm: { type: 'BOOLEAN', default: false },
         action_warn_publicly: { type: 'BOOLEAN', default: false },
         action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
         action_punishment_duration_minutes: { type: 'INTEGER' }
