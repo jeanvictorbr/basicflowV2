@@ -1,10 +1,11 @@
-// index.js
+// Substitua em: index.js
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
+const { checkExpiredPunishments } = require('./utils/punishmentMonitor.js'); // <-- LINHA ADICIONADA
 require('dotenv').config();
 const db = require('./database.js');
 
@@ -22,9 +23,8 @@ const commandsToDeploy = [];
 
 for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
-    if (command.data && command.execute) {
+    if (command.data && (command.execute || command.data.type === 2)) {
         client.commands.set(command.data.name, command);
-        // Adiciona todos os comandos para deploy, exceto o de debug por padrão
         if (command.data.name !== 'debugai') {
              commandsToDeploy.push(command.data.toJSON());
         }
@@ -35,7 +35,7 @@ for (const file of commandFiles) {
 console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
-const handlerTypes = ['buttons', 'modals', 'selects'];
+const handlerTypes = ['buttons', 'modals', 'selects', 'commands']; // Adicionado 'commands' para handlers de contexto
 
 handlerTypes.forEach(handlerType => {
     const handlerDir = path.join(handlersPath, handlerType);
@@ -64,10 +64,8 @@ client.once(Events.ClientReady, async () => {
     try {
         console.log(`[CMD] Iniciando registo de ${commandsToDeploy.length} comando(s).`);
         
-        // Lógica de deploy de comandos (semelhante a deploy-commands.js)
         if (process.env.DEV_GUILD_ID) {
             const debugCommand = client.commands.get('debugai');
-            // Clona o array para não modificar o original
             const devCommands = [...commandsToDeploy];
             if(debugCommand) devCommands.push(debugCommand.data.toJSON());
 
@@ -92,8 +90,9 @@ client.once(Events.ClientReady, async () => {
     // Inicia o loop de verificação de tickets inativos
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
-    }, 5 * 60 * 4000); // Executa a cada 5 minutos
-        // --- NOVO LOOP PARA O MONITOR DE PUNIÇÕES ---
+    }, 5 * 60 * 1000); // Executa a cada 5 minutos
+
+    // --- NOVO LOOP PARA O MONITOR DE PUNIÇÕES ---
     setInterval(() => {
         checkExpiredPunishments(client);
     }, 1 * 60 * 1000); // Executa a cada 1 minuto
@@ -101,33 +100,44 @@ client.once(Events.ClientReady, async () => {
 
 // --- Evento de Interações ---
 client.on(Events.InteractionCreate, async interaction => {
+    let handler;
+    let customId;
+
     if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
-        if (!command) return;
-        try {
-            await command.execute(interaction);
-        } catch (error) {
-            console.error(`Erro executando o comando /${interaction.commandName}:`, error);
+        customId = interaction.commandName;
+        handler = client.handlers.get(customId);
+        // Se não houver handler específico, usa o do comando
+        if (!handler) {
+            const command = client.commands.get(customId);
+            if (!command) return;
+            try {
+                await command.execute(interaction);
+            } catch (error) {
+                console.error(`Erro executando o comando /${customId}:`, error);
+            }
+            return;
         }
+    } else if (interaction.isUserContextMenuCommand()) {
+        customId = interaction.commandName;
+        handler = client.handlers.get(customId);
     } else {
-        // Lógica para encontrar o handler correto (incluindo handlers dinâmicos)
-        const customId = interaction.customId;
-        let handler = client.handlers.get(customId);
+        customId = interaction.customId;
+        handler = client.handlers.get(customId);
         
         if (!handler) {
-            const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => customId.startsWith(key));
+            const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => key.endsWith('_') && customId.startsWith(key));
             if (dynamicHandlerId) {
                 handler = client.handlers.get(dynamicHandlerId);
             }
         }
+    }
         
-        if (!handler) return;
+    if (!handler) return;
 
-        try {
-            await handler(interaction, client);
-        } catch (error) {
-            console.error(`Erro executando o handler de interação "${customId}":`, error);
-        }
+    try {
+        await handler(interaction, client);
+    } catch (error) {
+        console.error(`Erro executando o handler de interação "${customId}":`, error);
     }
 });
 
@@ -135,15 +145,12 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on(Events.MessageCreate, async message => {
     if (!message.guild || message.author.bot) return;
 
-    // --- LÓGICA DO GUARDIAN AI ---
     try {
         await processMessageForGuardian(message);
     } catch (err) {
         console.error('[Guardian AI] Erro não tratado:', err);
     }
-    // ----------------------------
 
-    // --- LÓGICA DO ASSISTENTE DE TICKET ---
     const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
     if (!ticket) return;
 
@@ -184,6 +191,5 @@ client.on(Events.MessageCreate, async message => {
         await message.channel.send(aiResponse);
     }
 });
-
 
 client.login(process.env.DISCORD_TOKEN);
