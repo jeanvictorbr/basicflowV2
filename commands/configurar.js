@@ -10,7 +10,8 @@ module.exports = {
         .setDescription('Abre o Hub de Configurações do bot.'),
 
     async execute(interaction) {
-        const mainMenuComponents = await generateMainMenu(interaction);
+        // AQUI ESTÁ A MUDANÇA: Passamos 'interaction' e a página inicial '0'
+        const mainMenuComponents = await generateMainMenu(interaction, 0); 
         await interaction.reply({
             components: mainMenuComponents,
             flags: V2_FLAG | EPHEMERAL_FLAG,

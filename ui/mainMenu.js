@@ -2,9 +2,7 @@
 const isPremiumActive = require('../utils/premiumCheck.js');
 const db = require('../database.js');
 
-module.exports = async function generateMainMenu(interaction) {
-    await db.query(`INSERT INTO guild_settings (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING`, [interaction.guild.id]);
-    
+module.exports = async function generateMainMenu(interaction, page = 0) {
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
     const isPremium = await isPremiumActive(interaction.guild.id);
 
@@ -12,70 +10,78 @@ module.exports = async function generateMainMenu(interaction) {
     if (isPremium) {
         const expiresAt = new Date(settings.premium_expires_at);
         const formattedDate = expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        premiumStatusText = `> ✨ **Premium:** Ativo (Expira em: ${formattedDate})`;
+        premiumStatusText = `> ✨ **Status Premium:** Ativo\n> 📅 **Expira em:** ${formattedDate}`;
     } else {
-        premiumStatusText = `> ✨ **Premium:** Inativo`;
+        premiumStatusText = `> ✨ **Status Premium:** Inativo\n> 💡 Ative uma chave para liberar funcionalidades exclusivas!`;
     }
 
-    // Estrutura simplificada para reduzir o número de componentes
-    const modulesText = [
-        `🏖️ **Ausências:** Configure o sistema de ausências.`,
-        `📂 **Registros:** Gerencie o sistema de whitelist/registros.`,
-        `🚨 **Tickets:** Administre o sistema de suporte.`,
-        `👔 **Uniformes:** Monte a vitrine de uniformes.`,
-        `⏰ **Bate-Ponto:** Controle o sistema de ponto.`,
-        `🛡️ **Guardian AI:** Configure a moderação proativa.`
-    ].join('\n> \n> ');
+    const allModules = [
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_ausencias_menu" },
+            components: [{ type: 10, content: "🏖️ Ausências" }, { type: 10, content: "Configure todo o sistema de **ausências**." }]
+        },
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_registros_menu" },
+            components: [{ type: 10, content: "📂 Registros" }, { type: 10, content: "Configure todo o sistema de **registros**." }]
+        },
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_tickets_menu" },
+            components: [{ type: 10, content: "🚨 Tickets" }, { type: 10, content: "Configure todo o sistema de **tickets**." }]
+        },
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_uniformes_menu" },
+            components: [{ type: 10, content: "👔 Uniformes" }, { type: 10, content: "Configure todo o sistema de **uniformes**." }]
+        },
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_ponto_menu" },
+            components: [{ type: 10, content: "⏰ Bate-Ponto" }, { type: 10, content: "Configure todo o sistema de **bate-ponto**." }]
+        },
+        // --- PAGINA 2 ---
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !isPremium },
+            components: [{ type: 10, content: "🛡️ Guardian AI (Premium)" }, { type: 10, content: "Moderação proativa para **prevenir conflitos**." }]
+        }
+    ];
+
+    const ITEMS_PER_PAGE = 5; // Cada módulo ocupa 2 componentes (item + divider), mas vamos contar por módulo.
+    const paginatedModules = allModules.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(allModules.length / ITEMS_PER_PAGE);
+
+    const paginationButtons = {
+        type: 1,
+        components: [
+            { type: 2, style: 2, label: "Página Anterior", custom_id: `main_menu_page_${page - 1}`, disabled: page === 0 },
+            { type: 2, style: 2, label: "Próxima Página", custom_id: `main_menu_page_${page + 1}`, disabled: page + 1 >= totalPages }
+        ]
+    };
 
     return [
         {
-            "type": 17, "accent_color": 42751,
-            "components": [
-                { "type": 10, "content": `## Hub de Configurações - ${interaction.guild.name}` },
-                { "type": 10, "content": premiumStatusText },
-                { "type": 14, "divider": true, "spacing": 1 },
-
-                // Módulos agrupados para economizar componentes
-                { "type": 10, "content": `> ${modulesText}` },
-                { "type": 14, "divider": true, "spacing": 2 },
-
-                // Botões de Ação
+            type: 17, accent_color: 42751,
+            components: [
+                { type: 10, content: `## Hub de Configurações - ${interaction.guild.name}` },
+                { type: 10, content: premiumStatusText },
+                { type: 14, divider: true, spacing: 2 },
+                
+                ...paginatedModules,
+                
+                { type: 14, divider: true, spacing: 2 },
+                totalPages > 1 ? paginationButtons : null, // Só mostra botões de página se houver mais de uma
+                { type: 14, divider: true, spacing: 1 },
                 {
-                    "type": 1,
-                    "components": [
-                        { "type": 2, "style": 2, "label": "Ausências", "custom_id": "open_ausencias_menu" },
-                        { "type": 2, "style": 2, "label": "Registros", "custom_id": "open_registros_menu" },
-                        { "type": 2, "style": 2, "label": "Tickets", "custom_id": "open_tickets_menu" },
+                    type: 1,
+                    components: [
+                        { type: 2, style: 3, label: "Ativar Key", custom_id: "main_ativar_key" },
+                        { type: 2, style: 1, label: "Estatísticas", emoji: { name: "📊" }, disabled: !isPremium, custom_id: "main_show_stats" }
                     ]
                 },
-                {
-                    "type": 1,
-                    "components": [
-                        { "type": 2, "style": 2, "label": "Uniformes", "custom_id": "open_uniformes_menu" },
-                        { "type": 2, "style": 2, "label": "Bate-Ponto", "custom_id": "open_ponto_menu" },
-                        { "type": 2, "style": 2, "label": "Guardian AI", "custom_id": "open_guardian_menu", "disabled": !isPremium },
-                    ]
-                },
-                 { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 1,
-                    "components": [
-                        { "type": 2, "style": 3, "label": "Ativar Key", "custom_id": "main_ativar_key" },
-                        { "type": 2, "style": 1, "label": "Estatísticas", "emoji": { "name": "📊" }, "disabled": !isPremium, "custom_id": "main_show_stats" }
-                    ]
-                },
-   
-                // =======================================================
-                // ==                RODAPÉ ADICIONADO AQUI             ==
-                // =======================================================
-                { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 10, // Tipo 10 é um componente de Texto
-                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
-                    "content": " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" 
-                }
-                // =======================================================
-            ]
+                { type: 14, divider: true, spacing: 1 },
+                { type: 10, content: " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
+            ].filter(Boolean) // Remove componentes nulos (como a paginação quando não necessária)
         }
     ];
 }
