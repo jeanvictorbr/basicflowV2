@@ -1,7 +1,6 @@
 // Crie em: handlers/modals/modal_mod_unban_id.js
 const db = require('../../database.js');
 const generateModeracaoBansMenu = require('../../ui/moderacaoBansMenu.js');
-const { EmbedBuilder } = require('discord.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -14,17 +13,15 @@ module.exports = {
         try {
             await interaction.guild.members.unban(userId, `Revogado por: ${interaction.user.tag}`);
             
-            // Limpa o registo de ban temporário, se houver
             await db.query("DELETE FROM moderation_logs WHERE guild_id = $1 AND user_id = $2 AND action = 'BAN' AND duration IS NOT NULL", [interaction.guild.id, userId]);
 
             await interaction.editReply({ content: `✅ O banimento do usuário \`${userId}\` foi revogado com sucesso.` });
 
-            // Atualiza o dashboard de bans
+            // Atualiza o dashboard de bans que está na mensagem anterior
             const bans = await interaction.guild.bans.fetch();
             const bannedUsers = Array.from(bans.values());
             await interaction.message.edit({
-                components: generateModeracaoBansMenu(bannedUsers),
-                flags: V2_FLAG | EPHEMERAL_FLAG,
+                components: generateModeracaoBansMenu(bannedUsers)
             });
 
         } catch (error) {
