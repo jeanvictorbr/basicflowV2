@@ -34,6 +34,9 @@ module.exports = function generateGuardianAlertsHubMenu(settings) {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Ajustar", "custom_id": "guardian_alert_set_thresholds" },
                     "components": [{ "type": 10, "content": `**Limiares de Sensibilidade**\n> Tox.: ${toxicity} | Sarc.: ${sarcasm} | Atq.: ${attack}` }]
                 },
+                {
+                    "type": 10, "content": "> *Quanto **menor** o valor, **mais sensível** será a IA e mais alertas ela enviará.*"
+                },
                 { "type": 14, "divider": true, "spacing": 2 },
                 { "type": 1, "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "open_guardian_menu" }] }
             ]
