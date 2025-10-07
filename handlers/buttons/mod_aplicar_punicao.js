@@ -18,6 +18,7 @@ module.exports = {
 
         // 1. Busca os dados necessários novamente
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
+        const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
         // 2. Cria o novo componente (o menu de seleção)
         const selectMenu = new StringSelectMenuBuilder()
@@ -32,8 +33,8 @@ module.exports = {
         
         const customActionRow = new ActionRowBuilder().addComponents(selectMenu).toJSON();
 
-        // 3. Reconstrói o Dossiê, passando o novo componente para substituir os botões
-        const dossiePayload = generateDossieEmbed(member, history, interaction, customActionRow);
+        // 3. Reconstrói o Dossiê, passando o novo componente e a INTERACTION (esta era a causa do bug)
+        const dossiePayload = generateDossieEmbed(member, history, notes, interaction, customActionRow);
 
         // 4. Atualiza a mensagem com a estrutura V2 completa e correta
         await interaction.editReply({
