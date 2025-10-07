@@ -4,9 +4,8 @@ const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = req
 module.exports = {
     customId: 'mod_punicao_add_manual_role',
     async execute(interaction) {
-        // Reutiliza o modal antigo que pede o ID
         const modal = new ModalBuilder()
-            .setCustomId('modal_mod_punicao_add')
+            .setCustomId('modal_mod_punicao_add_manual')
             .setTitle('Nova Punição (Cargo Manual)');
 
         modal.addComponents(

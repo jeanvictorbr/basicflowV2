@@ -237,7 +237,7 @@ const schema = {
         action: { type: 'VARCHAR(50)', notNull: true },
         role_id: { type: 'VARCHAR(255)' },
         duration: { type: 'VARCHAR(50)' },
-        auto_create_role: { type: 'BOOLEAN', default: false } // NOVA COLUNA
+        auto_create_role: { type: 'BOOLEAN', default: false }, // NOVA COLUNA
     }
 };
 

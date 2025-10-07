@@ -6,7 +6,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 module.exports = {
     customId: 'mod_punicao_add',
     async execute(interaction) {
-        // Agora, em vez de um modal, mostramos dois botões de escolha
+        // Agora, em vez de um modal, mostramos três botões de escolha
         const components = [
             {
                 type: 17, accent_color: 11393254,
