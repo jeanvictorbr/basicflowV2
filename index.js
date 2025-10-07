@@ -92,7 +92,7 @@ client.once(Events.ClientReady, async () => {
     // Inicia o loop de verificação de tickets inativos
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
-    }, 5 * 60 * 1000); // Executa a cada 5 minutos
+    }, 5 * 60 * 4000); // Executa a cada 5 minutos
 });
 
 // --- Evento de Interações ---

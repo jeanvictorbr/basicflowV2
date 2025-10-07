@@ -1,5 +1,4 @@
-// Crie a pasta 'commands' dentro da pasta 'handlers'
-// Crie em: handlers/commands/dossie.js
+// handlers/commands/dossie.js
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const isPremiumActive = require('../../utils/premiumCheck.js');
@@ -19,7 +18,6 @@ async function hasModPermission(interaction) {
 }
 
 module.exports = {
-    // O nome aqui deve ser EXATAMENTE o mesmo do comando de contexto
     customId: 'Ver Dossiê',
     async execute(interaction) {
         const isPremium = await isPremiumActive(interaction.guild.id);
@@ -38,10 +36,11 @@ module.exports = {
 
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         
-        const dossiePayload = generateDossieEmbed(member, history);
+        // Passando a 'interaction' para o gerador do embed
+        const dossiePayload = generateDossieEmbed(member, history, interaction);
         
         await interaction.editReply({
-            ...dossiePayload,
+            components: dossiePayload.components,
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
