@@ -1,5 +1,5 @@
 // ui/guardianRulesMenu.js
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 function getRuleDescription(rule) {
     let triggerDesc = '';
@@ -24,8 +24,8 @@ function getRuleDescription(rule) {
         'KICK': 'Expulsar',
         'BAN': 'Banir'
     };
-    if (rule.action_punishment !== 'NONE') {
-        actions.push(punishmentMap[rule.action_punishment] || 'Nenhuma');
+    if (rule.action_punishment !== 'NONE' && punishmentMap[rule.action_punishment]) {
+        actions.push(punishmentMap[rule.action_punishment]);
     }
 
     return { trigger: triggerDesc, actions: actions.join(' | ') || 'Nenhuma' };
