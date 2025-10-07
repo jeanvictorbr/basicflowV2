@@ -8,7 +8,11 @@ module.exports = {
     customId: 'modal_guardian_rule_create_', // Dinâmico
     async execute(interaction) {
         await interaction.deferUpdate();
-        const triggerType = interaction.customId.split('_')[4];
+        
+        // --- CORREÇÃO DEFINITIVA APLICADA AQUI ---
+        // O código agora junta o 'triggerType' corretamente (ex: 'SPAM_TEXT')
+        const customIdParts = interaction.customId.split('_');
+        const triggerType = customIdParts.slice(4).join('_');
 
         const name = interaction.fields.getTextInputValue('input_name');
         const threshold = parseInt(interaction.fields.getTextInputValue('input_threshold'), 10);
@@ -29,7 +33,7 @@ module.exports = {
             return interaction.followUp({ content: 'Para a ação TIMEOUT, você deve fornecer uma duração válida em minutos.', ephemeral: true });
         }
         
-        // Query corrigida para usar 'guardian_rules' e ter todos os 9 parâmetros
+        // Vamos continuar usando a tabela 'guardian_rules' para consistência
         await db.query(
             `INSERT INTO guardian_rules (guild_id, name, trigger_type, trigger_threshold, action_delete_message, action_warn_member_dm, action_warn_publicly, action_punishment, action_punishment_duration_minutes)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
