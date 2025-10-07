@@ -157,19 +157,16 @@ const schema = {
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
 
-    // A tabela antiga 'guardian_rules' foi removida e substituída por esta
-    guardian_rules_v2: {
+    // Tabela definitiva do Guardian
+    guardian_rules: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },
         is_enabled: { type: 'BOOLEAN', default: true },
         trigger_type: { type: 'VARCHAR(50)', notNull: true },
         trigger_threshold: { type: 'INTEGER', notNull: true },
-        trigger_window_seconds: { type: 'INTEGER', default: 10 },
         action_delete_message: { type: 'BOOLEAN', default: false },
-        action_warn_member_dm: { type: 'BOOLEAN', default: false },
         action_warn_publicly: { type: 'BOOLEAN', default: false },
-        action_warn_message: { type: 'TEXT' },
         action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
         action_punishment_duration_minutes: { type: 'INTEGER' }
     }
