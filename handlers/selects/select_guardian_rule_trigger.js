@@ -19,10 +19,10 @@ module.exports = {
         
         const thresholdInput = new TextInputBuilder().setCustomId('input_threshold').setLabel(thresholdLabel).setStyle(TextInputStyle.Short).setRequired(true);
         
-        const actionsInput = new TextInputBuilder().setCustomId('input_actions')
-            .setLabel("Escolha as Ações (separadas por vírgula)")
+         const actionsInput = new TextInputBuilder().setCustomId('input_actions')
+            .setLabel("Ações (separadas por vírgula)")
             .setStyle(TextInputStyle.Short)
-            .setPlaceholder('DELETAR, AVISAR, TIMEOUT, KICK, BAN')
+            .setPlaceholder('DELETAR, AVISAR_DM, AVISAR_CHAT, TIMEOUT, KICK, BAN') // <-- MUDANÇA AQUI
             .setRequired(true);
             
         const timeoutInput = new TextInputBuilder().setCustomId('input_timeout_duration')

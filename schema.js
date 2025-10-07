@@ -67,7 +67,8 @@ const schema = {
         action_delete_message: { type: 'BOOLEAN', default: false },
         action_warn_member_dm: { type: 'BOOLEAN', default: false },
         action_warn_message: { type: 'TEXT' }, // Mensagem de aviso a ser enviada
-        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' }, // Ex: 'NONE', 'TIMEOUT_5_MIN', 'KICK', 'BAN'
+        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
+        action_warn_publicly: { type: 'BOOLEAN', default: false },  // Ex: 'NONE', 'TIMEOUT_5_MIN', 'KICK', 'BAN'
         action_punishment_duration_minutes: { type: 'INTEGER' } // Duração para timeout
     },
     // --- FIM: NOVA TABELA DO GUARDIAN AI ---
