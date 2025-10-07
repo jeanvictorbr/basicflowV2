@@ -1,4 +1,4 @@
-// Crie em: handlers/modals/modal_mod_executar_punicao.js
+// Substitua em: handlers/modals/modal_mod_executar_punicao.js
 const { EmbedBuilder } = require('discord.js');
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
@@ -14,8 +14,6 @@ module.exports = {
         const [_, __, ___, action, targetId] = interaction.customId.split('_');
         const reason = interaction.fields.getTextInputValue('input_reason');
         
-        // --- CORREÇÃO APLICADA AQUI ---
-        // A forma mais segura de ler um campo opcional é com um bloco try-catch.
         let durationStr = null;
         let durationMs = null;
         try {
@@ -24,9 +22,8 @@ module.exports = {
                 durationMs = ms(durationStr);
             }
         } catch (error) {
-            // Ignora o erro se o campo 'input_duration' não existir (o que é esperado para 'warn' e 'kick').
+            // Ignora o erro se o campo 'input_duration' não existir
         }
-        // --- FIM DA CORREÇÃO ---
 
         const targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
         if (!targetMember) {
@@ -36,7 +33,6 @@ module.exports = {
         const settings = (await db.query('SELECT mod_log_channel, mod_temp_ban_enabled FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
 
         try {
-            // Aplica a punição
             switch (action) {
                 case 'warn':
                     await targetMember.send(`⚠️ Você recebeu um aviso no servidor **${interaction.guild.name}**.\n**Motivo:** ${reason}`);
@@ -56,13 +52,11 @@ module.exports = {
                     break;
             }
 
-            // Regista no banco de dados
             await db.query(
                 `INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, duration) VALUES ($1, $2, $3, $4, $5, $6)`,
                 [interaction.guild.id, targetId, interaction.user.id, action.toUpperCase(), reason, durationStr]
             );
 
-            // Envia o log
             if (settings.mod_log_channel) {
                 const logChannel = await interaction.guild.channels.fetch(settings.mod_log_channel).catch(() => null);
                 if (logChannel) {
@@ -85,9 +79,10 @@ module.exports = {
             return interaction.followUp({ content: `❌ Ocorreu um erro ao tentar aplicar a punição. Verifique as minhas permissões e a hierarquia de cargos.`, ephemeral: true });
         }
         
-        // Atualiza o Dossiê para refletir a nova punição
         const newHistory = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [targetId, interaction.guild.id])).rows;
-        const dossiePayload = generateDossieEmbed(targetMember, newHistory, interaction);
+        const newNotes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [targetId, interaction.guild.id])).rows;
+        
+        const dossiePayload = generateDossieEmbed(targetMember, newHistory, newNotes, interaction);
 
         await interaction.editReply({
             components: dossiePayload.components,

@@ -58,6 +58,15 @@ const schema = {
         mod_roles: { type: 'TEXT' }, // IDs dos cargos, separados por vírgula
         mod_temp_ban_enabled: { type: 'BOOLEAN', default: false }
     },
+        // --- NOVA TABELA PARA NOTAS DA MODERAÇÃO ---
+    moderation_notes: {
+        note_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true }, // ID do membro alvo da nota
+        moderator_id: { type: 'VARCHAR(255)', notNull: true }, // ID do staff que escreveu
+        content: { type: 'TEXT', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
         // --- NOVA TABELA PARA HISTÓRICO DE MODERAÇÃO ---
     moderation_logs: {
         case_id: { type: 'SERIAL', primaryKey: true },

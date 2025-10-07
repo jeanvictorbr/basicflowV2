@@ -1,4 +1,4 @@
-// handlers/modals/modal_mod_procurar_membro.js
+// Substitua em: handlers/modals/modal_mod_procurar_membro.js
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const { PermissionsBitField } = require('discord.js');
@@ -29,12 +29,13 @@ module.exports = {
         const query = interaction.fields.getTextInputValue('input_member');
         let member;
 
+        // Limpa a menção para obter apenas o ID
         const userId = query.replace(/<@!?|>/g, '');
 
         try {
             member = await interaction.guild.members.fetch(userId);
         } catch (error) {
-            return interaction.editReply({ content: '❌ Membro não encontrado. Verifique o ID, nome ou menção fornecida.' });
+            return interaction.editReply({ content: '❌ Membro não encontrado. Verifique o ID fornecido.' });
         }
 
         if (!member) {
@@ -42,9 +43,9 @@ module.exports = {
         }
 
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
+        const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         
-        // Passando a 'interaction' para o gerador do embed
-        const dossiePayload = generateDossieEmbed(member, history, interaction);
+        const dossiePayload = generateDossieEmbed(member, history, notes, interaction);
         
         await interaction.editReply({
             components: dossiePayload.components,

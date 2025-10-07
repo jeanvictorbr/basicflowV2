@@ -1,4 +1,4 @@
-// Crie em: ui/minhasAcoesEmbed.js
+// Substitua em: ui/minhasAcoesEmbed.js
 module.exports = function generateMinhasAcoesEmbed(interaction, history, page = 0) {
     const ITEMS_PER_PAGE = 5;
     const totalPages = Math.ceil(history.length / ITEMS_PER_PAGE);
@@ -7,7 +7,8 @@ module.exports = function generateMinhasAcoesEmbed(interaction, history, page = 
     const historyText = paginatedHistory.length > 0
         ? paginatedHistory.map(log => {
             const duration = log.duration ? ` (Duração: ${log.duration})` : '';
-            return `> **[${log.action}]** em <@${log.user_id}> em <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:R>${duration}\n> └─ Motivo: *${log.reason}*`;
+            // CORRIGIDO: O texto agora especifica o alvo da ação
+            return `> **[${log.action}]** aplicado a <@${log.user_id}> em <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:R>${duration}\n> └─ Motivo: *${log.reason}*`;
         }).join('\n\n')
         : '> Você ainda não realizou nenhuma ação de moderação.';
         

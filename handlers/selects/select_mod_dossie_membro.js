@@ -1,4 +1,4 @@
-// Crie em: handlers/selects/select_mod_dossie_membro.js
+// Substitua em: handlers/selects/select_mod_dossie_membro.js
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const V2_FLAG = 1 << 15;
@@ -17,8 +17,9 @@ module.exports = {
         }
 
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
+        const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        const dossiePayload = generateDossieEmbed(member, history, interaction);
+        const dossiePayload = generateDossieEmbed(member, history, notes, interaction);
 
         await interaction.editReply({
             components: dossiePayload.components,

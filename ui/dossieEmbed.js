@@ -1,7 +1,7 @@
 // Substitua em: ui/dossieEmbed.js
 const { PermissionsBitField } = require('discord.js');
 
-module.exports = function generateDossieEmbed(member, history, interaction, customActionRow = null) {
+module.exports = function generateDossieEmbed(member, history, notes, interaction) {
     // Calcula o resumo das infrações
     const summary = { WARN: 0, TIMEOUT: 0, KICK: 0, BAN: 0 };
     history.forEach(log => {
@@ -10,24 +10,22 @@ module.exports = function generateDossieEmbed(member, history, interaction, cust
         }
     });
 
-    // Formata o histórico recente para exibição (mostra os 5 mais recentes)
+    // Formata o histórico de punições
     const historyText = history.length > 0
-        ? history.slice(0, 5).map(log => {
+        ? history.slice(0, 3).map(log => { // Mostra as 3 mais recentes
             const duration = log.duration ? ` (Duração: ${log.duration})` : '';
             return `> **[${log.action}]** por <@${log.moderator_id}> em <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:d>${duration}\n> └─ Motivo: *${log.reason}*`;
         }).join('\n\n')
         : '> Nenhuma ocorrência encontrada para este membro.';
+    
+    // Formata o histórico de notas
+    const notesText = notes.length > 0
+        ? notes.slice(0, 3).map(note => { // Mostra as 3 mais recentes
+            return `> 💬 por <@${note.moderator_id}> em <t:${Math.floor(new Date(note.created_at).getTime() / 1000)}:d>\n> └─ *"${note.content}"*`;
+        }).join('\n\n')
+        : '> Nenhuma nota interna adicionada.';
 
     const canPunish = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator) || (member.roles.highest.position < interaction.member.roles.highest.position);
-
-    // Define a fileira de botões padrão
-    const defaultActionRow = {
-        "type": 1,
-        "components": [
-            { "type": 2, "style": 3, "label": "Aplicar Nova Punição", "emoji": { "name": "⚖️" }, "custom_id": `mod_aplicar_punicao_${member.id}`, "disabled": !canPunish },
-            { "type": 2, "style": 1, "label": "Adicionar Nota", "emoji": { "name": "📝" }, "custom_id": `mod_adicionar_nota_${member.id}`, "disabled": true }
-        ]
-    };
 
     const components = [
         {
@@ -42,21 +40,24 @@ module.exports = function generateDossieEmbed(member, history, interaction, cust
                     ]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 10,
-                    "content": `**Resumo:** ⚠️ ${summary.WARN} | 🔇 ${summary.TIMEOUT} | 🚪 ${summary.KICK} | 🚫 ${summary.BAN}`
-                },
+                { "type": 10, "content": `**Resumo:** ⚠️ ${summary.WARN} | 🔇 ${summary.TIMEOUT} | 🚪 ${summary.KICK} | 🚫 ${summary.BAN}`},
                 { "type": 14, "divider": true, "spacing": 2 },
                 { "type": 10, "content": "### Histórico Recente de Moderação" },
                 { "type": 10, "content": historyText },
                 { "type": 14, "divider": true, "spacing": 2 },
-                // LÓGICA DE ATUALIZAÇÃO: Usa a fileira de ações personalizada se ela for fornecida, senão, usa a padrão.
-                customActionRow ? customActionRow : defaultActionRow,
+                { "type": 10, "content": "### Notas Internas da Staff" },
+                { "type": 10, "content": notesText },
+                { "type": 14, "divider": true, "spacing": 2 },
+                {
+                    "type": 1, "components": [
+                        { "type": 2, "style": 3, "label": "Aplicar Punição", "emoji": { "name": "⚖️" }, "custom_id": `mod_aplicar_punicao_${member.id}`, "disabled": !canPunish },
+                        { "type": 2, "style": 1, "label": "Adicionar Nota", "emoji": { "name": "📝" }, "custom_id": `mod_adicionar_nota_${member.id}` } // Botão ativado
+                    ]
+                },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 1, "components": [{ "type": 2, "style": 2, "label": "Voltar ao Hub", "emoji": { "name": "↩️" }, "custom_id": "mod_open_hub" }] }
             ]
         }
     ];
-
     return { components };
 };
