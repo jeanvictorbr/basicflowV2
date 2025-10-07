@@ -45,10 +45,10 @@ module.exports = {
         const menuPayload = generateGuardianRulesMenu(rules);
         
         await interaction.editReply({
-            ...menuPayload,
+            components: menuPayload.components,
             flags: V2_FLAG | EPHEMERAL_FLAG
         });
-
+        
         await interaction.followUp({ content: '✅ Regra adicionada com sucesso!', ephemeral: true });
     }
 };

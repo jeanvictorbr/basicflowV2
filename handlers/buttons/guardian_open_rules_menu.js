@@ -11,12 +11,11 @@ module.exports = {
         const rules = (await db.query('SELECT * FROM guardian_rules WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
         
         // --- CORREÇÃO APLICADA AQUI ---
-        // A função generateGuardianRulesMenu já retorna o objeto completo { embeds, components }.
-        // Passamos esse objeto diretamente para o editReply.
+        // A função agora retorna o objeto { components } diretamente.
         const menuPayload = generateGuardianRulesMenu(rules);
 
         await interaction.editReply({
-            ...menuPayload, // Espalha as propriedades { embeds, components } no objeto
+            components: menuPayload.components, // Passamos diretamente a propriedade 'components'
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
