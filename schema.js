@@ -1,4 +1,4 @@
-// schema.js
+// Substitua em: schema.js
 const schema = {
     guild_settings: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
@@ -47,38 +47,19 @@ const schema = {
         guardian_ai_enabled: { type: 'BOOLEAN', default: false },
         guardian_ai_alert_channel: { type: 'VARCHAR(255)' },
         guardian_ai_log_channel: { type: 'VARCHAR(255)' },
-               // --- NOVAS CONFIGURAÇÕES DO HUB DE ALERTAS ---
         guardian_ai_alert_enabled: { type: 'BOOLEAN', default: false },
         guardian_ai_alert_cooldown_minutes: { type: 'INTEGER', default: 5 },
         guardian_ai_alert_toxicity_threshold: { type: 'INTEGER', default: 75 },
         guardian_ai_alert_sarcasm_threshold: { type: 'INTEGER', default: 80 },
         guardian_ai_alert_attack_threshold: { type: 'INTEGER', default: 80 },
-                // --- NOVAS CONFIGURAÇÕES DE MODERAÇÃO ---
+
+        // --- NOVAS CONFIGURAÇÕES DE MODERAÇÃO ---
         mod_log_channel: { type: 'VARCHAR(255)' },
         mod_roles: { type: 'TEXT' }, // IDs dos cargos, separados por vírgula
-        mod_temp_ban_enabled: { type: 'BOOLEAN', default: false }
+        mod_temp_ban_enabled: { type: 'BOOLEAN', default: false },
+        mod_monitor_enabled: { type: 'BOOLEAN', default: false },
+        mod_monitor_channel: { type: 'VARCHAR(255)' }
     },
-        // --- NOVA TABELA PARA NOTAS DA MODERAÇÃO ---
-    moderation_notes: {
-        note_id: { type: 'SERIAL', primaryKey: true },
-        guild_id: { type: 'VARCHAR(255)', notNull: true },
-        user_id: { type: 'VARCHAR(255)', notNull: true }, // ID do membro alvo da nota
-        moderator_id: { type: 'VARCHAR(255)', notNull: true }, // ID do staff que escreveu
-        content: { type: 'TEXT', notNull: true },
-        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
-    },
-        // --- NOVA TABELA PARA HISTÓRICO DE MODERAÇÃO ---
-    moderation_logs: {
-        case_id: { type: 'SERIAL', primaryKey: true },
-        guild_id: { type: 'VARCHAR(255)', notNull: true },
-        user_id: { type: 'VARCHAR(255)', notNull: true }, // ID do membro que sofreu a ação
-        moderator_id: { type: 'VARCHAR(255)', notNull: true }, // ID do staff que aplicou
-        action: { type: 'VARCHAR(50)', notNull: true }, // 'WARN', 'TIMEOUT', 'KICK', 'BAN'
-        reason: { type: 'TEXT', notNull: true },
-        duration: { type: 'VARCHAR(50)' }, // e.g., '1h', '7d', null
-        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
-    },
-
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },
         duration_days: { type: 'INTEGER', notNull: true },
@@ -187,37 +168,33 @@ const schema = {
         content: { type: 'TEXT', notNull: true },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-        // --- NOVAS TABELAS DO SISTEMA DE ESCALONAMENTO ---
     guardian_policies: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },
-        trigger_type: { type: 'VARCHAR(50)', notNull: true }, // 'SPAM_TEXT', 'MENTION_SPAM', 'TOXICITY'
+        trigger_type: { type: 'VARCHAR(50)', notNull: true },
         is_enabled: { type: 'BOOLEAN', default: true },
-        reset_interval_hours: { type: 'INTEGER', default: 24 } // Tempo para resetar as infrações de um usuário
+        reset_interval_hours: { type: 'INTEGER', default: 24 }
     },
     guardian_policy_steps: {
         id: { type: 'SERIAL', primaryKey: true },
-        policy_id: { type: 'INTEGER', notNull: true }, // Chave estrangeira para guardian_policies
-        step_level: { type: 'INTEGER', notNull: true }, // 1, 2, 3...
-        threshold: { type: 'INTEGER', notNull: true }, // Ex: 3 (mensagens), 80 (%)
+        policy_id: { type: 'INTEGER', notNull: true },
+        step_level: { type: 'INTEGER', notNull: true },
+        threshold: { type: 'INTEGER', notNull: true },
         action_delete_message: { type: 'BOOLEAN', default: false },
         action_warn_publicly: { type: 'BOOLEAN', default: false },
-        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' }, // 'NONE', 'TIMEOUT', 'KICK', 'BAN'
+        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
         action_punishment_duration_minutes: { type: 'INTEGER' }
     },
     guardian_infractions: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         user_id: { type: 'VARCHAR(255)', notNull: true },
-        policy_id: { type: 'INTEGER', notNull: true }, // Chave estrangeira para guardian_policies
+        policy_id: { type: 'INTEGER', notNull: true },
         infraction_count: { type: 'INTEGER', default: 0 },
         last_infraction_at: { type: 'TIMESTAMPTZ' },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id', 'policy_id'] }
     },
-    
-
-    // A tabela definitiva e corrigida
     guardian_rules: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -231,7 +208,32 @@ const schema = {
         action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
         action_punishment_duration_minutes: { type: 'INTEGER' }
     },
-    
+    moderation_logs: {
+        case_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        moderator_id: { type: 'VARCHAR(255)', notNull: true },
+        action: { type: 'VARCHAR(50)', notNull: true },
+        reason: { type: 'TEXT', notNull: true },
+        duration: { type: 'VARCHAR(50)' },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    moderation_notes: {
+        note_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        moderator_id: { type: 'VARCHAR(255)', notNull: true },
+        content: { type: 'TEXT', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    moderation_punishments: {
+        punishment_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        action: { type: 'VARCHAR(50)', notNull: true },
+        role_id: { type: 'VARCHAR(255)' },
+        duration: { type: 'VARCHAR(50)' }
+    }
 };
 
 module.exports = schema;
