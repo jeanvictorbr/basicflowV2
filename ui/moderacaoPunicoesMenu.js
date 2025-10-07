@@ -1,10 +1,11 @@
-// Crie em: ui/moderacaoPunicoesMenu.js
+// Substitua em: ui/moderacaoPunicoesMenu.js
 module.exports = function generateModeracaoPunicoesMenu(punishments) {
     const punishmentList = punishments.length > 0
         ? punishments.map(p => {
             const role = p.role_id ? ` | Cargo: <@&${p.role_id}>` : '';
             const duration = p.duration ? ` | Duração: \`${p.duration}\`` : '';
-            return `> **${p.name}** \`[${p.action}]\`${duration}${role}`;
+            // ADICIONADO: Exibição do ID
+            return `> **[ID: ${p.punishment_id}] ${p.name}** \`[${p.action}]\`${duration}${role}`;
         }).join('\n\n')
         : '> Nenhuma punição personalizada criada ainda.';
 

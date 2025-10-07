@@ -1,14 +1,21 @@
-// Crie em: handlers/buttons/guardian_step_add.js
+// Substitua em: handlers/buttons/guardian_step_add.js
 const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const db = require('../../database.js'); // Importar DB
 
 module.exports = {
     customId: 'guardian_step_add_', // Handler dinâmico
     async execute(interaction) {
         const policyId = interaction.customId.split('_')[3];
-        
+        const settings = (await db.query('SELECT guardian_use_mod_punishments FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
+
         const modal = new ModalBuilder()
             .setCustomId(`modal_guardian_step_create_${policyId}`)
             .setTitle('Adicionar Novo Passo de Ação');
+
+        let actionsPlaceholder = 'AVISAR_CHAT, DELETAR, TIMEOUT, KICK, BAN';
+        if (settings.guardian_use_mod_punishments) {
+            actionsPlaceholder = 'Use o ID de uma Punição Personalizada (Ex: 3)';
+        }
 
         modal.addComponents(
             new ActionRowBuilder().addComponents(
@@ -22,17 +29,17 @@ module.exports = {
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId('input_actions')
-                    .setLabel("Ações (separadas por vírgula)")
+                    .setLabel("Ação a ser Executada")
                     .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('AVISAR_CHAT, DELETAR, TIMEOUT, KICK, BAN')
+                    .setPlaceholder(actionsPlaceholder) // Placeholder dinâmico
                     .setRequired(true)
             ),
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId('input_timeout')
-                    .setLabel("Duração do Timeout em Minutos (se usar)")
+                    .setLabel("Duração do Timeout (se usar ação simples)")
                     .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('Ex: 5')
+                    .setPlaceholder('Ex: 5 (não preencha se usar ID de Punição)')
                     .setRequired(false)
             )
         );
