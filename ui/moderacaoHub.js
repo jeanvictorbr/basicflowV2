@@ -1,4 +1,4 @@
-// Crie em: ui/moderacaoHub.js
+// Substitua em: ui/moderacaoHub.js
 module.exports = function generateModeracaoHub(interaction) {
     return [
         {
@@ -13,7 +13,9 @@ module.exports = function generateModeracaoHub(interaction) {
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 1, "components": [
-                        { "type": 2, "style": 3, "label": "Procurar Membro", "emoji": { "name": "🔎" }, "custom_id": "mod_procurar_membro" },
+                        // BOTÃO PRINCIPAL ALTERADO PARA ABRIR UM MENU DE SELEÇÃO
+                        { "type": 2, "style": 3, "label": "Selecionar Membro", "emoji": { "name": "👥" }, "custom_id": "mod_selecionar_membro" },
+                        { "type": 2, "style": 2, "label": "Procurar por ID", "emoji": { "name": "🔎" }, "custom_id": "mod_procurar_id" },
                         { "type": 2, "style": 2, "label": "Minhas Ações Recentes", "emoji": { "name": "📋" }, "custom_id": "mod_minhas_acoes" }
                     ]
                 },
