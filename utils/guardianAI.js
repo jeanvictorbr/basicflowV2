@@ -37,8 +37,8 @@ function updateMessageCache(message) {
 async function processMessageForGuardian(message) {
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
     if (!settings?.guardian_ai_enabled) return;
-
-    const rules = (await db.query('SELECT * FROM guardian_rules WHERE guild_id = $1 AND is_enabled = true', [message.guild.id])).rows;
+// --- MUDANÇA AQUI ---
+    const rules = (await db.query('SELECT * FROM guardian_rules_v2 WHERE guild_id = $1 AND is_enabled = true', [message.guild.id])).rows;
     if (rules.length === 0) return;
 
     const recentMessages = updateMessageCache(message);

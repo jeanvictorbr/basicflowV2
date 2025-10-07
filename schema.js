@@ -156,7 +156,9 @@ const schema = {
         content: { type: 'TEXT', notNull: true },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-    guardian_rules: {
+
+    // A tabela antiga 'guardian_rules' foi removida e substituída por esta
+    guardian_rules_v2: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },

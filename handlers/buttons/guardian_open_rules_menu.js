@@ -8,14 +8,11 @@ module.exports = {
     customId: 'guardian_open_rules_menu',
     async execute(interaction) {
         await interaction.deferUpdate();
-        const rules = (await db.query('SELECT * FROM guardian_rules WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
-        
-        // --- CORREÇÃO APLICADA AQUI ---
-        // A função agora retorna o objeto { components } diretamente.
+        // --- MUDANÇA AQUI ---
+        const rules = (await db.query('SELECT * FROM guardian_rules_v2 WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
         const menuPayload = generateGuardianRulesMenu(rules);
-
         await interaction.editReply({
-            components: menuPayload.components, // Passamos diretamente a propriedade 'components'
+            components: menuPayload.components,
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }

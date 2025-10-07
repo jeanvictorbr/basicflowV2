@@ -10,11 +10,10 @@ module.exports = {
         await interaction.deferUpdate();
         const ruleId = interaction.values[0];
         
-        await db.query('DELETE FROM guardian_rules WHERE id = $1 AND guild_id = $2', [ruleId, interaction.guild.id]);
+        // USA A NOVA TABELA 'guardian_rules_v2'
+        await db.query('DELETE FROM guardian_rules_v2 WHERE id = $1 AND guild_id = $2', [ruleId, interaction.guild.id]);
 
-        const rules = (await db.query('SELECT * FROM guardian_rules WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
-        
-        // --- CORREÇÃO APLICADA ---
+        const rules = (await db.query('SELECT * FROM guardian_rules_v2 WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
         const menuPayload = generateGuardianRulesMenu(rules);
         await interaction.editReply({
             components: menuPayload.components,
