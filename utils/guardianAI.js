@@ -1,6 +1,7 @@
 // utils/guardianAI.js
 const { OpenAI } = require('openai');
 const db = require('../database.js');
+const executePunishment = require('./modUtils.js');
 const { EmbedBuilder } = require('discord.js');
 require('dotenv').config();
 
@@ -197,29 +198,60 @@ async function processMessageForGuardian(message) {
 
 async function executeRuleActions(message, policy, step, reason, settings, messageIdsToDelete) {
     const { member, guild, channel } = message;
+
+    // Ação de apagar mensagem (continua igual)
     if (step.action_delete_message && messageIdsToDelete.length > 0) {
         await channel.bulkDelete(messageIdsToDelete, true).catch(() => {});
     }
+    // Ação de avisar no chat (continua igual)
     if (step.action_warn_publicly) {
         await channel.send(`🛡️ ${member}, sua atividade acionou uma regra de proteção automática (\`${policy.name} - Nível ${step.step_level}\`).`);
     }
     
     let punishmentDetails = 'Nenhuma';
-    try {
-        const duration = (step.action_punishment_duration_minutes || 0) * 60 * 1000;
-        const punishmentReason = `Guardian AI: ${policy.name} (Nível ${step.step_level})`;
-        switch (step.action_punishment) {
-            case 'TIMEOUT':
-                if (duration > 0) {
-                    await member.timeout(duration, punishmentReason);
-                    punishmentDetails = `Silenciado por ${step.action_punishment_duration_minutes} min.`;
-                }
-                break;
-            case 'KICK': await member.kick(punishmentReason); punishmentDetails = 'Expulso'; break;
-            case 'BAN': await member.ban({ reason: punishmentReason }); punishmentDetails = 'Banido'; break;
-        }
-    } catch (error) { console.error(`[Guardian AI] Falha ao aplicar punição:`, error); punishmentDetails = `Falha ao punir.`; }
+    const punishmentId = parseInt(step.action_punishment, 10);
 
+    // --- NOVA LÓGICA DE EXECUÇÃO ---
+    // Se a integração estiver ativa E a punição for um ID numérico
+    if (settings.guardian_use_mod_punishments && !isNaN(punishmentId)) {
+        const customPunishment = (await db.query('SELECT * FROM moderation_punishments WHERE punishment_id = $1 AND guild_id = $2', [punishmentId, guild.id])).rows[0];
+        
+        if (customPunishment) {
+            // Criamos uma "falsa" interaction para passar para a nossa função de punição
+            const fakeInteraction = {
+                guild,
+                user: client.user, // A ação é executada pelo bot
+                member: await guild.members.fetch(client.user.id),
+                deferReply: async () => {},
+                editReply: async () => {},
+            };
+            
+            // Usamos a nossa função centralizada do módulo de moderação
+            await executePunishment(fakeInteraction, customPunishment.action.toLowerCase(), member, reason, customPunishment.duration);
+            
+            punishmentDetails = `Punição Personalizada: \`${customPunishment.name}\``;
+        } else {
+            punishmentDetails = '`Falha: Punição Personalizada não encontrada.`';
+        }
+    } else {
+        // --- LÓGICA ANTIGA (fallback) ---
+        try {
+            const duration = (step.action_punishment_duration_minutes || 0) * 60 * 1000;
+            const punishmentReason = `Guardian AI: ${policy.name} (Nível ${step.step_level})`;
+            switch (step.action_punishment) {
+                case 'TIMEOUT':
+                    if (duration > 0) {
+                        await member.timeout(duration, punishmentReason);
+                        punishmentDetails = `Silenciado por ${step.action_punishment_duration_minutes} min.`;
+                    }
+                    break;
+                case 'KICK': await member.kick(punishmentReason); punishmentDetails = 'Expulso'; break;
+                case 'BAN': await member.ban({ reason: punishmentReason }); punishmentDetails = 'Banido'; break;
+            }
+        } catch (error) { console.error(`[Guardian AI] Falha ao aplicar punição simples:`, error); punishmentDetails = `Falha ao punir.`; }
+    }
+
+    // Lógica de log (continua igual)
     if (settings.guardian_ai_log_channel) {
         const logChannel = await guild.channels.fetch(settings.guardian_ai_log_channel).catch(() => null);
         if (logChannel) {
@@ -230,5 +262,6 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
         }
     }
 }
+
 
 module.exports = { processMessageForGuardian };

@@ -52,13 +52,16 @@ const schema = {
         guardian_ai_alert_toxicity_threshold: { type: 'INTEGER', default: 75 },
         guardian_ai_alert_sarcasm_threshold: { type: 'INTEGER', default: 80 },
         guardian_ai_alert_attack_threshold: { type: 'INTEGER', default: 80 },
+        
 
         // --- NOVAS CONFIGURAÇÕES DE MODERAÇÃO ---
         mod_log_channel: { type: 'VARCHAR(255)' },
         mod_roles: { type: 'TEXT' }, // IDs dos cargos, separados por vírgula
         mod_temp_ban_enabled: { type: 'BOOLEAN', default: false },
         mod_monitor_enabled: { type: 'BOOLEAN', default: false },
-        mod_monitor_channel: { type: 'VARCHAR(255)' }
+        mod_monitor_channel: { type: 'VARCHAR(255)' },
+                // --- NOVA CONFIGURAÇÃO DE INTEGRAÇÃO ---
+        guardian_use_mod_punishments: { type: 'BOOLEAN', default: false }
     },
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },
