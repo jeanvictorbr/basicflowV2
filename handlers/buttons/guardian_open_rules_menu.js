@@ -1,4 +1,4 @@
-// Crie em: handlers/buttons/guardian_open_rules_menu.js
+// handlers/buttons/guardian_open_rules_menu.js
 const db = require('../../database.js');
 const generateGuardianRulesMenu = require('../../ui/guardianRulesMenu.js');
 const V2_FLAG = 1 << 15;
@@ -9,8 +9,14 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate();
         const rules = (await db.query('SELECT * FROM guardian_rules WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+        
+        // --- CORREÇÃO APLICADA AQUI ---
+        // A função generateGuardianRulesMenu já retorna o objeto completo { embeds, components }.
+        // Passamos esse objeto diretamente para o editReply.
+        const menuPayload = generateGuardianRulesMenu(rules);
+
         await interaction.editReply({
-            components: generateGuardianRulesMenu(rules),
+            ...menuPayload, // Espalha as propriedades { embeds, components } no objeto
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
