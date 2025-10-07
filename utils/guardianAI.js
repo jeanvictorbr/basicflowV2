@@ -7,7 +7,7 @@ require('dotenv').config();
 if (!process.env.OPENAI_API_KEY) { console.warn('[Guardian AI] OPENAI_API_KEY não definida.'); }
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const messageCache = new Map(); // Cache para detectar spam e repetições
+const messageCache = new Map();
 
 async function analyzeToxicity(text) {
     const systemPrompt = `Avalie o nível de toxicidade, ataque pessoal e linguagem de ódio no seguinte texto. Responda APENAS com um objeto JSON com a chave "toxicidade" e um valor de 0 a 100. Texto: "${text}"`;
@@ -26,22 +26,13 @@ async function analyzeToxicity(text) {
 }
 
 function updateMessageCache(message) {
-    const { author, guild, content } = message;
-    const key = `${guild.id}-${author.id}`;
+    const key = `${message.guild.id}-${message.author.id}`;
     const now = Date.now();
-
-    if (!messageCache.has(key)) {
-        messageCache.set(key, []);
-    }
+    if (!messageCache.has(key)) messageCache.set(key, []);
     const userMessages = messageCache.get(key);
-
-    // Adiciona a mensagem atual com timestamp
-    userMessages.push({ timestamp: now, content });
-
-    // Limpa mensagens mais antigas que 60 segundos
+    userMessages.push({ timestamp: now, content: message.content, id: message.id });
     const filteredMessages = userMessages.filter(msg => now - msg.timestamp < 60000);
     messageCache.set(key, filteredMessages);
-
     return filteredMessages;
 }
 
@@ -57,13 +48,20 @@ async function processMessageForGuardian(message) {
     for (const rule of rules) {
         let conditionMet = false;
         let reason = '';
+        let messagesToDelete = [];
 
+        // ### CORREÇÃO DE LÓGICA APLICADA AQUI ###
+        // A verificação de múltiplos autores agora é feita apenas para a regra de toxicidade.
         switch (rule.trigger_type) {
             case 'TOXICITY':
-                const toxicityScore = await analyzeToxicity(message.content);
-                if (toxicityScore >= rule.trigger_threshold) {
-                    conditionMet = true;
-                    reason = `Toxicidade detectada (${toxicityScore}%) excede o limiar de ${rule.trigger_threshold}%`;
+                const authorsInCache = new Set(recentMessages.map(m => m.author));
+                if (authorsInCache.size > 1) { // Só analisa toxicidade em uma conversa
+                    const toxicityScore = await analyzeToxicity(message.content);
+                    if (toxicityScore >= rule.trigger_threshold) {
+                        conditionMet = true;
+                        reason = `Toxicidade detectada (${toxicityScore}%) excede o limiar de ${rule.trigger_threshold}%`;
+                        messagesToDelete.push(message.id);
+                    }
                 }
                 break;
             
@@ -72,8 +70,8 @@ async function processMessageForGuardian(message) {
                 if (matchingMessages.length >= rule.trigger_threshold) {
                     conditionMet = true;
                     reason = `Repetição de mensagem detectada (${matchingMessages.length} vezes)`;
-                    // Limpa o cache para este usuário para evitar múltiplos acionamentos
-                    messageCache.set(`${message.guild.id}-${message.author.id}`, []);
+                    messagesToDelete = matchingMessages.map(m => m.id);
+                    messageCache.set(`${message.guild.id}-${message.author.id}`, []); // Limpa o cache para evitar múltiplos acionamentos
                 }
                 break;
             
@@ -82,47 +80,50 @@ async function processMessageForGuardian(message) {
                 if (mentionCount >= rule.trigger_threshold) {
                     conditionMet = true;
                     reason = `Spam de menções detectado (${mentionCount} menções)`;
+                    messagesToDelete.push(message.id);
                 }
                 break;
         }
 
         if (conditionMet) {
-            await executeRuleActions(message, rule, reason, settings);
-            // Para a verificação após a primeira regra ser acionada para evitar punições múltiplas
-            return; 
+            await executeRuleActions(message, rule, reason, settings, messagesToDelete);
+            return;
         }
     }
 }
 
-async function executeRuleActions(message, rule, reason, settings) {
+async function executeRuleActions(message, rule, reason, settings, messageIdsToDelete) {
     console.log(`[Guardian AI] Regra "${rule.name}" acionada por ${message.author.tag}. Motivo: ${reason}`);
-    const { member, guild } = message;
+    const { member, guild, channel } = message;
 
-    // Ação 1: Deletar a mensagem
-    if (rule.action_delete_message && message.deletable) {
-        await message.delete().catch(err => console.error("[Guardian AI] Falha ao deletar mensagem:", err));
+    if (rule.action_delete_message && messageIdsToDelete.length > 0) {
+        await channel.bulkDelete(messageIdsToDelete, true).catch(err => console.error("[Guardian AI] Falha ao deletar mensagens em massa:", err));
     }
 
-    // Ação 2: Enviar aviso na DM
     if (rule.action_warn_member_dm) {
-        await member.send(`**Aviso do Guardian AI no servidor ${guild.name}:**\nSua atividade recente acionou a regra de proteção automática: "${rule.name}".\n**Motivo:** ${reason}.\n\nPor favor, revise as regras do servidor.`).catch(() => {});
+        const warnMessage = rule.action_warn_message || `**Aviso do Guardian AI no servidor ${guild.name}:**\nSua atividade recente acionou a regra de proteção: "${rule.name}".\n**Motivo:** ${reason}.\n\nPor favor, revise as regras do servidor.`;
+        await member.send(warnMessage).catch(() => {});
     }
     
-    // Ação 3: Aplicar Punição
     let punishmentDetails = 'Nenhuma punição aplicada.';
     try {
+        const duration = (rule.action_punishment_duration_minutes || 0) * 60 * 1000;
+        const punishmentReason = `Guardian AI: ${rule.name}`;
+
         switch (rule.action_punishment) {
-            case 'TIMEOUT_5_MIN':
-                await member.timeout(5 * 60 * 1000, `Guardian AI: ${rule.name}`);
-                punishmentDetails = 'Silenciado por 5 minutos.';
-                break;
-            case 'TIMEOUT_30_MIN':
-                await member.timeout(30 * 60 * 1000, `Guardian AI: ${rule.name}`);
-                punishmentDetails = 'Silenciado por 30 minutos.';
+            case 'TIMEOUT':
+                if (duration > 0) {
+                    await member.timeout(duration, punishmentReason);
+                    punishmentDetails = `Silenciado por ${rule.action_punishment_duration_minutes} minuto(s).`;
+                }
                 break;
             case 'KICK':
-                await member.kick(`Guardian AI: ${rule.name}`);
+                await member.kick(punishmentReason);
                 punishmentDetails = 'Expulso do servidor.';
+                break;
+            case 'BAN':
+                await member.ban({ reason: punishmentReason });
+                punishmentDetails = 'Banido do servidor.';
                 break;
         }
     } catch (error) {
@@ -130,8 +131,6 @@ async function executeRuleActions(message, rule, reason, settings) {
         punishmentDetails = `Falha ao aplicar punição (Verifique minhas permissões).`;
     }
 
-
-    // Ação 4: Enviar Log para a Staff
     if (settings.guardian_ai_log_channel) {
         const logChannel = await guild.channels.fetch(settings.guardian_ai_log_channel).catch(() => null);
         if (logChannel) {
@@ -139,9 +138,11 @@ async function executeRuleActions(message, rule, reason, settings) {
                 .setColor('DarkRed')
                 .setAuthor({ name: 'Guardian AI - Ação Automática', iconURL: message.client.user.displayAvatarURL() })
                 .setDescription(`**Usuário:** ${member} (${member.user.tag})\n**Regra Acionada:** \`${rule.name}\`\n**Motivo:** ${reason}\n**Punição Aplicada:** ${punishmentDetails}`)
-                .addFields({ name: 'Mensagem Original', value: `\`\`\`${message.content.substring(0, 1000)}\`\`\`` })
                 .setFooter({ text: `ID do Usuário: ${member.id}` })
                 .setTimestamp();
+            if (rule.action_delete_message) {
+                 embed.addFields({ name: 'Mensagem Original', value: `\`\`\`${message.content.substring(0, 1000)}\`\`\`` });
+            }
             await logChannel.send({ embeds: [embed] });
         }
     }

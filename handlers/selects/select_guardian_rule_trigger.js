@@ -1,4 +1,4 @@
-// Crie em: handlers/selects/select_guardian_rule_trigger.js
+// handlers/selects/select_guardian_rule_trigger.js
 const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 module.exports = {
@@ -8,21 +8,35 @@ module.exports = {
 
         const modal = new ModalBuilder()
             .setCustomId(`modal_guardian_rule_create_${triggerType}`)
-            .setTitle('Passo 2: Detalhes da Regra');
+            .setTitle('Nova Regra: Detalhes e Ações');
 
-        const nameInput = new TextInputBuilder().setCustomId('input_name').setLabel("Nome da Regra").setStyle(TextInputStyle.Short).setPlaceholder('Ex: Anti-Spam Básico').setRequired(true);
-        modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
-
+        const nameInput = new TextInputBuilder().setCustomId('input_name').setLabel("Dê um nome para a regra").setStyle(TextInputStyle.Short).setPlaceholder('Ex: Anti-Spam Leve').setRequired(true);
+        
         let thresholdLabel = "Limiar (Valor)";
-        if (triggerType === 'TOXICITY') thresholdLabel = "Nível de Toxicidade (1-100)";
-        if (triggerType === 'SPAM_TEXT') thresholdLabel = "Nº de Mensagens Repetidas";
-        if (triggerType === 'MENTION_SPAM') thresholdLabel = "Nº Mínimo de Menções";
+        if (triggerType === 'TOXICITY') thresholdLabel = "Nível de Toxicidade (Ex: 80)";
+        if (triggerType === 'SPAM_TEXT') thresholdLabel = "Nº de Mensagens Repetidas (Ex: 3)";
+        if (triggerType === 'MENTION_SPAM') thresholdLabel = "Nº Mínimo de Menções (Ex: 5)";
         
         const thresholdInput = new TextInputBuilder().setCustomId('input_threshold').setLabel(thresholdLabel).setStyle(TextInputStyle.Short).setRequired(true);
-        modal.addComponents(new ActionRowBuilder().addComponents(thresholdInput));
+        
+        const actionsInput = new TextInputBuilder().setCustomId('input_actions')
+            .setLabel("Escolha as Ações (separadas por vírgula)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('DELETAR, AVISAR, TIMEOUT, KICK, BAN')
+            .setRequired(true);
+            
+        const timeoutInput = new TextInputBuilder().setCustomId('input_timeout_duration')
+            .setLabel("Duração do Timeout (em minutos)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Ex: 5 (só preencha se usar a ação TIMEOUT)')
+            .setRequired(false);
 
-        const actionsInput = new TextInputBuilder().setCustomId('input_actions').setLabel("Ações (separadas por vírgula)").setStyle(TextInputStyle.Short).setPlaceholder('Ex: DELETAR, AVISAR, TIMEOUT_5').setRequired(true);
-        modal.addComponents(new ActionRowBuilder().addComponents(actionsInput));
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(nameInput),
+            new ActionRowBuilder().addComponents(thresholdInput),
+            new ActionRowBuilder().addComponents(actionsInput),
+            new ActionRowBuilder().addComponents(timeoutInput)
+        );
 
         await interaction.showModal(modal);
     }
