@@ -1,20 +1,25 @@
 // ui/guardianPoliciesMenu.js
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
+
 module.exports = function generateGuardianPoliciesMenu(policies) {
     const policyComponents = policies.length > 0
         ? policies.flatMap(policy => ([
             {
-                type: 9,
+                type: 9, // Accessory View
                 accessory: { type: 2, style: 1, label: "Gerenciar Passos", custom_id: `guardian_manage_steps_${policy.id}`, emoji: { name: "🪜" } },
                 components: [
                     { type: 10, content: `**${policy.is_enabled ? '🟢' : '🔴'} ${policy.name}**` },
-                    { type: 10, content: `> **Gatilho:** \`${policy.trigger_type}\` | **Reset:** \`${policy.reset_interval_hours}h\`` }
+                    { type: 10, content: `> **Gatilho:** \`${policy.trigger_type}\` | **Reset de Infrações:** A cada \`${policy.reset_interval_hours}h\`` }
                 ]
             },
             { type: 14, divider: true, spacing: 1 }
         ]))
         : [{ type: 10, content: '> Nenhuma política criada. Clique em "Adicionar Política" para começar.' }];
 
-    if (policyComponents.length > 1) policyComponents.pop(); // Remove a última divisória
+    if (policyComponents.length > 1 && policyComponents[policyComponents.length - 1].type === 14) {
+        policyComponents.pop(); // Remove a última divisória desnecessária
+    }
 
     return [
         {
