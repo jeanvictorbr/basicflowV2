@@ -93,6 +93,10 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
     }, 5 * 60 * 4000); // Executa a cada 5 minutos
+        // --- NOVO LOOP PARA O MONITOR DE PUNIÇÕES ---
+    setInterval(() => {
+        checkExpiredPunishments(client);
+    }, 1 * 60 * 1000); // Executa a cada 1 minuto
 });
 
 // --- Evento de Interações ---
