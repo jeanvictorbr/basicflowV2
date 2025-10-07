@@ -6,7 +6,13 @@ require('dotenv').config();
 
 if (!process.env.OPENAI_API_KEY) { console.warn('[Guardian AI] OPENAI_API_KEY não definida.'); }
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Cache para sistema de regras (spam de usuário)
 const messageCache = new Map();
+// Caches para o novo sistema de detecção de conflito (por canal)
+const channelMessageCache = new Map();
+const channelAlertCooldowns = new Map();
+
 
 async function analyzeToxicity(text) {
     const systemPrompt = `Avalie o nível de toxicidade da mensagem. Responda APENAS com um objeto JSON com a chave "toxicidade" e um valor de 0 a 100. Mensagem: "${text}"`;
@@ -17,6 +23,99 @@ async function analyzeToxicity(text) {
     } catch (error) { 
         console.error('[Guardian AI] Erro ao analisar toxicidade com OpenAI:', error);
         return 0; 
+    }
+}
+
+/**
+ * Analisa um trecho de conversa para detectar potencial conflito.
+ * @param {string} conversation O texto formatado da conversa.
+ * @returns {Promise<object|null>} Um objeto com as pontuações ou nulo em caso de erro.
+ */
+async function analyzeConflict(conversation) {
+    const systemPrompt = `Você é um moderador de IA. Analise o seguinte trecho de uma conversa e avalie os níveis de "toxicidade", "sarcasmo" e "ataque_pessoal" em uma escala de 0 a 100. Responda APENAS com um objeto JSON contendo essas três chaves.
+
+Conversa:
+${conversation}`;
+
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [{ role: 'system', content: systemPrompt }],
+            response_format: { type: "json_object" }
+        });
+        const result = JSON.parse(completion.choices[0].message.content);
+        return {
+            toxicidade: result.toxicidade || 0,
+            sarcasmo: result.sarcasmo || 0,
+            ataque_pessoal: result.ataque_pessoal || 0,
+        };
+    } catch (error) {
+        console.error('[Guardian AI] Erro ao analisar conflito com OpenAI:', error);
+        return null;
+    }
+}
+
+/**
+ * Processa a detecção de conflito para uma mensagem recebida.
+ * @param {import('discord.js').Message} message O objeto da mensagem.
+ * @param {object} settings As configurações da guilda.
+ */
+async function processConflictDetection(message, settings) {
+    if (!settings.guardian_ai_alert_channel) return;
+    if (channelAlertCooldowns.has(message.channel.id)) return;
+
+    // 1. Atualiza o cache de mensagens do canal
+    if (!channelMessageCache.has(message.channel.id)) {
+        channelMessageCache.set(message.channel.id, []);
+    }
+    const channelMessages = channelMessageCache.get(message.channel.id);
+    channelMessages.push({
+        author: message.author.username.replace(/ /g, '_'), // Remove espaços para melhor formatação
+        content: message.content
+    });
+    if (channelMessages.length > 8) channelMessages.shift(); // Mantém apenas as últimas 8 mensagens
+
+    // 2. Verifica se há condições para análise (mínimo de mensagens e autores)
+    const uniqueAuthors = new Set(channelMessages.map(m => m.author));
+    if (channelMessages.length < 4 || uniqueAuthors.size < 2) {
+        return;
+    }
+
+    // 3. Formata a conversa e envia para análise
+    const conversationText = channelMessages.map(m => `${m.author}: ${m.content}`).join('\n');
+    const analysis = await analyzeConflict(conversationText);
+
+    if (!analysis) return;
+
+    // 4. Verifica se os limiares de alerta foram atingidos
+    const { toxicidade, sarcasmo, ataque_pessoal } = analysis;
+    const shouldAlert = toxicidade > 70 || sarcasmo > 80 || ataque_pessoal > 75;
+
+    if (shouldAlert) {
+        const alertChannel = await message.guild.channels.fetch(settings.guardian_ai_alert_channel).catch(() => null);
+        if (alertChannel) {
+            const embed = new EmbedBuilder()
+                .setColor('#E74C3C')
+                .setTitle('🛡️ Guardian AI: Conflito Potencial Detectado')
+                .addFields(
+                    { name: 'Canal', value: `${message.channel}`, inline: false },
+                    { name: 'Usuários Envolvidos', value: Array.from(uniqueAuthors).join(', '), inline: false },
+                    {
+                        name: 'Análise da IA',
+                        value: `**Toxicidade:** \`${toxicidade}%\`\n**Sarcasmo:** \`${sarcasmo}%\`\n**Ataque Pessoal:** \`${ataque_pessoal}%\``,
+                        inline: false
+                    },
+                    { name: 'Últimas Mensagens', value: `\`\`\`\n${conversationText.substring(0, 1000)}\n\`\`\``, inline: false }
+                )
+                .setTimestamp();
+
+            await alertChannel.send({ embeds: [embed] });
+
+            // 6. Ativa cooldown e limpa o cache para este canal, evitando spam de alertas
+            channelMessageCache.delete(message.channel.id);
+            channelAlertCooldowns.set(message.channel.id, true);
+            setTimeout(() => channelAlertCooldowns.delete(message.channel.id), 5 * 60 * 1000); // Cooldown de 5 minutos
+        }
     }
 }
 
@@ -36,8 +135,20 @@ async function processMessageForGuardian(message) {
     if (!settings?.guardian_ai_enabled) return;
 
     const monitoredChannels = (settings.guardian_ai_monitored_channels || '').split(',').filter(Boolean);
-    if (!monitoredChannels.includes(message.channel.id)) return;
+    // Se a lista de canais monitorados não estiver vazia E o canal atual não estiver na lista, encerra.
+    if (monitoredChannels.length > 0 && !monitoredChannels.includes(message.channel.id)) return;
+    // Se a lista de canais monitorados estiver vazia, o Guardian não monitora nenhum canal.
+    if (monitoredChannels.length === 0) return;
 
+    // --- NOVA LÓGICA DE DETECÇÃO DE CONFLITO ---
+    try {
+        await processConflictDetection(message, settings);
+    } catch (err) {
+        console.error('[Guardian AI] Erro na detecção de conflito:', err);
+    }
+    // --- FIM DA NOVA LÓGICA ---
+
+    // --- LÓGICA EXISTENTE DE REGRAS E POLÍTICAS ---
     const policies = (await db.query('SELECT * FROM guardian_policies WHERE guild_id = $1 AND is_enabled = true', [message.guild.id])).rows;
     if (policies.length === 0) return;
 
