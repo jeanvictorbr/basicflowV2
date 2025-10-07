@@ -30,6 +30,7 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_tickets_menu" },
             components: [{ type: 10, content: "🚨 Tickets" }, { type: 10, content: "Configure todo o sistema de **tickets**." }]
         },
+        // --- FIM DA PÁGINA 1 ---
         { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_uniformes_menu" },
@@ -41,16 +42,26 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             components: [{ type: 10, content: "⏰ Bate-Ponto" }, { type: 10, content: "Configure todo o sistema de **bate-ponto**." }]
         },
         { type: 14, divider: true, spacing: 2 },
-        // --- PAGINA 2 ---
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !isPremium },
             components: [{ type: 10, content: "🛡️ Guardian AI (Premium)" }, { type: 10, content: "Moderação proativa para **prevenir conflitos**." }]
         }
+        // --- FIM DA PÁGINA 2 ---
     ];
 
-    const ITEMS_PER_PAGE = 5; // Cada módulo ocupa 2 componentes (item + divider), mas vamos contar por módulo.
-    const paginatedModules = allModules.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
-    const totalPages = Math.ceil(allModules.length / ITEMS_PER_PAGE);
+    // AQUI ESTÁ A MUDANÇA
+    const ITEMS_PER_PAGE = 3; 
+
+    // A lógica abaixo agrupa os itens e divisórias corretamente.
+    // Cada "módulo" na verdade são 2 itens no array (o acessório + a divisória).
+    const itemsWithDividersPerPage = ITEMS_PER_PAGE * 2;
+    const paginatedModules = allModules.slice(page * itemsWithDividersPerPage, (page + 1) * itemsWithDividersPerPage);
+    // Remove a última divisória se ela for o último item da página, para economizar espaço
+    if (paginatedModules.length > 0 && paginatedModules[paginatedModules.length - 1].type === 14) {
+        paginatedModules.pop();
+    }
+    
+    const totalPages = Math.ceil(allModules.length / itemsWithDividersPerPage);
 
     const paginationButtons = {
         type: 1,
@@ -66,11 +77,12 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             components: [
                 { type: 10, content: `## Hub de Configurações - ${interaction.guild.name}` },
                 { type: 10, content: premiumStatusText },
+                { type: 14, divider: true, spacing: 2 },
                 
                 ...paginatedModules,
                 
                 { type: 14, divider: true, spacing: 2 },
-                totalPages > 1 ? paginationButtons : null, // Só mostra botões de página se houver mais de uma
+                totalPages > 1 ? paginationButtons : null,
                 { type: 14, divider: true, spacing: 1 },
                 {
                     type: 1,
@@ -81,7 +93,7 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
                 },
                 { type: 14, divider: true, spacing: 1 },
                 { type: 10, content: " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
-            ].filter(Boolean) // Remove componentes nulos (como a paginação quando não necessária)
+            ].filter(Boolean)
         }
     ];
 }
