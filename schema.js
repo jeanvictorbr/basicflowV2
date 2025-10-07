@@ -47,24 +47,30 @@ const schema = {
         ponto_vitrine_color: { type: 'VARCHAR(7)' },
         ponto_dashboard_v2_enabled: { type: 'BOOLEAN', default: false },
 
-        // --- INÍCIO: MÓDULO GUARDIAN AI ---
+        // --- INÍCIO: MÓDULO GUARDIAN AI (Simplificado) ---
         guardian_ai_enabled: { type: 'BOOLEAN', default: false },
         guardian_ai_alert_channel: { type: 'VARCHAR(255)' },
-        guardian_ai_monitored_channels: { type: 'TEXT' }, // Armazenará IDs separados por vírgula
-        guardian_ai_ignored_channels: { type: 'TEXT' },
-        guardian_ai_sensitivity: { type: 'VARCHAR(50)', default: 'Balanceado' },
-        guardian_ai_action_type: { type: 'VARCHAR(50)', default: 'AlertAndIntervene' },
-        guardian_ai_intervention_message: { type: 'TEXT' },
-        guardian_ai_escalation_enabled: { type: 'BOOLEAN', default: false },
-        guardian_ai_escalation_minutes: { type: 'INTEGER', default: 30 },
-        guardian_ai_escalation_action: { type: 'VARCHAR(50)', default: 'Timeout5Min' },
-        guardian_ai_custom_toxicity: { type: 'INTEGER', default: 80 },
-        guardian_ai_custom_sarcasm: { type: 'INTEGER', default: 70 },
-        guardian_ai_custom_attack: { type: 'INTEGER', default: 90 },
-        guardian_ai_custom_threshold: { type: 'INTEGER', default: 3 },
-        guardian_ai_custom_window: { type: 'INTEGER', default: 2 }
+        guardian_ai_log_channel: { type: 'VARCHAR(255)' } // Novo canal para logs de ações
         // --- FIM: MÓDULO GUARDIAN AI ---
     },
+        // --- INÍCIO: NOVA TABELA DO GUARDIAN AI ---
+    guardian_rules: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        is_enabled: { type: 'BOOLEAN', default: true },
+        // Gatilhos (Quando)
+        trigger_type: { type: 'VARCHAR(50)', notNull: true }, // Ex: 'TOXICITY', 'SPAM_TEXT', 'MENTION_SPAM'
+        trigger_threshold: { type: 'INTEGER', notNull: true }, // Ex: 80 (para 80%), 5 (para 5 menções)
+        trigger_window_seconds: { type: 'INTEGER', default: 10 },
+        // Ações (Como)
+        action_delete_message: { type: 'BOOLEAN', default: false },
+        action_warn_member_dm: { type: 'BOOLEAN', default: false },
+        action_warn_message: { type: 'TEXT' }, // Mensagem de aviso a ser enviada
+        action_punishment: { type: 'VARCHAR(50)', default: 'NONE' }, // Ex: 'NONE', 'TIMEOUT_5_MIN', 'KICK', 'BAN'
+        action_punishment_duration_minutes: { type: 'INTEGER' } // Duração para timeout
+    },
+    // --- FIM: NOVA TABELA DO GUARDIAN AI ---
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },
         duration_days: { type: 'INTEGER', notNull: true },
