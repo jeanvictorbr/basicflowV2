@@ -8,7 +8,28 @@ if (!process.env.OPENAI_API_KEY) { console.warn('[Guardian AI] OPENAI_API_KEY n�
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const messageCache = new Map();
 
-// ... (as funções analyzeToxicity e updateMessageCache permanecem as mesmas da versão anterior)
+async function analyzeToxicity(text) {
+    const systemPrompt = `Avalie o nível de toxicidade da mensagem. Responda APENAS com um objeto JSON com a chave "toxicidade" e um valor de 0 a 100. Mensagem: "${text}"`;
+    try {
+        const completion = await openai.chat.completions.create({ model: 'gpt-3.5-turbo', messages: [{ role: 'system', content: systemPrompt }], response_format: { type: "json_object" } });
+        const result = JSON.parse(completion.choices[0].message.content);
+        return result.toxicidade || 0;
+    } catch (error) { 
+        console.error('[Guardian AI] Erro ao analisar toxicidade com OpenAI:', error);
+        return 0; 
+    }
+}
+
+function updateMessageCache(message) {
+    const key = `${message.guild.id}-${message.author.id}`;
+    const now = Date.now();
+    if (!messageCache.has(key)) messageCache.set(key, []);
+    const userMessages = messageCache.get(key);
+    userMessages.push({ timestamp: now, content: message.content, id: message.id });
+    const filteredMessages = userMessages.filter(msg => now - msg.timestamp < 30000); // Janela de 30s para spam
+    messageCache.set(key, filteredMessages);
+    return filteredMessages;
+}
 
 async function processMessageForGuardian(message) {
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
@@ -23,20 +44,16 @@ async function processMessageForGuardian(message) {
     const recentMessages = updateMessageCache(message);
 
     for (const policy of policies) {
-        // Pega a infração atual do usuário para esta política
         const infractionRes = await db.query('SELECT * FROM guardian_infractions WHERE guild_id = $1 AND user_id = $2 AND policy_id = $3', [message.guild.id, message.author.id, policy.id]);
         let infraction = infractionRes.rows[0];
 
-        // Se não houver infração ou se a última foi há muito tempo, reseta
         if (!infraction || (new Date() - new Date(infraction.last_infraction_at)) > (policy.reset_interval_hours * 60 * 60 * 1000)) {
             infraction = { infraction_count: 0 };
         }
 
-        // Determina o próximo passo a ser verificado
         const nextStepLevel = infraction.infraction_count + 1;
         const step = (await db.query('SELECT * FROM guardian_policy_steps WHERE policy_id = $1 AND step_level = $2', [policy.id, nextStepLevel])).rows[0];
         
-        // Se não houver um próximo passo configurado, ignora
         if (!step) continue;
 
         let conditionMet = false;
@@ -60,13 +77,18 @@ async function processMessageForGuardian(message) {
                     messagesToDelete = matchingMessages.map(m => m.id);
                 }
                 break;
-            // Adicionar outros casos como 'MENTION_SPAM' aqui se necessário
+            case 'MENTION_SPAM':
+                const mentionCount = message.mentions.users.size + message.mentions.roles.size;
+                if (mentionCount >= step.threshold) {
+                    conditionMet = true;
+                    reason = `Spam de menções (${mentionCount} menções)`;
+                    messagesToDelete.push(message.id);
+                }
+                break;
         }
 
         if (conditionMet) {
             await executeRuleActions(message, policy, step, reason, settings, messagesToDelete);
-
-            // Atualiza ou insere o registro de infração do usuário
             await db.query(
                 `INSERT INTO guardian_infractions (guild_id, user_id, policy_id, infraction_count, last_infraction_at)
                  VALUES ($1, $2, $3, 1, NOW())
@@ -75,17 +97,15 @@ async function processMessageForGuardian(message) {
                 [message.guild.id, message.author.id, policy.id]
             );
 
-            // Limpa o cache para o gatilho de spam
             if (policy.trigger_type === 'SPAM_TEXT') {
                 messageCache.set(`${message.guild.id}-${message.author.id}`, []);
             }
-            return; // Para a verificação após a primeira política ser acionada
+            return;
         }
     }
 }
 
 async function executeRuleActions(message, policy, step, reason, settings, messageIdsToDelete) {
-    // Esta função agora recebe 'step' em vez de 'rule' para as ações
     const { member, guild, channel } = message;
     if (step.action_delete_message && messageIdsToDelete.length > 0) {
         await channel.bulkDelete(messageIdsToDelete, true).catch(() => {});
@@ -108,7 +128,7 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
             case 'KICK': await member.kick(punishmentReason); punishmentDetails = 'Expulso'; break;
             case 'BAN': await member.ban({ reason: punishmentReason }); punishmentDetails = 'Banido'; break;
         }
-    } catch (error) { punishmentDetails = `Falha ao punir.`; }
+    } catch (error) { console.error(`[Guardian AI] Falha ao aplicar punição:`, error); punishmentDetails = `Falha ao punir.`; }
 
     if (settings.guardian_ai_log_channel) {
         const logChannel = await guild.channels.fetch(settings.guardian_ai_log_channel).catch(() => null);
