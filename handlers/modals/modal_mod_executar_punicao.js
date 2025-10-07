@@ -13,17 +13,18 @@ module.exports = {
 
         const [_, __, ___, action, targetId] = interaction.customId.split('_');
         const reason = interaction.fields.getTextInputValue('input_reason');
-
+        
         // --- CORREÇÃO APLICADA AQUI ---
-        // Só tenta ler a duração se o campo puder existir
+        // A forma mais segura de ler um campo opcional é com um bloco try-catch.
         let durationStr = null;
         let durationMs = null;
-        if (action === 'timeout' || action === 'ban') {
-            // Usamos .getField para evitar o erro se o campo não existir (ex: ban permanente)
-            durationStr = interaction.fields.getField('input_duration', false)?.value || null;
+        try {
+            durationStr = interaction.fields.getTextInputValue('input_duration');
             if (durationStr) {
                 durationMs = ms(durationStr);
             }
+        } catch (error) {
+            // Ignora o erro se o campo 'input_duration' não existir (o que é esperado para 'warn' e 'kick').
         }
         // --- FIM DA CORREÇÃO ---
 
@@ -32,7 +33,7 @@ module.exports = {
             return interaction.followUp({ content: '❌ O membro alvo não foi encontrado no servidor.', ephemeral: true });
         }
 
-        const settings = (await db.query('SELECT mod_log_channel FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
+        const settings = (await db.query('SELECT mod_log_channel, mod_temp_ban_enabled FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
 
         try {
             // Aplica a punição
@@ -48,6 +49,9 @@ module.exports = {
                     await targetMember.kick(`Moderador: ${interaction.user.tag} | Motivo: ${reason}`);
                     break;
                 case 'ban':
+                     if (durationStr && !settings.mod_temp_ban_enabled) {
+                        return interaction.followUp({ content: '❌ A funcionalidade de banimento temporário é premium e está desativada.', ephemeral: true });
+                    }
                     await interaction.guild.bans.create(targetId, { reason: `Moderador: ${interaction.user.tag} | Motivo: ${reason}` });
                     break;
             }
