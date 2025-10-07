@@ -4,6 +4,7 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
+const { processMessageForGuardian } = require('./utils/guardianAI.js');
 require('dotenv').config();
 const db = require('./database.js');
 
@@ -71,6 +72,15 @@ await db.synchronizeDatabase();
                 Routes.applicationCommands(process.env.CLIENT_ID),
                 { body: commandsToDeploy },
             );
+
+                // --- INÍCIO: INTEGRAÇÃO GUARDIAN AI ---
+    // Coloque este bloco ANTES da lógica de tickets para que ele rode primeiro.
+    if (message.guild) { // Garante que a mensagem não é uma DM
+        processMessageForGuardian(message).catch(err => {
+            console.error('[Guardian AI] Erro não tratado no processador de mensagens:', err);
+        });
+    }
+    // -
             console.log(`[CMD] Comandos registados globalmente com sucesso.`);
         }
     } catch (error) {

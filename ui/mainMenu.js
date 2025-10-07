@@ -57,6 +57,14 @@ module.exports = async function generateMainMenu(interaction) {
                     "components": [{ "type": 10, "content": "⏰ Bate-Ponto" }, { "type": 10, "content": "Configure todo o sistema de **bate-ponto**." }]
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
+                                // --- INÍCIO: BOTÃO GUARDIAN AI ---
+                { "type": 14, "divider": true, "spacing": 2 },
+                {
+                    "type": 9,
+                    "accessory": { "type": 2, "style": 2, "label": "Abrir", "emoji": { "name": "🛡️" }, "custom_id": "open_guardian_menu", "disabled": !isPremium },
+                    "components": [{ "type": 10, "content": "🛡️ Guardian AI (Premium)" }, { "type": 10, "content": "Moderação proativa para **prevenir conflitos**." }]
+                },
+                // --- FIM: BOTÃO GUARDIAN AI ---
 
                 // =======================================================
                 // ==               IMAGEM ADICIONADA AQUI              ==
