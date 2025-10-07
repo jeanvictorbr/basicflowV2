@@ -1,11 +1,11 @@
 // ui/guardianRulesMenu.js
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 function getRuleDescription(rule) {
     let triggerDesc = '';
     switch (rule.trigger_type) {
         case 'TOXICITY':
-            triggerDesc = `Se a **toxicidade** for acima de \`${rule.trigger_threshold}%\``;
+            triggerDesc = `Se a **toxicidade** for > \`${rule.trigger_threshold}%\``;
             break;
         case 'SPAM_TEXT':
             triggerDesc = `Se repetir a mesma mensagem \`${rule.trigger_threshold}\` vezes`;
@@ -16,11 +16,11 @@ function getRuleDescription(rule) {
     }
 
     const actions = [];
-    if (rule.action_delete_message) actions.push('Apagar Mensagem');
-    if (rule.action_warn_member_dm) actions.push('Avisar por DM');
+    if (rule.action_delete_message) actions.push('Apagar');
+    if (rule.action_warn_member_dm) actions.push('Avisar DM');
     
     const punishmentMap = {
-        'TIMEOUT': `Silenciar por ${rule.action_punishment_duration_minutes || 0} min`,
+        'TIMEOUT': `Silenciar (${rule.action_punishment_duration_minutes || 0}m)`,
         'KICK': 'Expulsar',
         'BAN': 'Banir'
     };
@@ -28,37 +28,48 @@ function getRuleDescription(rule) {
         actions.push(punishmentMap[rule.action_punishment]);
     }
 
-    return { trigger: triggerDesc, actions: actions.join(' | ') || 'Nenhuma' };
+    return `> **Quando:** ${triggerDesc}\n> **Ações:** ${actions.join(' | ') || 'Nenhuma'}`;
 }
 
 module.exports = function generateGuardianRulesMenu(rules) {
-    const embed = new EmbedBuilder()
-        .setColor('#E67E22')
-        .setTitle('📜 Gerenciador de Regras do Guardian AI')
-        .setDescription('Abaixo estão as regras de automação ativas e inativas. Use os botões para gerenciá-las.');
+    const ruleComponents = rules.length > 0
+        ? rules.flatMap(rule => [ // flatMap para achatar o array
+            { "type": 10, "content": `**${rule.is_enabled ? '🟢' : '🔴'} ${rule.name}**` },
+            { "type": 10, "content": getRuleDescription(rule) },
+            { "type": 14, "divider": true, "spacing": 1 },
+        ])
+        : [{ "type": 10, "content": "> Nenhuma regra criada ainda. Clique em \"Adicionar Regra\" para começar." }];
 
-    if (rules.length > 0) {
-        rules.forEach(rule => {
-            const { trigger, actions } = getRuleDescription(rule);
-            embed.addFields({
-                name: `${rule.is_enabled ? '🟢' : '🔴'} Regra: ${rule.name}`,
-                value: `**Quando:** ${trigger}\n**Ações:** ${actions}`
-            });
-        });
-    } else {
-        embed.setDescription('Nenhuma regra criada ainda. Clique em "Adicionar Regra" para começar.');
+    // Remove a última divisória se existir
+    if (ruleComponents.length > 0 && ruleComponents[ruleComponents.length - 1].type === 14) {
+        ruleComponents.pop();
     }
+        
+    const actionButtons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('guardian_rule_add').setLabel('Adicionar Regra').setStyle(ButtonStyle.Success).setEmoji('➕'),
+        new ButtonBuilder().setCustomId('guardian_rule_remove').setLabel('Remover Regra').setStyle(ButtonStyle.Danger).setEmoji('🗑️').setDisabled(rules.length === 0),
+        new ButtonBuilder().setCustomId('guardian_rule_toggle').setLabel('Ativar/Desativar').setStyle(ButtonStyle.Secondary).setEmoji('🔄').setDisabled(rules.length === 0)
+    );
+    
+    const backButton = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('open_guardian_menu').setLabel('Voltar').setStyle(ButtonStyle.Secondary).setEmoji('↩️')
+    );
 
-    const components = [
-        new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('guardian_rule_add').setLabel('Adicionar Regra').setStyle(ButtonStyle.Success).setEmoji('➕'),
-            new ButtonBuilder().setCustomId('guardian_rule_remove').setLabel('Remover Regra').setStyle(ButtonStyle.Danger).setEmoji('🗑️').setDisabled(rules.length === 0),
-            new ButtonBuilder().setCustomId('guardian_rule_toggle').setLabel('Ativar/Desativar').setStyle(ButtonStyle.Secondary).setEmoji('🔄').setDisabled(rules.length === 0)
-        ),
-        new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('open_guardian_menu').setLabel('Voltar').setStyle(ButtonStyle.Secondary).setEmoji('↩️')
-        )
-    ];
-
-    return { embeds: [embed], components };
+    return {
+        // A resposta agora é um único objeto de componente V2, sem 'embeds'
+        components: [
+            {
+                "type": 17, "accent_color": 15105570,
+                "components": [
+                    { "type": 10, "content": "## 📜 Gerenciador de Regras do Guardian AI" },
+                    { "type": 14, "divider": true, "spacing": 1 },
+                    ...ruleComponents, // Adiciona as regras formatadas
+                    { "type": 14, "divider": true, "spacing": 2 },
+                    { "type": 1, "components": actionButtons.toJSON().components },
+                    { "type": 14, "divider": true, "spacing": 1 },
+                    { "type": 1, "components": backButton.toJSON().components }
+                ]
+            }
+        ]
+    };
 };
