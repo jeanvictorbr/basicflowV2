@@ -66,7 +66,6 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             components: [
                 { type: 10, content: `## Hub de Configurações - ${interaction.guild.name}` },
                 { type: 10, content: premiumStatusText },
-                { type: 14, divider: true, spacing: 2 },
                 
                 ...paginatedModules,
                 
