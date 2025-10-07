@@ -1,40 +1,51 @@
 // utils/guardianAI.js
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { OpenAI } = require('openai');
 const db = require('../database.js');
 const { EmbedBuilder } = require('discord.js');
 require('dotenv').config();
 
-if (!process.env.GEMINI_API_KEY) {
-    console.warn('[Guardian AI] A variável de ambiente GEMINI_API_KEY não está definida. O módulo não funcionará.');
+// Reutiliza a sua configuração existente da OpenAI
+if (!process.env.OPENAI_API_KEY) {
+    console.warn('[Guardian AI] A variável de ambiente OPENAI_API_KEY não está definida. O módulo não funcionará.');
 }
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+});
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-
-// Cache para armazenar conversas recentes e evitar spam de API
+// Cache para armazenar conversas recentes
 const conversationCache = new Map();
 
-async function analyzeTextWithGemini(chatHistory) {
-    const prompt = `
+async function analyzeTextWithOpenAI(chatHistory) {
+    const systemPrompt = `
         Analise o sentimento e a intenção da última mensagem no contexto da conversa a seguir.
-        Responda APENAS com um objeto JSON com as seguintes chaves: "toxicidade" (0-100), "sarcasmo" (0-100), "ataque_pessoal" (0-100).
-        Seja rigoroso na sua análise.
-        Conversa:
-        ${chatHistory.map(m => `${m.author}: ${m.content}`).join('\n')}
+        Sua resposta DEVE ser APENAS um objeto JSON válido com as seguintes chaves e valores numéricos de 0 a 100:
+        "toxicidade": (nível de linguagem odiosa ou agressiva),
+        "sarcasmo": (nível de ironia ou provocação),
+        "ataque_pessoal": (nível de ofensa direcionada a um usuário).
+
+        Exemplo de resposta: {"toxicidade": 85, "sarcasmo": 40, "ataque_pessoal": 90}
     `;
 
+    const messages = chatHistory.map(m => ({
+        role: 'user', // Trata todas as mensagens como "user" para a análise de contexto
+        content: `${m.author}: ${m.content}`
+    }));
+
     try {
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const text = response.text();
-        // Limpa o texto para extrair apenas o JSON
-        const jsonMatch = text.match(/```json\n([\s\S]*?)\n```|({[\s\S]*})/);
-        if (jsonMatch) {
-            return JSON.parse(jsonMatch[1] || jsonMatch[2]);
-        }
-        return null;
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                ...messages
+            ],
+            response_format: { type: "json_object" }, // Pede para a IA garantir um JSON válido
+        });
+
+        const result = JSON.parse(completion.choices[0].message.content);
+        return result;
+
     } catch (error) {
-        console.error('[Guardian AI] Erro ao analisar texto com Gemini:', error);
+        console.error('[Guardian AI] Erro ao analisar texto com OpenAI:', error);
         return null;
     }
 }
@@ -42,33 +53,38 @@ async function analyzeTextWithGemini(chatHistory) {
 async function processMessageForGuardian(message) {
     const guildId = message.guild.id;
     const channelId = message.channel.id;
-    const authorId = message.author.id;
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId])).rows[0];
     if (!settings?.guardian_ai_enabled) {
-        conversationCache.delete(channelId); // Limpa o cache se o sistema for desativado
+        conversationCache.delete(channelId);
         return;
     }
 
-    const monitoredChannels = settings.guardian_ai_monitored_channels?.split(',') || [];
-    if (!monitoredChannels.includes(channelId)) return;
+    const monitoredChannels = (settings.guardian_ai_monitored_channels || '').split(',').filter(Boolean);
+    const ignoredChannels = (settings.guardian_ai_ignored_channels || '').split(',').filter(Boolean);
 
-    // Inicializa o cache para o canal se não existir
+    if (!monitoredChannels.includes(channelId) || ignoredChannels.includes(channelId)) {
+        return;
+    }
+
     if (!conversationCache.has(channelId)) {
         conversationCache.set(channelId, []);
     }
     const channelCache = conversationCache.get(channelId);
 
-    // Adiciona a nova mensagem e mantém o cache com as últimas 10 mensagens
-    channelCache.push({ author: message.author.tag, content: message.content, timestamp: Date.now() });
-    if (channelCache.length > 10) channelCache.shift();
+    channelCache.push({ author: message.author.tag, content: message.content });
+    if (channelCache.length > 8) channelCache.shift();
 
-    // Condição para acionar a análise: mais de 2 mensagens no canal
     if (channelCache.length < 3) return;
 
-    const analysis = await analyzeTextWithGemini(channelCache);
+    // Aciona a análise apenas se houver troca de mensagens entre pelo menos 2 pessoas diferentes
+    const authorsInCache = new Set(channelCache.map(m => m.author));
+    if (authorsInCache.size < 2) return;
+
+    const analysis = await analyzeTextWithOpenAI(channelCache);
     if (!analysis) return;
 
+    // Define os limiares de sensibilidade (padrão ou customizado)
     const sensitivity = {
         toxicidade: settings.guardian_ai_custom_toxicity || 80,
         sarcasmo: settings.guardian_ai_custom_sarcasm || 70,
@@ -76,21 +92,19 @@ async function processMessageForGuardian(message) {
     };
 
     if (
-        analysis.toxicidade > sensitivity.toxicidade ||
-        analysis.sarcasmo > sensitivity.sarcasmo ||
-        analysis.ataque_pessoal > sensitivity.ataque_pessoal
+        analysis.toxicidade >= sensitivity.toxicidade ||
+        analysis.sarcasmo >= sensitivity.sarcasmo ||
+        analysis.ataque_pessoal >= sensitivity.ataque_pessoal
     ) {
-        // CONFLITO DETECTADO!
         console.log(`[Guardian AI] Conflito potencial detectado no servidor ${guildId}.`);
         await triggerIntervention(message, settings, analysis, channelCache);
-        conversationCache.delete(channelId); // Limpa o cache após uma intervenção
+        conversationCache.delete(channelId);
     }
 }
 
 async function triggerIntervention(message, settings, analysis, chatHistory) {
     const { guild, channel } = message;
 
-    // 1. Alertar a Staff (sempre)
     if (settings.guardian_ai_alert_channel) {
         const alertChannel = await guild.channels.fetch(settings.guardian_ai_alert_channel).catch(() => null);
         if (alertChannel) {
@@ -103,20 +117,18 @@ async function triggerIntervention(message, settings, analysis, chatHistory) {
                     { name: 'Canal', value: `${channel}` },
                     { name: 'Usuários Envolvidos', value: usersInvolved.join(', ') },
                     { name: 'Análise da IA', value: `Toxicidade: \`${analysis.toxicidade}%\`\nSarcasmo: \`${analysis.sarcasmo}%\`\nAtaque Pessoal: \`${analysis.ataque_pessoal}%\`` },
-                    { name: 'Últimas Mensagens', value: chatHistory.slice(-5).map(m => `**${m.author}:** ${m.content}`).join('\n').substring(0, 1024) }
+                    { name: 'Últimas Mensagens', value: "```" + chatHistory.slice(-5).map(m => `${m.author}: ${m.content}`).join('\n').substring(0, 1000) + "```" }
                 )
                 .setTimestamp();
             await alertChannel.send({ embeds: [embed] });
         }
     }
 
-    // 2. Intervir no chat público (se configurado)
     if (settings.action_type === 'AlertAndIntervene') {
         const defaultMessage = "Lembrete amigável do nosso Guardião: Vamos manter a conversa respeitosa e construtiva, pessoal. Foco nas ideias, não nos ataques. 🙂";
         const interventionMessage = settings.guardian_ai_intervention_message || defaultMessage;
         await channel.send(interventionMessage);
     }
 }
-
 
 module.exports = { processMessageForGuardian };

@@ -140,27 +140,44 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 client.on(Events.MessageCreate, async message => {
-    if (message.author.bot) return;
+    // Ignora DMs e mensagens de bots para ambas as funcionalidades de IA
+    if (!message.guild || message.author.bot) return;
 
+    // --- LÓGICA DO GUARDIAN AI ---
+    // Esta função rodará em canais monitorados e não interfere com a lógica de tickets
+    try {
+        await processMessageForGuardian(message);
+    } catch (err) {
+        console.error('[Guardian AI] Erro não tratado no processador de mensagens:', err);
+    }
+    // ----------------------------
+
+    // --- LÓGICA DO ASSISTENTE DE TICKET ---
+    // Procura por um ticket no canal da mensagem
     const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
+    
+    // Se não for um canal de ticket, encerra a execução para esta lógica
     if (!ticket) return;
 
+    // Lógica para cancelar o auto-close
     if (ticket.warning_sent_at) {
         await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
     }
     await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
+    // Verifica se o assistente de IA para tickets está ativo
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
-    
     if (!settings || !settings.tickets_ai_assistant_enabled) return;
 
     const history = await message.channel.messages.fetch({ limit: 15 });
     
+    // Verifica se um humano do suporte já respondeu
     let humanSupportHasReplied = false;
     for (const msg of history.values()) {
         if (msg.author.bot || msg.author.id === ticket.user_id) continue;
         
-        if (msg.member && msg.member.roles.cache.has(settings.tickets_cargo_suporte)) {
+        const member = await message.guild.members.fetch(msg.author.id).catch(() => null);
+        if (member && member.roles.cache.has(settings.tickets_cargo_suporte)) {
             humanSupportHasReplied = true;
             break;
         }
