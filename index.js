@@ -14,6 +14,7 @@ client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 
+// --- Carregamento de Comandos ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -23,12 +24,14 @@ for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
     if (command.data && command.execute) {
         client.commands.set(command.data.name, command);
+        // Adiciona todos os comandos para deploy, exceto o de debug por padrão
         if (command.data.name !== 'debugai') {
              commandsToDeploy.push(command.data.toJSON());
         }
     }
 }
 
+// --- Carregamento de Handlers ---
 console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
@@ -52,19 +55,25 @@ handlerTypes.forEach(handlerType => {
 });
 console.log('--- Handlers Carregados ---');
 
+
+// --- Evento de Bot Pronto ---
 client.once(Events.ClientReady, async () => {
-await db.synchronizeDatabase();
+    await db.synchronizeDatabase();
     
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
         console.log(`[CMD] Iniciando registo de ${commandsToDeploy.length} comando(s).`);
+        
+        // Lógica de deploy de comandos (semelhante a deploy-commands.js)
         if (process.env.DEV_GUILD_ID) {
             const debugCommand = client.commands.get('debugai');
-            if(debugCommand) commandsToDeploy.push(debugCommand.data.toJSON());
+            // Clona o array para não modificar o original
+            const devCommands = [...commandsToDeploy];
+            if(debugCommand) devCommands.push(debugCommand.data.toJSON());
 
             await rest.put(
                 Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.DEV_GUILD_ID),
-                { body: commandsToDeploy },
+                { body: devCommands },
             );
             console.log(`[CMD] Comandos registados com sucesso na guild de desenvolvimento.`);
         } else {
@@ -72,15 +81,6 @@ await db.synchronizeDatabase();
                 Routes.applicationCommands(process.env.CLIENT_ID),
                 { body: commandsToDeploy },
             );
-
-                // --- INÍCIO: INTEGRAÇÃO GUARDIAN AI ---
-    // Coloque este bloco ANTES da lógica de tickets para que ele rode primeiro.
-    if (message.guild) { // Garante que a mensagem não é uma DM
-        processMessageForGuardian(message).catch(err => {
-            console.error('[Guardian AI] Erro não tratado no processador de mensagens:', err);
-        });
-    }
-    // -
             console.log(`[CMD] Comandos registados globalmente com sucesso.`);
         }
     } catch (error) {
@@ -89,11 +89,13 @@ await db.synchronizeDatabase();
 
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
     
+    // Inicia o loop de verificação de tickets inativos
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
-    }, 120000); 
+    }, 5 * 60 * 1000); // Executa a cada 5 minutos
 });
 
+// --- Evento de Interações ---
 client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -101,32 +103,18 @@ client.on(Events.InteractionCreate, async interaction => {
         try {
             await command.execute(interaction);
         } catch (error) {
-            console.error('Erro executando comando:', error);
+            console.error(`Erro executando o comando /${interaction.commandName}:`, error);
         }
     } else {
-        let handler;
-        if (interaction.customId.startsWith('modal_ai_knowledge_edit_')) {
-            handler = client.handlers.get('modal_ai_knowledge_edit_');
-        } else if (interaction.customId.startsWith('modal_uniformes_edit_')) {
-            handler = client.handlers.get('modal_uniformes_edit_');
-        } else if (interaction.customId.startsWith('uniform_copy_preset_')) {
-            handler = client.handlers.get('uniform_copy_preset_');
-        } else if (interaction.customId.startsWith('ranking_page_')) {
-            handler = client.handlers.get('ranking_page_');
-        } else if (interaction.customId.startsWith('modal_department_details_')) { 
-            handler = client.handlers.get('modal_department_details_'); 
-        } else if (interaction.customId.startsWith('select_ticket_create_department_')) {
-            handler = client.handlers.get('select_ticket_create_department_');
-        } else if (interaction.customId.startsWith('modal_ticket_greeting_edit_')) {
-            handler = client.handlers.get('modal_ticket_greeting_edit_');
-        } else if (interaction.customId.startsWith('feedback_star_')) {
-            handler = client.handlers.get('feedback_star_');
-        } else if (interaction.customId.startsWith('feedback_submit_')) {
-            handler = client.handlers.get('feedback_submit_');
-        } else if (interaction.customId.startsWith('feedback_page_')) {
-            handler = client.handlers.get('feedback_page_');
-        } else {
-            handler = client.handlers.get(interaction.customId);
+        // Lógica para encontrar o handler correto (incluindo handlers dinâmicos)
+        const customId = interaction.customId;
+        let handler = client.handlers.get(customId);
+        
+        if (!handler) {
+            const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => customId.startsWith(key));
+            if (dynamicHandlerId) {
+                handler = client.handlers.get(dynamicHandlerId);
+            }
         }
         
         if (!handler) return;
@@ -134,44 +122,37 @@ client.on(Events.InteractionCreate, async interaction => {
         try {
             await handler(interaction, client);
         } catch (error) {
-            console.error(`Erro executando handler ${interaction.customId}:`, error);
+            console.error(`Erro executando o handler de interação "${customId}":`, error);
         }
     }
 });
 
+// --- Evento de Novas Mensagens ---
 client.on(Events.MessageCreate, async message => {
-    // Ignora DMs e mensagens de bots para ambas as funcionalidades de IA
     if (!message.guild || message.author.bot) return;
 
     // --- LÓGICA DO GUARDIAN AI ---
-    // Esta função rodará em canais monitorados e não interfere com a lógica de tickets
     try {
         await processMessageForGuardian(message);
     } catch (err) {
-        console.error('[Guardian AI] Erro não tratado no processador de mensagens:', err);
+        console.error('[Guardian AI] Erro não tratado:', err);
     }
     // ----------------------------
 
     // --- LÓGICA DO ASSISTENTE DE TICKET ---
-    // Procura por um ticket no canal da mensagem
     const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
-    
-    // Se não for um canal de ticket, encerra a execução para esta lógica
     if (!ticket) return;
 
-    // Lógica para cancelar o auto-close
     if (ticket.warning_sent_at) {
         await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
     }
     await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
-    // Verifica se o assistente de IA para tickets está ativo
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
     if (!settings || !settings.tickets_ai_assistant_enabled) return;
 
     const history = await message.channel.messages.fetch({ limit: 15 });
     
-    // Verifica se um humano do suporte já respondeu
     let humanSupportHasReplied = false;
     for (const msg of history.values()) {
         if (msg.author.bot || msg.author.id === ticket.user_id) continue;
@@ -199,5 +180,6 @@ client.on(Events.MessageCreate, async message => {
         await message.channel.send(aiResponse);
     }
 });
+
 
 client.login(process.env.DISCORD_TOKEN);

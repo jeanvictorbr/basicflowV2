@@ -45,7 +45,11 @@ async function analyzeTextWithOpenAI(chatHistory) {
         return result;
 
     } catch (error) {
-        console.error('[Guardian AI] Erro ao analisar texto com OpenAI:', error);
+        if (error.response && error.response.status === 429) {
+            console.error("[Guardian AI] Erro: A conta da OpenAI não tem créditos suficientes.");
+        } else {
+            console.error('[Guardian AI] Erro ao analisar texto com OpenAI:', error);
+        }
         return null;
     }
 }
@@ -116,7 +120,7 @@ async function triggerIntervention(message, settings, analysis, chatHistory) {
                 .addFields(
                     { name: 'Canal', value: `${channel}` },
                     { name: 'Usuários Envolvidos', value: usersInvolved.join(', ') },
-                    { name: 'Análise da IA', value: `Toxicidade: \`${analysis.toxicidade}%\`\nSarcasmo: \`${analysis.sarcasmo}%\`\nAtaque Pessoal: \`${analysis.ataque_pessoal}%\`` },
+                    { name: 'Análise da IA', value: `Toxicidade: \`${analysis.toxicidade || 0}%\`\nSarcasmo: \`${analysis.sarcasmo || 0}%\`\nAtaque Pessoal: \`${analysis.ataque_pessoal || 0}%\`` },
                     { name: 'Últimas Mensagens', value: "```" + chatHistory.slice(-5).map(m => `${m.author}: ${m.content}`).join('\n').substring(0, 1000) + "```" }
                 )
                 .setTimestamp();
