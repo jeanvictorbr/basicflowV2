@@ -1,7 +1,7 @@
 // Substitua o conteúdo em: index.js
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
@@ -17,6 +17,7 @@ client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 
 // --- Carregamento de Comandos e Handlers ---
+// (Esta parte permanece inalterada)
 client.commands = new Collection();
 const commandsToDeploy = [];
 const devCommandsToDeploy = [];
@@ -60,6 +61,7 @@ handlerTypes.forEach(handlerType => {
 console.log('--- Handlers Carregados ---');
 
 // --- Evento de Bot Pronto ---
+// (Esta parte permanece inalterada)
 client.once(Events.ClientReady, async () => {
     await db.synchronizeDatabase();
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -88,7 +90,8 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
 });
 
-// --- Evento de Interações (COM TRATAMENTO DE ERRO GLOBAL) ---
+// --- Evento de Interações ---
+// (Esta parte permanece inalterada)
 client.on(Events.InteractionCreate, async interaction => {
     let handler;
     let customId;
@@ -119,7 +122,6 @@ client.on(Events.InteractionCreate, async interaction => {
         await handler(interaction, client);
 
     } catch (error) {
-        // Bloco de captura de erro global
         console.error(`❌ Erro CRÍTICO executando o handler de interação "${customId}":`, error);
         if (interaction.replied || interaction.deferred) {
             await interaction.followUp({ content: '🔴 Houve um erro interno ao processar sua solicitação. A equipe de desenvolvimento foi notificada.', ephemeral: true }).catch(console.error);
@@ -131,54 +133,55 @@ client.on(Events.InteractionCreate, async interaction => {
 
 
 // --- Evento de Novas Mensagens ---
-client.on(Events.MessageCreate, async (message, overrideContent) => {
+client.on(Events.MessageCreate, async (message) => {
     if (!message.guild || message.author.bot) return;
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
+
+    // --- NOVA LÓGICA DE IA COM THREADS ---
+    const isAiThread = message.channel.isThread() && message.channel.name.startsWith('💬 Conversa com IA');
+    const isMentioned = message.content.includes(client.user.id);
     
-    const contentToProcess = overrideContent || message.content;
-
-    if (contentToProcess.includes(client.user.id) && settings.guardian_ai_mention_chat_enabled) {
+    if (settings.guardian_ai_mention_chat_enabled && (isMentioned || isAiThread)) {
         try {
-            const userMessage = contentToProcess.replace(/<@!?\d+>/g, '').trim();
-            
-            if (isAmbiguous(userMessage) && !overrideContent) {
-                const row = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder().setCustomId('select_bot_basicflow').setLabel('BasicFlow').setStyle(ButtonStyle.Primary),
-                        new ButtonBuilder().setCustomId('select_bot_factionflow').setLabel('FactionFlow').setStyle(ButtonStyle.Secondary),
-                    );
-                await message.reply({
-                    content: 'Essa função existe em mais de um bot. Você está se referindo ao **BasicFlow** ou ao **FactionFlow**?',
-                    components: [row]
+            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
+            if (!userMessage) return;
+
+            // Se for uma menção e NÃO estiver já numa thread, cria uma nova.
+            if (isMentioned && !isAiThread) {
+                const thread = await message.startThread({
+                    name: `💬 Conversa com IA - ${message.author.username}`,
+                    autoArchiveDuration: 60, // Arquiva após 1h de inatividade
+                    reason: 'Resposta da IA à menção do usuário.',
                 });
+                await thread.send(`Olá ${message.author}! Estou a analisar a sua questão. Um momento...`);
+                await thread.members.add(message.author); // Garante que o autor está na thread
+
+                // A IA agora responde dentro da thread, usando a mensagem original como contexto
+                processAiResponse(thread, userMessage, [], settings, client);
+                return; // Impede a execução do resto do código para esta mensagem
+            }
+
+            // Se for uma mensagem dentro de uma thread de IA, continua a conversa.
+            if (isAiThread) {
+                const oneHourAgo = Date.now() - (60 * 60 * 1000);
+                const messages = await message.channel.messages.fetch({ limit: 5 });
+                
+                // Filtra mensagens com mais de 1 hora e formata o histórico
+                const recentMessages = messages.filter(m => m.createdTimestamp > oneHourAgo);
+                const chatHistory = recentMessages.map(msg => ({
+                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
+                    content: msg.content,
+                })).reverse(); // Inverte para ordem cronológica
+
+                processAiResponse(message.channel, userMessage, chatHistory, settings, client);
                 return;
             }
-
-            if (userMessage.match(/^(pare|para|chega|cancelar|parar|stop)$/i)) {
-                await message.reply('Entendido! Se precisar de algo mais, é só chamar. 😉');
-                return;
-            }
-
-            let { chatPrompt, useKnowledge } = getChatContext(userMessage, message, client);
-            
-            await message.channel.sendTyping();
-            const history = await message.channel.messages.fetch({ limit: 10 });
-            const chatHistory = history.map(msg => ({
-                role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                content: msg.content,
-            })).reverse();
-            
-            const aiResponse = await getAIResponse(message.guild.id, chatHistory, userMessage, chatPrompt, useKnowledge);
-
-            if (aiResponse) {
-                await message.reply(aiResponse);
-            }
-            return; 
         } catch(err) {
-            console.error('[Mention Chat AI] Erro ao responder menção:', err);
+            console.error('[Mention Chat AI] Erro ao criar/responder na thread:', err);
         }
     }
+    // --- FIM DA NOVA LÓGICA ---
 
     try {
         await processMessageForGuardian(message);
@@ -224,6 +227,22 @@ client.on(Events.MessageCreate, async (message, overrideContent) => {
     }
 });
 
+// Função Auxiliar para processar a resposta da IA na Thread
+async function processAiResponse(channel, userMessage, chatHistory, settings, client) {
+    await channel.sendTyping();
+    
+    // O prompt do sistema pode continuar o mesmo, pois o contexto é limpo pela thread
+    const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}" no servidor "${channel.guild.name}". Responda às perguntas dos usuários de forma completa, usando o histórico da conversa para manter o contexto.`;
+    const useKnowledge = true; // Sempre usar a base de conhecimento nestas conversas
+
+    const aiResponse = await getAIResponse(channel.guild.id, chatHistory, userMessage, systemPrompt, useKnowledge);
+
+    if (aiResponse) {
+        await channel.send(aiResponse);
+    }
+}
+
+
 // --- Evento de Atualização de Membro ---
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     const settings = (await db.query('SELECT roletags_enabled FROM guild_settings WHERE guild_id = $1', [newMember.guild.id])).rows[0];
@@ -233,37 +252,9 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     }
 });
 
-// Funções Auxiliares para o MessageCreate
 function isAmbiguous(userMessage) {
     return (userMessage.match(/\b(registro|premium|configurar|ativar|chat|ia|painel)\b/i)) && 
            (!userMessage.match(/\b(basicflow|factionflow)\b/i));
 }
-
-function getChatContext(userMessage, message, client) {
-    let chatPrompt = ``;
-    let useKnowledge = false;
-
-    if (userMessage.match(/\b(piada|conte uma piada|me faça rir)\b/i)) {
-        chatPrompt = `Você é um comediante. Conte uma piada curta e engraçada, no estilo 'stand-up'.`;
-    } 
-    else if (userMessage.match(/\b(o que você prefere|duas opções|escolha)\b/i)) {
-        chatPrompt = `Crie uma pergunta divertida no formato "O que você prefere?". As duas opções devem ser interessantes, engraçadas ou difíceis de escolher.`;
-    }
-    else if (userMessage.match(/\b(crie uma história|narre|conte sobre)\b/i)) {
-        chatPrompt = `Você é um mestre de RPG. Baseado na solicitação do usuário ("${userMessage}"), crie uma pequena narrativa (um ou dois parágrafos) sobre uma cena de roleplay. Use linguagem descritiva e imersiva.`;
-    }
-    else if (userMessage.match(/\b(crie um personagem|ideia de personagem)\b/i)) {
-        chatPrompt = `Crie um conceito de personagem para um servidor de Roleplay (RP), baseado na solicitação do usuário ("${userMessage}"). Forneça nome, uma breve história e um objetivo.`;
-    }
-    else if (userMessage.match(/\b(sorte do dia|conselho)\b/i)) {
-        chatPrompt = `Aja como um biscoito da sorte. Forneça uma frase curta, enigmática, engraçada ou inspiradora como um 'conselho do dia'.`;
-    }
-    else {
-        chatPrompt = `Você é um assistente amigável chamado "${client.user.username}" no servidor "${message.guild.name}". Responda às perguntas dos usuários de forma completa, usando o histórico da conversa para manter o contexto e as informações que você possui.`;
-        useKnowledge = true;
-    }
-    return { chatPrompt, useKnowledge };
-}
-
 
 client.login(process.env.DISCORD_TOKEN);
