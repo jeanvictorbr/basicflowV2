@@ -12,9 +12,14 @@ module.exports = {
 
         await db.query('DELETE FROM role_tags WHERE id = $1 AND guild_id = $2', [tagId, interaction.guild.id]);
 
-        const tags = (await db.query('SELECT * FROM role_tags WHERE guild_id = $1', [interaction.guild.id])).rows;
+        // --- CORREÇÃO APLICADA AQUI ---
+        // 1. Busca tanto as configurações quanto a nova lista de tags.
+        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
+        const tags = (await db.query('SELECT * FROM role_tags WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+        
+        // 2. Passa ambos os parâmetros para a função da UI, garantindo a renderização correta.
         await interaction.editReply({
-            components: generateRoleTagsMenu(tags),
+            components: generateRoleTagsMenu(settings, tags),
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
