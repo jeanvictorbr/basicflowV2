@@ -8,6 +8,7 @@ const FEATURES = [
     { label: "Customização de Imagens e Cores", value: "CUSTOM_VISUALS" },
     { label: "Funcionalidades Premium de Tickets", value: "TICKETS_PREMIUM" },
     { label: "Funcionalidades Premium de Ponto", value: "PONTO_PREMIUM" },
+    { label: "Análise de Dossiê com IA", value: "DOSSIE_AI_ANALYSIS" }
 ];
 
 module.exports = FEATURES;
