@@ -14,8 +14,21 @@ module.exports = {
             return interaction.editReply({ content: '❌ Chave de ativação inválida, expirada ou já utilizada.' });
         }
 
+        // --- NOVA VERIFICAÇÃO DE SEGURANÇA ---
+        // Verifica se esta guild já ativou esta chave específica no passado.
+        const historyCheckResult = await db.query(
+            'SELECT 1 FROM key_activation_history WHERE guild_id = $1 AND key = $2',
+            [interaction.guild.id, key]
+        );
+
+        if (historyCheckResult.rows.length > 0) {
+            return interaction.editReply({ content: '❌ Este servidor já utilizou esta chave de ativação. Cada chave só pode ser usada uma vez por servidor.' });
+        }
+        // --- FIM DA NOVA VERIFICAÇÃO ---
+
         const featuresToGrant = keyData.grants_features.split(',');
         const durationDays = keyData.duration_days;
+        
         const client = await db.getClient();
 
         try {
@@ -47,7 +60,6 @@ module.exports = {
                 );
             }
 
-            // --- LÓGICA DE HISTÓRICO E REMOÇÃO ---
             await client.query(
                 `INSERT INTO key_activation_history (key, grants_features, guild_id, guild_name, user_id, user_tag)
                  VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -55,10 +67,8 @@ module.exports = {
             );
 
             if (keyData.uses_left - 1 <= 0) {
-                // Remove a chave se os usos acabaram
                 await client.query('DELETE FROM activation_keys WHERE key = $1', [key]);
             } else {
-                // Apenas decrementa se ainda houver usos
                 await client.query('UPDATE activation_keys SET uses_left = uses_left - 1 WHERE key = $1', [key]);
             }
             
