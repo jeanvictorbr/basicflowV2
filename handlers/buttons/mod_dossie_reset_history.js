@@ -1,5 +1,7 @@
 // handlers/buttons/mod_dossie_reset_history.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'mod_dossie_reset_history_',
@@ -11,10 +13,16 @@ module.exports = {
             new ButtonBuilder().setCustomId(`mod_dossie_manage_back_${targetId}`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({
-            content: `⚠️ **Atenção!** Você tem certeza que deseja apagar **TODO** o histórico de moderação para o usuário <@${targetId}>? Esta ação é irreversível.`,
-            components: [confirmationButtons],
-            ephemeral: true
+        // ATUALIZA a mensagem do dossiê para mostrar a confirmação
+        await interaction.update({
+            components: [
+                { type: 17, components: [
+                    { type: 10, content: "## ⚠️ Confirmação de Reset" },
+                    { type: 10, content: `> Você tem certeza que deseja apagar **TODO** o histórico de moderação para o usuário <@${targetId}>?\n> \n> **Esta ação é irreversível.**` }
+                ]},
+                confirmationButtons
+            ],
+            flags: V2_FLAG | EPHEMERAL_FLAG
         });
     }
 };
