@@ -1,31 +1,21 @@
 // handlers/buttons/mod_dossie_history_page.js
-const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'mod_dossie_history_page_',
     async execute(interaction) {
+        const [,,, targetUserId, pageStr] = interaction.customId.split('_');
+        const page = parseInt(pageStr, 10);
+        if (isNaN(page)) return;
+        
         await interaction.deferUpdate();
         
-        const parts = interaction.customId.split('_');
-        const targetId = parts[4];
-        const page = parseInt(parts[5], 10);
-
-        const member = await interaction.guild.members.fetch(targetId).catch(() => null);
-        if (!member) {
-            return interaction.followUp({ content: '❌ Membro não encontrado.', ephemeral: true });
-        }
-
-        const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
-        const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
-
-        const dossiePayload = generateDossieEmbed(member, history, notes, interaction, { historyPage: page });
+        // CORREÇÃO: Busca o objeto completo do usuário a partir do ID
+        const targetUser = await interaction.client.users.fetch(targetUserId);
         
-        await interaction.editReply({
-            components: dossiePayload.components,
-            flags: V2_FLAG | EPHEMERAL_FLAG,
-        });
+        // CORREÇÃO: Usando 'await' e passando o objeto de usuário correto
+        const dossie = await generateDossieEmbed(interaction, targetUser, page);
+
+        await interaction.editReply(dossie);
     }
 };
