@@ -2,8 +2,6 @@
 const db = require('../../database.js');
 const generateRegistroVitrine = require('../../ui/registroVitrineEmbed.js');
 const generateRegistrosMenu = require('../../ui/registrosMenu.js');
-const isPremiumActive = require('../../utils/premiumCheck.js');
-
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -20,26 +18,25 @@ module.exports = {
         }
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
-        const isPremium = await isPremiumActive(interaction.guild.id);
         
-        // O bloco de erro foi removido daqui. A publicação prosseguirá com a imagem customizada ou padrão.
-
         try {
             const vitrineMessage = generateRegistroVitrine(settings);
             await channel.send(vitrineMessage);
             
             await db.query(`UPDATE guild_settings SET registros_canal_vitrine = $1 WHERE guild_id = $2`, [selectedChannelId, interaction.guild.id]);
             
+            const menu = await generateRegistrosMenu(interaction, settings);
             await interaction.editReply({
-                components: generateRegistrosMenu(settings, isPremium),
+                components: menu,
                 flags: V2_FLAG | EPHEMERAL_FLAG
             });
             await interaction.followUp({ content: `✅ **Vitrine de registro publicada com sucesso no canal ${channel}!**`, ephemeral: true });
 
         } catch (error) {
             console.error("Erro ao publicar vitrine de registro:", error);
+            const menu = await generateRegistrosMenu(interaction, settings);
             await interaction.editReply({
-                components: generateRegistrosMenu(settings, isPremium),
+                components: menu,
                 flags: V2_FLAG | EPHEMERAL_FLAG
             });
             await interaction.followUp({ content: `❌ **Erro ao publicar no canal ${channel}.** Verifique se eu tenho permissão para enviar mensagens lá.`, ephemeral: true });
