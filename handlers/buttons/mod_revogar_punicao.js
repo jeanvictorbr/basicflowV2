@@ -10,20 +10,40 @@ module.exports = {
         const sanctions = await getActiveSanctions(interaction.guild.id);
         
         if (sanctions.length === 0) {
-            return interaction.reply({ content: 'Não há sanções ativas para revogar.', ephemeral: true });
+            await interaction.reply({ content: 'Não há sanções ativas para revogar.', ephemeral: true });
+            // Recarrega o menu principal para refletir o estado vazio
+            const generateModeracaoPunicoesAtivasMenu = require('../../ui/moderacaoPunicoesAtivasMenu.js');
+            return interaction.update({
+                components: generateModeracaoPunicoesAtivasMenu(sanctions, 0),
+                flags: V2_FLAG | EPHEMERAL_FLAG
+            });
+        }
+
+        // Busca os nomes de usuário para uma exibição mais clara
+        const userIds = [...new Set(sanctions.map(s => s.userId))];
+        const userTags = new Map();
+        for (const id of userIds) {
+            try {
+                const user = await interaction.client.users.fetch(id);
+                userTags.set(id, user.tag);
+            } catch {
+                userTags.set(id, 'ID: ' + id);
+            }
         }
 
         const options = sanctions.slice(0, 25).map(s => {
+            const userTag = userTags.get(s.userId);
             if (s.type === 'PUNISHMENT') {
                 return {
-                    label: `ID: ${s.id} | ${s.action} em ${s.userId}`,
-                    description: `Motivo: ${s.reason.substring(0, 50)}`,
+                    label: `${s.action} em ${userTag}`,
+                    description: `ID: ${s.id} | Motivo: ${s.reason.substring(0, 40)}`,
                     value: `punishment_${s.id}`,
                     emoji: s.action === 'BAN' ? '🚫' : '🔇'
                 };
             }
+            // s.type === 'INFRACTION'
             return {
-                label: `Infração de ${s.userId}`,
+                label: `Infração de ${userTag}`,
                 description: s.details,
                 value: `infraction_${s.id}`,
                 emoji: '🛡️'
