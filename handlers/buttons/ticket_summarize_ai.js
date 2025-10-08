@@ -4,6 +4,9 @@ const { getAIResponse } = require('../../utils/aiAssistant.js');
 const hasFeature = require('../../utils/featureCheck.js');
 const db = require('../../database.js');
 
+// Cooldown para evitar spam de requisições à IA
+const cooldowns = new Map();
+
 module.exports = {
     customId: 'ticket_summarize_ai',
     async execute(interaction) {
@@ -14,18 +17,30 @@ module.exports = {
         if (!await hasFeature(interaction.guild.id, 'TICKETS_PREMIUM')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium. Ative uma chave para usá-la.', ephemeral: true });
         }
+        
+        const now = Date.now();
+        const userCooldown = cooldowns.get(interaction.user.id);
+        if (userCooldown && now < userCooldown) {
+            const timeLeft = Math.ceil((userCooldown - now) / 1000);
+            return interaction.reply({ content: `⏱️ Por favor, aguarde ${timeLeft} segundos para pedir outra sugestão.`, ephemeral: true });
+        }
+        cooldowns.set(interaction.user.id, now + 20000);
 
         await interaction.deferReply({ ephemeral: true });
 
         try {
             const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [interaction.channel.id])).rows[0];
             const messages = await interaction.channel.messages.fetch({ limit: 100 });
-
-            if (messages.size < 3) {
-                return interaction.editReply({ content: 'ℹ️ Não há mensagens suficientes neste ticket para justificar um resumo.' });
-            }
-
+            
             const transcript = messages.reverse().map(m => `${m.author.tag}: ${m.content}`).join('\n');
+
+            // --- CORREÇÃO APLICADA AQUI ---
+            // Verifica o tamanho do texto em vez da quantidade de mensagens.
+            const MINIMUM_LENGTH = 200; // Mínimo de 200 caracteres para valer a pena resumir.
+            if (transcript.length < MINIMUM_LENGTH) {
+                return interaction.editReply({ content: 'ℹ️ O conteúdo deste ticket é muito curto para justificar um resumo.' });
+            }
+            // --- FIM DA CORREÇÃO ---
 
             const systemPrompt = `
                 Você é um especialista em suporte ao cliente. Sua tarefa é ler a transcrição de um ticket de suporte do Discord e criar um resumo claro e conciso para um membro da equipe que acabou de assumir o atendimento.
@@ -65,11 +80,7 @@ module.exports = {
                 .setFooter({ text: `${messages.size} mensagens analisadas. A decisão final é do moderador.` })
                 .setTimestamp();
 
-            // --- ALTERAÇÃO PRINCIPAL AQUI ---
-            // 1. Envia o embed publicamente no canal do ticket
             await interaction.channel.send({ embeds: [summaryEmbed] });
-
-            // 2. Edita a resposta original (que era efêmera) com uma mensagem de sucesso
             await interaction.editReply({ content: '✅ O resumo foi gerado e enviado no ticket para todos verem.' });
 
         } catch (error) {
