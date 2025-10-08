@@ -21,9 +21,14 @@ module.exports = {
             [interaction.guild.id, roleId, tag]
         );
 
-        const tags = (await db.query('SELECT * FROM role_tags WHERE guild_id = $1', [interaction.guild.id])).rows;
+        // --- CORREÇÃO APLICADA AQUI ---
+        // 1. Busca tanto as configurações quanto as tags para redesenhar o menu corretamente.
+        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
+        const tags = (await db.query('SELECT * FROM role_tags WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+        
+        // 2. Passa ambos os parâmetros para a função da UI.
         await interaction.editReply({
-            components: generateRoleTagsMenu(tags),
+            components: generateRoleTagsMenu(settings, tags),
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
