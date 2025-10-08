@@ -1,7 +1,7 @@
 // Substitua o conteúdo em: ui/ticketDashboard.js
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
 
-module.exports = function generateTicketDashboard(ticketData = {}, openerMember) {
+module.exports = function generateTicketDashboard(ticketData = {}, openerMember, adminMember = null) {
     const { status = 'open', claimed_by, action_log } = ticketData;
     
     let description = `Obrigado por contatar o suporte. Por favor, detalhe seu problema.`;
@@ -28,11 +28,16 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember)
     const isClosed = status === 'closed';
 
     if (!isClosed) {
+        // Verifica se o membro que interagiu é um administrador
+        const isAdmin = adminMember ? adminMember.permissions.has(PermissionsBitField.Flags.Administrator) : false;
+
         const adminRow1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_claim').setLabel(claimed_by ? "Assumido" : "Assumir").setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️').setDisabled(!!claimed_by),
             new ButtonBuilder().setCustomId('ticket_lock').setLabel(status === 'locked' ? "Destrancar" : "Trancar").setStyle(ButtonStyle.Secondary).setEmoji(status === 'locked' ? '🔓' : '🔒'),
-            // --- BOTÃO ADICIONADO AQUI ---
-            new ButtonBuilder().setCustomId('ticket_summarize_ai').setLabel("Resumir com IA").setStyle(ButtonStyle.Primary).setEmoji('🧠')
+            // --- BOTÃO DE RESUMO (EXISTENTE) ---
+            new ButtonBuilder().setCustomId('ticket_summarize_ai').setLabel("Resumir").setStyle(ButtonStyle.Primary).setEmoji('🧠').setDisabled(!isAdmin), // Desabilitado se não for admin
+            // --- BOTÃO NOVO ADICIONADO AQUI ---
+            new ButtonBuilder().setCustomId('ticket_suggest_reply').setLabel("Sugerir Resposta").setStyle(ButtonStyle.Primary).setEmoji('💡').setDisabled(!isAdmin) // Desabilitado se não for admin
         );
         const adminRow2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_add_user').setLabel("Adicionar").setStyle(ButtonStyle.Secondary).setEmoji('➕'),
