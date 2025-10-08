@@ -1,10 +1,12 @@
 // Substitua o conteúdo em: handlers/selects/select_mod_dossie_membro.js
+const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'select_mod_dossie_membro',
     async execute(interaction) {
-        // Adia a atualização da mensagem original
         await interaction.deferUpdate();
 
         const memberId = interaction.values[0];
@@ -14,11 +16,16 @@ module.exports = {
             return interaction.followUp({ content: '❌ Membro não encontrado.', ephemeral: true });
         }
 
-        // Chama a função de UI de forma correta, que agora busca os dados e gera o payload
-        const dossiePayload = await generateDossieEmbed(interaction, member, 0);
+        const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
+        const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        // Edita a mensagem original (que continha o menu) para mostrar o dossiê
-        // Não são necessárias flags V2, pois o dossiê usa embeds e componentes padrão
-        await interaction.editReply(dossiePayload);
+        // Agora, a função generateDossieEmbed retorna um payload V2
+        const dossiePayload = await generateDossieEmbed(interaction, member, history, notes, 0);
+
+        // A chamada editReply AGORA PRECISA das flags, pois o payload é V2
+        await interaction.editReply({
+            ...dossiePayload, // O payload já contém a propriedade 'components'
+            flags: V2_FLAG | EPHEMERAL_FLAG,
+        });
     }
 };
