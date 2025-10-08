@@ -1,7 +1,6 @@
 // handlers/selects/select_ausencia_canal_aprovacoes.js
 const db = require('../../database.js');
 const generateAusenciasMenu = require('../../ui/ausenciasMenu.js');
-
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -13,9 +12,12 @@ module.exports = {
 
         const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
         
+        // CORRIGIDO: Passa 'interaction' como primeiro argumento
+        const menu = await generateAusenciasMenu(interaction, settingsResult.rows[0]);
+        
         await interaction.update({
             content: null,
-            components: generateAusenciasMenu(settingsResult.rows[0]),
+            components: menu,
             flags: V2_FLAG | EPHEMERAL_FLAG
         });
     }
