@@ -1,9 +1,15 @@
 // Substitua o conteúdo em: ui/dossieEmbed.js
 const hasFeature = require('../utils/featureCheck.js');
-const ITEMS_PER_PAGE = 3; // Reduzido para evitar sobrecarga de texto em V2
+const ITEMS_PER_PAGE = 3; 
 
-module.exports = async function generateDossieEmbed(interaction, member, history, notes, page = 0, options = {}) {
-    const targetUser = member.user;
+module.exports = async function generateDossieEmbed(interaction, target, history, notes, page = 0, options = {}) {
+    // CORREÇÃO: Esta linha agora lida com objetos 'GuildMember' (que têm .user) e 'User' (que não têm)
+    const targetUser = target.user || target;
+
+    if (!targetUser) {
+        return { content: '❌ Não foi possível encontrar o usuário alvo.', components: [] };
+    }
+
     const totalPages = Math.ceil(history.length / ITEMS_PER_PAGE);
     const paginatedLogs = history.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
@@ -46,8 +52,8 @@ module.exports = async function generateDossieEmbed(interaction, member, history
     
     const paginationButtons = {
         "type": 1, "components": [
-            { "type": 2, "style": 2, "label": "Anterior", "custom_id": `mod_minhas_acoes_page_${page - 1}`, "disabled": page === 0 },
-            { "type": 2, "style": 2, "label": "Próxima", "custom_id": `mod_minhas_acoes_page_${page + 1}`, "disabled": page + 1 >= totalPages }
+            { "type": 2, "style": 2, "label": "Anterior", "custom_id": `mod_dossie_history_page_${targetUser.id}_${page - 1}`, "disabled": page === 0 },
+            { "type": 2, "style": 2, "label": "Próxima", "custom_id": `mod_dossie_history_page_${targetUser.id}_${page + 1}`, "disabled": page + 1 >= totalPages }
         ]
     };
 

@@ -19,12 +19,10 @@ module.exports = {
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        // Agora, a função generateDossieEmbed retorna um payload V2
         const dossiePayload = await generateDossieEmbed(interaction, member, history, notes, 0);
 
-        // A chamada editReply AGORA PRECISA das flags, pois o payload é V2
         await interaction.editReply({
-            ...dossiePayload, // O payload já contém a propriedade 'components'
+            ...dossiePayload,
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
