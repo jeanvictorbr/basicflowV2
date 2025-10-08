@@ -1,4 +1,4 @@
-// handlers/selects/select_mod_dossie_remove_log.js
+// Substitua o conteúdo em: handlers/selects/select_mod_dossie_remove_log.js
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const V2_FLAG = 1 << 15;
@@ -22,9 +22,11 @@ module.exports = {
         const newHistory = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        // Gera o dossiê novamente no modo de gerenciamento
-        const dossiePayload = generateDossieEmbed(member, newHistory, notes, interaction, { manageMode: true });
+        const dossiePayload = await generateDossieEmbed(interaction, member, newHistory, notes, 0, { manageMode: true });
         
-        await interaction.editReply({ components: dossiePayload.components, flags: V2_FLAG | EPHEMERAL_FLAG });
+        await interaction.editReply({
+            ...dossiePayload,
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
     }
 };

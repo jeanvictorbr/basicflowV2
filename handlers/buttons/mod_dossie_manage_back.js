@@ -1,4 +1,4 @@
-// handlers/buttons/mod_dossie_manage_back.js
+// Substitua o conteúdo em: handlers/buttons/mod_dossie_manage_back.js
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const V2_FLAG = 1 << 15;
@@ -18,11 +18,10 @@ module.exports = {
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        // Gera o dossiê no modo padrão
-        const dossiePayload = generateDossieEmbed(member, history, notes, interaction, { manageMode: false });
+        const dossiePayload = await generateDossieEmbed(interaction, member, history, notes, 0, {});
         
         await interaction.editReply({
-            components: dossiePayload.components,
+            ...dossiePayload,
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
