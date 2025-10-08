@@ -1,8 +1,12 @@
 // ui/mainMenu.js
 const hasFeature = require('../utils/featureCheck.js');
 const db = require('../database.js');
+const FEATURES = require('../config/features.js'); // Importa a lista de features
 
 module.exports = async function generateMainMenu(interaction, page = 0) {
+    // Cria um mapa para buscar facilmente os labels das features
+    const FEATURES_MAP = new Map(FEATURES.map(f => [f.value, f.label]));
+
     // Busca todas as features ativas e válidas para a guild
     const activeFeaturesResult = await db.query(
         "SELECT feature_key, expires_at, activated_by_key FROM guild_features WHERE guild_id = $1 AND expires_at > NOW() ORDER BY expires_at ASC",
@@ -14,9 +18,8 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
     if (activeFeaturesResult.rows.length > 0) {
         const groupedFeatures = {};
         
-        // Agrupa as features pela chave de ativação para identificar pacotes
         activeFeaturesResult.rows.forEach(feature => {
-            const key = feature.activated_by_key || `legacy_${feature.expires_at.toISOString()}`; // Agrupa por chave ou data
+            const key = feature.activated_by_key || `legacy_${feature.expires_at.toISOString()}`;
             if (!groupedFeatures[key]) {
                 groupedFeatures[key] = {
                     features: [],
@@ -30,11 +33,12 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         const packages = [];
         const singleFeatures = [];
 
-        // Separa os grupos em "Pacotes" (mais de uma feature) e "Funções Individuais"
         for (const key in groupedFeatures) {
             const group = groupedFeatures[key];
             const formattedDate = new Date(group.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            const featuresList = group.features.map(f => `\`${f}\``).join(', ');
+            
+            // AGORA, a lista de features mostrará o nome amigável (label)
+            const featuresList = group.features.map(f => `\`${FEATURES_MAP.get(f) || f}\``).join(', ');
 
             if (group.features.length > 1 || group.features.includes('ALL')) {
                 packages.push(`> 📦 **Pacote de Funções** (Expira em: ${formattedDate})\n>    └─ Acessos: ${featuresList}`);
@@ -43,7 +47,6 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             }
         }
         
-        // Monta o texto final de forma organizada
         if (packages.length > 0) {
             premiumStatusText += "**PACOTES FECHADOS:**\n" + packages.join('\n\n') + '\n\n';
         }
@@ -55,7 +58,6 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
     // Verificações de acesso para desabilitar botões
     const hasGuardianAccess = await hasFeature(interaction.guild.id, 'GUARDIAN_AI');
     const hasStatsAccess = await hasFeature(interaction.guild.id, 'STATS');
-    const hasModPremiumAccess = await hasFeature(interaction.guild.id, 'MODERATION_PREMIUM');
     
     // Definição de todos os módulos disponíveis
     const allModules = [
@@ -143,7 +145,7 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
                 },
                 { type: 14, "divider": true, "spacing": 1 },
                 { type: 10, content: " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
-            ].filter(Boolean) // Remove quaisquer componentes nulos (como a paginação em página única)
+            ].filter(Boolean)
         }
     ];
 }
