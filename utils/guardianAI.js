@@ -12,6 +12,26 @@ const messageCache = new Map();
 const channelMessageCache = new Map();
 const channelAlertCooldowns = new Map();
 
+// --- FUNÇÃO QUE FALTAVA ---
+function updateMessageCache(message) {
+    const key = `${message.guild.id}-${message.author.id}`;
+    if (!messageCache.has(key)) {
+        messageCache.set(key, []);
+    }
+    const userMessages = messageCache.get(key);
+    userMessages.push({
+        id: message.id,
+        content: message.content,
+        timestamp: message.createdTimestamp,
+    });
+    // Mantém apenas as mensagens dos últimos 10 segundos para a verificação de spam
+    const tenSecondsAgo = Date.now() - 10000;
+    const filteredMessages = userMessages.filter(msg => msg.timestamp > tenSecondsAgo);
+    messageCache.set(key, filteredMessages);
+    return filteredMessages;
+}
+// --- FIM DA FUNÇÃO ---
+
 
 async function analyzeToxicity(text) {
     const systemPrompt = `Avalie o nível de toxicidade da mensagem. Responda APENAS com um objeto JSON com a chave "toxicidade" e um valor de 0 a 100. Mensagem: "${text}"`;
@@ -50,7 +70,6 @@ ${conversation}`;
 }
 
 async function processConflictDetection(message, settings) {
-    // AGORA VERIFICA O BOTÃO ON/OFF E O CANAL
     if (!settings.guardian_ai_alert_enabled || !settings.guardian_ai_alert_channel) return;
     if (channelAlertCooldowns.has(message.channel.id)) return;
 
@@ -74,7 +93,6 @@ async function processConflictDetection(message, settings) {
 
     if (!analysis) return;
 
-    // USA OS LIMIARES DO BANCO DE DADOS
     const { toxicidade, sarcasmo, ataque_pessoal } = analysis;
     const toxicityThreshold = settings.guardian_ai_alert_toxicity_threshold || 75;
     const sarcasmThreshold = settings.guardian_ai_alert_sarcasm_threshold || 80;
@@ -104,7 +122,6 @@ async function processConflictDetection(message, settings) {
 
             channelMessageCache.delete(message.channel.id);
             channelAlertCooldowns.set(message.channel.id, true);
-            // USA O COOLDOWN DO BANCO DE DADOS
             const cooldownMinutes = settings.guardian_ai_alert_cooldown_minutes || 5;
             setTimeout(() => channelAlertCooldowns.delete(message.channel.id), cooldownMinutes * 60 * 1000);
         }
@@ -196,8 +213,6 @@ async function processMessageForGuardian(message) {
     }
 }
 
-// AGORA, SUBSTITUA A FUNÇÃO executeRuleActions INTEIRA PELA SEGUINTE:
-
 async function executeRuleActions(message, policy, step, reason, settings, messageIdsToDelete) {
     const { member, guild, channel, client } = message;
 
@@ -211,7 +226,6 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
     let punishmentDetails = 'Nenhuma';
     const punishmentId = parseInt(step.action_punishment, 10);
 
-    // --- NOVA LÓGICA DE EXECUÇÃO ---
     if (settings.guardian_use_mod_punishments && !isNaN(punishmentId)) {
         const customPunishment = (await db.query('SELECT * FROM moderation_punishments WHERE punishment_id = $1 AND guild_id = $2', [punishmentId, guild.id])).rows[0];
         
@@ -221,7 +235,7 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
                 user: client.user,
                 member: await guild.members.fetch(client.user.id),
                 deferReply: async () => {},
-                editReply: async () => {}, // A resposta é dada no canal de logs
+                editReply: async () => {},
                 followUp: async () => {},
             };
             
@@ -231,7 +245,6 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
             punishmentDetails = '`Falha: Punição Personalizada não encontrada.`';
         }
     } else {
-        // --- LÓGICA ANTIGA (fallback) ---
         try {
             const duration = (step.action_punishment_duration_minutes || 0) * 60 * 1000;
             const punishmentReason = `Guardian AI: ${policy.name} (Nível ${step.step_level})`;
@@ -258,6 +271,5 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
         }
     }
 }
-
 
 module.exports = { processMessageForGuardian };
