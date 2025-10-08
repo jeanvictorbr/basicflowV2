@@ -1,4 +1,4 @@
-// ui/ticketDashboard.js
+// Substitua o conteúdo em: ui/ticketDashboard.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function generateTicketDashboard(ticketData = {}, openerMember) {
@@ -31,7 +31,8 @@ module.exports = function generateTicketDashboard(ticketData = {}, openerMember)
         const adminRow1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_claim').setLabel(claimed_by ? "Assumido" : "Assumir").setStyle(ButtonStyle.Success).setEmoji('🙋‍♂️').setDisabled(!!claimed_by),
             new ButtonBuilder().setCustomId('ticket_lock').setLabel(status === 'locked' ? "Destrancar" : "Trancar").setStyle(ButtonStyle.Secondary).setEmoji(status === 'locked' ? '🔓' : '🔒'),
-            new ButtonBuilder().setCustomId('ticket_alert').setLabel("Alertar").setStyle(ButtonStyle.Primary).setEmoji('🔔')
+            // --- BOTÃO ADICIONADO AQUI ---
+            new ButtonBuilder().setCustomId('ticket_summarize_ai').setLabel("Resumir com IA").setStyle(ButtonStyle.Primary).setEmoji('🧠')
         );
         const adminRow2 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_add_user').setLabel("Adicionar").setStyle(ButtonStyle.Secondary).setEmoji('➕'),
