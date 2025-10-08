@@ -1,12 +1,11 @@
 // handlers/buttons/ausencia_set_imagem.js
 const { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
-const isPremiumActive = require('../../utils/premiumCheck.js');
+const hasFeature = require('../../utils/featureCheck.js');
 
 module.exports = {
     customId: 'ausencia_set_imagem',
     async execute(interaction) {
-        const isPremium = await isPremiumActive(interaction.guild.id);
-        if (!isPremium) {
+        if (!await hasFeature(interaction.guild.id, 'CUSTOM_VISUALS')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium. Ative uma chave para usá-la.', ephemeral: true });
         }
         

@@ -1,13 +1,11 @@
 // handlers/buttons/tickets_set_thumbnail.js
 const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
-const isPremiumActive = require('../../utils/premiumCheck.js'); // Importa a verificação
+const hasFeature = require('../../utils/featureCheck.js');
 
 module.exports = {
     customId: 'tickets_set_thumbnail',
     async execute(interaction) {
-        // Verificação de segurança
-        const isPremium = await isPremiumActive(interaction.guild.id);
-        if (!isPremium) {
+        if (!await hasFeature(interaction.guild.id, 'CUSTOM_VISUALS')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium. Ative uma chave para usá-la.', ephemeral: true });
         }
 

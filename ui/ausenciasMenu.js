@@ -1,9 +1,12 @@
 // ui/ausenciasMenu.js
-module.exports = function generateAusenciasMenu(settings, isPremium) {
+const hasFeature = require('../utils/featureCheck.js');
+
+module.exports = async function generateAusenciasMenu(interaction, settings) {
     const canalAprovacoes = settings?.ausencias_canal_aprovacoes ? `<#${settings.ausencias_canal_aprovacoes}>` : '`❌ Não definido`';
     const cargoAusente = settings?.ausencias_cargo_ausente ? `<@&${settings.ausencias_cargo_ausente}>` : '`❌ Não definido`';
     const canalLogs = settings?.ausencias_canal_logs ? `<#${settings.ausencias_canal_logs}>` : '`❌ Não definido`';
     const imagemVitrine = settings?.ausencias_imagem_vitrine ? '`✅ Definida`' : '`❌ Não definida`';
+    const hasCustomVisuals = await hasFeature(interaction.guild.id, 'CUSTOM_VISUALS');
 
     return [
         {
@@ -35,7 +38,7 @@ module.exports = function generateAusenciasMenu(settings, isPremium) {
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "ausencia_set_imagem", "disabled": !isPremium },
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "ausencia_set_imagem", "disabled": !hasCustomVisuals },
                     "components": [{ "type": 10, "content": `**Imagem da vitrine**\n> ${imagemVitrine}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
@@ -43,7 +46,12 @@ module.exports = function generateAusenciasMenu(settings, isPremium) {
                     "type": 1,
                     "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" }]
                 },
-                                // =======================================================
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 10,
+                    "content": " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" 
+                },
+                              // =======================================================
                 // ==                RODAPÉ ADICIONADO AQUI             ==
                 // =======================================================
                 { "type": 14, "divider": true, "spacing": 1 },

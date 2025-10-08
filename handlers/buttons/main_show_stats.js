@@ -1,6 +1,6 @@
-// Crie em: handlers/buttons/main_show_stats.js
+// handlers/buttons/main_show_stats.js
 const db = require('../../database.js');
-const isPremiumActive = require('../../utils/premiumCheck.js');
+const hasFeature = require('../../utils/featureCheck.js');
 const generateStatsDashboard = require('../../ui/statsDashboard.js');
 
 const V2_FLAG = 1 << 15;
@@ -64,14 +64,12 @@ async function getStats(guildId, days) {
 module.exports = {
     customId: 'main_show_stats',
     async execute(interaction) {
-        const isPremium = await isPremiumActive(interaction.guild.id);
-        if (!isPremium) {
+        if (!await hasFeature(interaction.guild.id, 'STATS')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium.', ephemeral: true });
         }
 
         await interaction.deferUpdate();
         
-        // Padrão para "semana" (7 dias)
         const weeklyStats = await getStats(interaction.guild.id, 7);
         const dashboard = generateStatsDashboard(weeklyStats, 'semana');
 
@@ -80,5 +78,5 @@ module.exports = {
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     },
-    getStats // Exporta a função para ser usada por outros handlers
+    getStats
 };

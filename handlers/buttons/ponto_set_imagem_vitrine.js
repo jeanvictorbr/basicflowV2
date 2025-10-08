@@ -1,12 +1,11 @@
-// Crie/Substitua em: handlers/buttons/ponto_set_imagem_vitrine.js
+// handlers/buttons/ponto_set_imagem_vitrine.js
 const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
-const isPremiumActive = require('../../utils/premiumCheck.js'); // Caminho corrigido
+const hasFeature = require('../../utils/featureCheck.js');
 
 module.exports = {
     customId: 'ponto_set_imagem_vitrine',
     async execute(interaction) {
-        const isPremium = await isPremiumActive(interaction.guild.id);
-        if (!isPremium) {
+        if (!await hasFeature(interaction.guild.id, 'CUSTOM_VISUALS')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium. Ative uma chave para usá-la.', ephemeral: true });
         }
 

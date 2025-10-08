@@ -1,11 +1,14 @@
 // ui/registrosMenu.js
-module.exports = function generateRegistrosMenu(settings, isPremium) {
+const hasFeature = require('../utils/featureCheck.js');
+
+module.exports = async function generateRegistrosMenu(interaction, settings) {
     const canalAprovacoes = settings?.registros_canal_aprovacoes ? `<#${settings.registros_canal_aprovacoes}>` : '`❌ Não definido`';
     const cargoAprovado = settings?.registros_cargo_aprovado ? `<@&${settings.registros_cargo_aprovado}>` : '`❌ Não definido`';
     const tagAprovado = settings?.registros_tag_aprovado ? `\`✅ ${settings.registros_tag_aprovado}\`` : '`❌ Não definida`';
     const canalLogs = settings?.registros_canal_logs ? `<#${settings.registros_canal_logs}>` : '`❌ Não definido`';
     const imagemVitrine = settings?.registros_imagem_vitrine ? '`✅ Definida`' : '`❌ Não definida`';
     const status = settings?.registros_status === false ? { label: 'Ativar Sistema', style: 3, emoji: '✅' } : { label: 'Desativar Sistema', style: 4, emoji: '🆘' };
+    const hasCustomVisuals = await hasFeature(interaction.guild.id, 'CUSTOM_VISUALS');
 
     return [
         {
@@ -43,7 +46,7 @@ module.exports = function generateRegistrosMenu(settings, isPremium) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "registros_set_imagem_vitrine", "disabled": !isPremium },
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "registros_set_imagem_vitrine", "disabled": !hasCustomVisuals },
                     "components": [{ "type": 10, "content": `**Imagem da Vitrine**\n> ${imagemVitrine}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
@@ -54,16 +57,11 @@ module.exports = function generateRegistrosMenu(settings, isPremium) {
                         { "type": 2, "style": status.style, "label": status.label, "emoji": { "name": status.emoji }, "custom_id": "registros_toggle_status" }
                     ]
                 },
-                                // =======================================================
-                // ==                RODAPÉ ADICIONADO AQUI             ==
-                // =======================================================
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
-                    "type": 10, // Tipo 10 é um componente de Texto
-                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
+                    "type": 10,
                     "content": " ↘   BasicFlow - Todos os direitos Reservados 🥇" 
                 }
-                // =======================================================
             ]
         }
     ];

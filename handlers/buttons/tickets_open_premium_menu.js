@@ -1,15 +1,14 @@
-// Crie em: handlers/buttons/tickets_open_premium_menu.js
+// handlers/buttons/tickets_open_premium_menu.js
 const db = require('../../database.js');
 const generateTicketsPremiumMenu = require('../../ui/ticketsPremiumMenu.js');
-const isPremiumActive = require('../../utils/premiumCheck.js');
+const hasFeature = require('../../utils/featureCheck.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'tickets_open_premium_menu',
     async execute(interaction) {
-        const isPremium = await isPremiumActive(interaction.guild.id);
-        if (!isPremium) {
+        if (!await hasFeature(interaction.guild.id, 'TICKETS_PREMIUM')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium.', ephemeral: true });
         }
 
