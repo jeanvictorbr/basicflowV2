@@ -2,7 +2,7 @@
 const schema = {
     guild_settings: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
-        premium_status: { type: 'BOOLEAN', default: false },
+        enabled_features: { type: 'TEXT', default: '' },
         premium_expires_at: { type: 'TIMESTAMPTZ' },
         ausencias_canal_aprovacoes: { type: 'VARCHAR(255)' },
         ausencias_cargo_ausente: { type: 'VARCHAR(255)' },
@@ -69,6 +69,7 @@ const schema = {
         key: { type: 'VARCHAR(255)', primaryKey: true },
         duration_days: { type: 'INTEGER', notNull: true },
         uses_left: { type: 'INTEGER', default: 1 },
+        grants_features: { type: 'TEXT' }, // Ex: "ALL" ou "GUARDIAN_AI,CUSTOM_IMAGES"
         comment: { type: 'TEXT' }
     },
     pending_registrations: {

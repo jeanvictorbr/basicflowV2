@@ -1,15 +1,14 @@
 // handlers/buttons/open_guardian_menu.js
 const db = require('../../database.js');
 const generateGuardianAiMenu = require('../../ui/guardianAiMenu.js');
-const isPremiumActive = require('../../utils/premiumCheck.js');
+const hasFeature = require('../../utils/featureCheck.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'open_guardian_menu',
     async execute(interaction) {
-        const isPremium = await isPremiumActive(interaction.guild.id);
-        if (!isPremium) {
+        if (!await hasFeature(interaction.guild.id, 'GUARDIAN_AI')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium.', ephemeral: true });
         }
         await interaction.deferUpdate();

@@ -1,4 +1,4 @@
-// Crie em: handlers/modals/modal_ativar_key.js
+// handlers/modals/modal_ativar_key.js
 const db = require('../../database.js');
 
 module.exports = {
@@ -13,21 +13,32 @@ module.exports = {
             return interaction.editReply({ content: '❌ Chave de ativação inválida, expirada ou já utilizada.' });
         }
 
+        const guildSettings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
+
         const durationDays = keyData.duration_days;
-        const expirationDate = new Date();
+        let expirationDate = guildSettings.premium_expires_at ? new Date(guildSettings.premium_expires_at) : new Date();
+        
+        if (expirationDate < new Date()) {
+            expirationDate = new Date();
+        }
         expirationDate.setDate(expirationDate.getDate() + durationDays);
 
-        // Atualiza as configurações da guild
+        const existingFeatures = guildSettings.enabled_features ? guildSettings.enabled_features.split(',') : [];
+        const newFeatures = keyData.grants_features ? keyData.grants_features.split(',') : [];
+        const allFeatures = [...new Set([...existingFeatures, ...newFeatures].filter(Boolean))]; // .filter(Boolean) remove strings vazias
+        
         await db.query(
-            `UPDATE guild_settings SET premium_status = true, premium_expires_at = $1 WHERE guild_id = $2`,
-            [expirationDate, interaction.guild.id]
+            `INSERT INTO guild_settings (guild_id, enabled_features, premium_expires_at)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (guild_id)
+             DO UPDATE SET enabled_features = $2, premium_expires_at = $3`,
+            [interaction.guild.id, allFeatures.join(','), expirationDate]
         );
 
-        // Decrementa o uso da chave
         await db.query('UPDATE activation_keys SET uses_left = uses_left - 1 WHERE key = $1', [key]);
 
         await interaction.editReply({
-            content: `✅ Licença Premium ativada com sucesso! Seu acesso às funcionalidades premium é válido até **${expirationDate.toLocaleDateString('pt-BR')}**.`
+            content: `✅ Licença ativada! As funcionalidades **[${newFeatures.join(', ')}]** foram adicionadas à sua assinatura, que agora é válida até **${expirationDate.toLocaleDateString('pt-BR')}**.`
         });
     }
 };

@@ -1,7 +1,10 @@
-// Substitua em: ui/moderacaoMenu.js
-module.exports = function generateModeracaoMenu(settings, isPremium) {
+// ui/moderacaoMenu.js
+const hasFeature = require('../utils/featureCheck.js');
+
+module.exports = async function generateModeracaoMenu(interaction, settings) {
     const logChannel = settings?.mod_log_channel ? `<#${settings.mod_log_channel}>` : '`❌ Não definido`';
     const modRolesCount = settings?.mod_roles ? settings.mod_roles.split(',').filter(Boolean).length : 0;
+    const hasModPremiumAccess = await hasFeature(interaction.guild.id, 'MODERATION_PREMIUM');
     
     return [
         {
@@ -26,7 +29,7 @@ module.exports = function generateModeracaoMenu(settings, isPremium) {
                 {
                     "type": 1, "components": [
                         { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" },
-                        { "type": 2, "style": 1, "label": "+ Hub Premium", "emoji": { "name": "✨" }, "custom_id": "mod_open_premium_hub", "disabled": !isPremium }
+                        { "type": 2, "style": 1, "label": "+ Hub Premium", "emoji": { "name": "✨" }, "custom_id": "mod_open_premium_hub", "disabled": !hasModPremiumAccess }
                     ]
                 }
             ]

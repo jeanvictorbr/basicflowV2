@@ -1,20 +1,35 @@
 // ui/mainMenu.js
-const isPremiumActive = require('../utils/premiumCheck.js');
+const hasFeature = require('../utils/featureCheck.js');
 const db = require('../database.js');
+const FEATURES = require('../config/features.js');
 
 module.exports = async function generateMainMenu(interaction, page = 0) {
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
-    const isPremium = await isPremiumActive(interaction.guild.id);
-
+    
     let premiumStatusText;
-    if (isPremium) {
+    const enabledFeatures = settings.enabled_features?.split(',').filter(Boolean) || [];
+
+    if (enabledFeatures.length > 0 && settings.premium_expires_at) {
         const expiresAt = new Date(settings.premium_expires_at);
         const formattedDate = expiresAt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        premiumStatusText = `> ✨ **Status Premium:** Ativo\n> 📅 **Expira em:** ${formattedDate}`;
-    } else {
-        premiumStatusText = `> ✨ **Status Premium:** Inativo\n> 💡 Ative uma chave para liberar funcionalidades exclusivas!`;
-    }
+        
+        let featuresList = '`ALL`'; // Padrão se 'ALL' estiver incluído
+        if (!enabledFeatures.includes('ALL')) {
+            featuresList = enabledFeatures.map(f => `\`${f}\``).join(', ');
+        }
 
+        premiumStatusText = `> ✨ **Status da Licença:** Ativa\n` +
+                          `> 📅 **Expira em:** ${formattedDate}\n` +
+                          `> 🔑 **Acessos Liberados:** ${featuresList}`;
+    } else {
+        premiumStatusText = `> ✨ **Status da Licença:** Inativa\n> 💡 Ative uma chave para liberar funcionalidades exclusivas!`;
+    }
+    
+    // Verificações granulares para cada módulo
+    const hasGuardianAccess = await hasFeature(interaction.guild.id, 'GUARDIAN_AI');
+    const hasStatsAccess = await hasFeature(interaction.guild.id, 'STATS');
+    const hasModPremiumAccess = await hasFeature(interaction.guild.id, 'MODERATION_PREMIUM');
+    
     const allModules = [
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_ausencias_menu" },
@@ -30,7 +45,6 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_tickets_menu" },
             components: [{ type: 10, content: "🚨 Tickets" }, { type: 10, content: "Configure todo o sistema de **tickets**." }]
         },
-        // --- MÓDULO DE MODERAÇÃO ADICIONADO AQUI ---
         { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_moderacao_menu" },
@@ -49,20 +63,17 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !isPremium },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !hasGuardianAccess },
             components: [{ type: 10, content: "🛡️ Guardian AI (Premium)" }, { type: 10, content: "Moderação proativa para **prevenir conflitos**." }]
         },
-                // --- ADICIONE O NOVO MÓDULO AQUI (ou onde preferir) ---
         { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_roletags_menu" },
             components: [{ type: 10, content: "🏷️ Tags por Cargo (RoleTags)" }, { type: 10, content: "Aplique tags aos apelidos baseadas em cargos." }]
         },
-
         // --- FIM DA PÁGINA 2 ---
     ];
-
-    // Lógica de paginação ajustada para 4 itens por página
+    
     const ITEMS_PER_PAGE = 4; 
     const itemsWithDividersPerPage = ITEMS_PER_PAGE * 2;
     const paginatedModules = allModules.slice(page * itemsWithDividersPerPage, (page + 1) * itemsWithDividersPerPage);
@@ -96,11 +107,11 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
                 {
                     type: 1,
                     components: [
-                        { type: 2, style: 3, label: "Ativar Key", custom_id: "main_ativar_key" },
-                        { type: 2, style: 1, label: "Estatísticas", emoji: { name: "📊" }, disabled: !isPremium, custom_id: "main_show_stats" }
+                        { type: 2, style: 3, "label": "Ativar Key", "custom_id": "main_ativar_key" },
+                        { type: 2, style: 1, "label": "Estatísticas", "emoji": { "name": "📊" }, "disabled": !hasStatsAccess, "custom_id": "main_show_stats" }
                     ]
                 },
-                { type: 14, divider: true, spacing: 1 },
+                { type: 14, "divider": true, "spacing": 1 },
                 { type: 10, content: " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
             ].filter(Boolean)
         }
