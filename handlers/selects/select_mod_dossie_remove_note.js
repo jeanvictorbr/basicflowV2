@@ -14,18 +14,17 @@ module.exports = {
 
         await db.query('DELETE FROM moderation_notes WHERE note_id = $1', [noteId]);
 
-        // Recarrega o dossiê original
-        const originalInteraction = await interaction.channel.messages.fetch(interaction.message.reference.messageId);
-        
         const member = await interaction.guild.members.fetch(targetId).catch(() => null);
-        if (!member) { /* ... */ }
+        if (!member) {
+            return interaction.editReply({ content: 'Membro não encontrado ao tentar recarregar o dossiê.', components: [] });
+        }
 
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         const newNotes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        const dossiePayload = generateDossieEmbed(member, history, newNotes, originalInteraction, { manageMode: true });
+        // Gera o dossiê novamente no modo de gerenciamento
+        const dossiePayload = generateDossieEmbed(member, history, newNotes, interaction, { manageMode: true });
         
-        await originalInteraction.edit({ components: dossiePayload.components });
-        await interaction.editReply({ content: '✅ Nota removida com sucesso!', components: [] });
+        await interaction.editReply({ components: dossiePayload.components, flags: V2_FLAG | EPHEMERAL_FLAG });
     }
 };

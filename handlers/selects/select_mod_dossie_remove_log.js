@@ -2,6 +2,7 @@
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'select_mod_dossie_remove_log_',
@@ -12,18 +13,18 @@ module.exports = {
         const caseId = interaction.values[0];
 
         await db.query('DELETE FROM moderation_logs WHERE case_id = $1', [caseId]);
-
-        const originalInteraction = await interaction.channel.messages.fetch(interaction.message.reference.messageId);
         
         const member = await interaction.guild.members.fetch(targetId).catch(() => null);
-        if (!member) { /* ... */ }
+        if (!member) {
+            return interaction.editReply({ content: 'Membro não encontrado ao tentar recarregar o dossiê.', components: [] });
+        }
 
         const newHistory = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        const dossiePayload = generateDossieEmbed(member, newHistory, notes, originalInteraction, { manageMode: true });
+        // Gera o dossiê novamente no modo de gerenciamento
+        const dossiePayload = generateDossieEmbed(member, newHistory, notes, interaction, { manageMode: true });
         
-        await originalInteraction.edit({ components: dossiePayload.components });
-        await interaction.editReply({ content: '✅ Ocorrência removida com sucesso!', components: [] });
+        await interaction.editReply({ components: dossiePayload.components, flags: V2_FLAG | EPHEMERAL_FLAG });
     }
 };
