@@ -120,6 +120,9 @@ client.on(Events.InteractionCreate, async interaction => {
     } else if (interaction.isUserContextMenuCommand()) {
         customId = interaction.commandName;
         handler = client.handlers.get(customId);
+    } else if (interaction.customId.startsWith('mod_bans_page_')) {
+    handler = client.handlers.get('mod_bans_page_');
+    
     } else {
         customId = interaction.customId;
         handler = client.handlers.get(customId);
@@ -157,6 +160,8 @@ client.on(Events.MessageCreate, async message => {
     if (ticket.warning_sent_at) {
         await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
     }
+
+    
     await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
@@ -190,6 +195,7 @@ client.on(Events.MessageCreate, async message => {
     if (aiResponse) {
         await message.channel.send(aiResponse);
     }
+    
 });
 
 client.login(process.env.DISCORD_TOKEN);
