@@ -1,4 +1,4 @@
-// index.js
+// Substitua o conteúdo em: index.js
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
@@ -20,7 +20,7 @@ client.afkToleranceTimers = new Map();
 client.commands = new Collection();
 const commandsToDeploy = [];
 const devCommandsToDeploy = [];
-const devOnlyCommands = ['devpanel', 'debugai', 'enviar']; // Adicionado 'enviar' para dev
+const devOnlyCommands = ['devpanel', 'debugai', 'enviar'];
 
 const commandFoldersPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandFoldersPath).filter(file => file.endsWith('.js'));
@@ -88,63 +88,43 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
 });
 
-// --- Evento de Interações ---
+// --- Evento de Interações (COM TRATAMENTO DE ERRO GLOBAL) ---
 client.on(Events.InteractionCreate, async interaction => {
-    // --- LÓGICA PARA OS BOTÕES DE ESCOLHA DE BOT (BasicFlow/FactionFlow) ---
-    if (interaction.isButton() && (interaction.customId === 'select_bot_basicflow' || interaction.customId === 'select_bot_factionflow')) {
-        try {
-            if (!interaction.message.reference) {
-                return await interaction.update({ content: "Não foi possível encontrar a mensagem original. Por favor, tente perguntar novamente.", components: [] });
-            }
-            
-            const originalMessageId = interaction.message.reference.messageId;
-            const originalMessage = await interaction.channel.messages.fetch(originalMessageId);
-            const botSelection = interaction.customId.split('_')[2]; // 'basicflow' ou 'factionflow'
-            
-            // Adiciona o nome do bot à pergunta original para dar contexto
-            const userMessageWithContext = `${originalMessage.content.replace(/<@!?\d+>/g, '').trim()} ${botSelection}`;
-
-            await interaction.update({ content: `Ok, buscando informações sobre o **${botSelection === 'basicflow' ? 'BasicFlow' : 'FactionFlow'}**...`, components: [] });
-
-            // Simula uma nova mensagem para re-acionar a IA com o contexto
-            client.emit(Events.MessageCreate, originalMessage, userMessageWithContext);
-        } catch (error) {
-            console.error("Erro ao processar seleção de bot:", error);
-            await interaction.followUp({ content: "Ocorreu um erro ao buscar a informação. A mensagem original pode ter sido apagada. Tente perguntar novamente.", ephemeral: true });
-        }
-        return;
-    }
-    
-    // --- Lógica de Handlers Padrão ---
     let handler;
     let customId;
-    if (interaction.isChatInputCommand() || interaction.isUserContextMenuCommand()) {
-        customId = interaction.commandName;
-        handler = client.handlers.get(customId) || client.commands.get(customId)?.execute;
-    } else if (interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
-        customId = interaction.customId;
-        handler = client.handlers.get(customId);
-        if (!handler) {
-            const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => key.endsWith('_') && customId.startsWith(key));
-            if (dynamicHandlerId) {
-                handler = client.handlers.get(dynamicHandlerId);
+
+    try {
+        if (interaction.isChatInputCommand() || interaction.isUserContextMenuCommand()) {
+            customId = interaction.commandName;
+            handler = client.handlers.get(customId) || client.commands.get(customId)?.execute;
+        } else if (interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
+            customId = interaction.customId;
+            handler = client.handlers.get(customId);
+            if (!handler) {
+                const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => key.endsWith('_') && customId.startsWith(key));
+                if (dynamicHandlerId) {
+                    handler = client.handlers.get(dynamicHandlerId);
+                }
             }
         }
-    }
-    
-    if (!handler) {
-        console.warn(`[HANDLER] Nenhum handler encontrado para a interação "${customId}"`);
-        return;
-    }
 
-    try { 
-        await handler(interaction, client); 
+        if (!handler) {
+            console.warn(`[HANDLER] Nenhum handler encontrado para a interação "${customId}"`);
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.reply({ content: 'Esta interação expirou ou não foi encontrada.', ephemeral: true }).catch(() => {});
+            }
+            return;
+        }
+
+        await handler(interaction, client);
+
     } catch (error) {
-        console.error(`Erro executando o handler de interação "${customId}":`, error);
-        if (interaction.replied || interaction.deferred) { 
-            await interaction.followUp({ content: 'Houve um erro ao processar sua solicitação.', ephemeral: true }); 
-        } else { 
-            await interaction.reply({ content: 'Houve um erro ao processar sua solicitação.', ephemeral: true }); 
+        // Bloco de captura de erro global
+        console.error(`❌ Erro CRÍTICO executando o handler de interação "${customId}":`, error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: '🔴 Houve um erro interno ao processar sua solicitação. A equipe de desenvolvimento foi notificada.', ephemeral: true }).catch(console.error);
+        } else {
+            await interaction.reply({ content: '🔴 Houve um erro interno ao processar sua solicitação. A equipe de desenvolvimento foi notificada.', ephemeral: true }).catch(console.error);
         }
     }
 });
@@ -162,11 +142,7 @@ client.on(Events.MessageCreate, async (message, overrideContent) => {
         try {
             const userMessage = contentToProcess.replace(/<@!?\d+>/g, '').trim();
             
-            // Verificação de Ambiguidade
-            const isAmbiguous = (userMessage.match(/\b(registro|premium|configurar|ativar|chat|ia|painel)\b/i)) && 
-                                (!userMessage.match(/\b(basicflow|factionflow)\b/i));
-
-            if (isAmbiguous && !overrideContent) {
+            if (isAmbiguous(userMessage) && !overrideContent) {
                 const row = new ActionRowBuilder()
                     .addComponents(
                         new ButtonBuilder().setCustomId('select_bot_basicflow').setLabel('BasicFlow').setStyle(ButtonStyle.Primary),
@@ -184,28 +160,7 @@ client.on(Events.MessageCreate, async (message, overrideContent) => {
                 return;
             }
 
-            let chatPrompt = ``;
-            let useKnowledge = false;
-
-            if (userMessage.match(/\b(piada|conte uma piada|me faça rir)\b/i)) {
-                chatPrompt = `Você é um comediante. Conte uma piada curta e engraçada, no estilo 'stand-up'.`;
-            } 
-            else if (userMessage.match(/\b(o que você prefere|duas opções|escolha)\b/i)) {
-                chatPrompt = `Crie uma pergunta divertida no formato "O que você prefere?". As duas opções devem ser interessantes, engraçadas ou difíceis de escolher.`;
-            }
-            else if (userMessage.match(/\b(crie uma história|narre|conte sobre)\b/i)) {
-                chatPrompt = `Você é um mestre de RPG. Baseado na solicitação do usuário ("${userMessage}"), crie uma pequena narrativa (um ou dois parágrafos) sobre uma cena de roleplay. Use linguagem descritiva e imersiva.`;
-            }
-            else if (userMessage.match(/\b(crie um personagem|ideia de personagem)\b/i)) {
-                chatPrompt = `Crie um conceito de personagem para um servidor de Roleplay (RP), baseado na solicitação do usuário ("${userMessage}"). Forneça nome, uma breve história e um objetivo.`;
-            }
-            else if (userMessage.match(/\b(sorte do dia|conselho)\b/i)) {
-                chatPrompt = `Aja como um biscoito da sorte. Forneça uma frase curta, enigmática, engraçada ou inspiradora como um 'conselho do dia'.`;
-            }
-            else {
-                chatPrompt = `Você é um assistente amigável chamado "${client.user.username}" no servidor "${message.guild.name}". Responda às perguntas dos usuários de forma completa, usando o histórico da conversa para manter o contexto e as informações que você possui.`;
-                useKnowledge = true;
-            }
+            let { chatPrompt, useKnowledge } = getChatContext(userMessage, message, client);
             
             await message.channel.sendTyping();
             const history = await message.channel.messages.fetch({ limit: 10 });
@@ -225,7 +180,6 @@ client.on(Events.MessageCreate, async (message, overrideContent) => {
         }
     }
 
-    // --- Lógica Existente (Guardian e Tickets) ---
     try {
         await processMessageForGuardian(message);
     } catch (err) {
@@ -278,5 +232,38 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
         await updateUserTag(newMember);
     }
 });
+
+// Funções Auxiliares para o MessageCreate
+function isAmbiguous(userMessage) {
+    return (userMessage.match(/\b(registro|premium|configurar|ativar|chat|ia|painel)\b/i)) && 
+           (!userMessage.match(/\b(basicflow|factionflow)\b/i));
+}
+
+function getChatContext(userMessage, message, client) {
+    let chatPrompt = ``;
+    let useKnowledge = false;
+
+    if (userMessage.match(/\b(piada|conte uma piada|me faça rir)\b/i)) {
+        chatPrompt = `Você é um comediante. Conte uma piada curta e engraçada, no estilo 'stand-up'.`;
+    } 
+    else if (userMessage.match(/\b(o que você prefere|duas opções|escolha)\b/i)) {
+        chatPrompt = `Crie uma pergunta divertida no formato "O que você prefere?". As duas opções devem ser interessantes, engraçadas ou difíceis de escolher.`;
+    }
+    else if (userMessage.match(/\b(crie uma história|narre|conte sobre)\b/i)) {
+        chatPrompt = `Você é um mestre de RPG. Baseado na solicitação do usuário ("${userMessage}"), crie uma pequena narrativa (um ou dois parágrafos) sobre uma cena de roleplay. Use linguagem descritiva e imersiva.`;
+    }
+    else if (userMessage.match(/\b(crie um personagem|ideia de personagem)\b/i)) {
+        chatPrompt = `Crie um conceito de personagem para um servidor de Roleplay (RP), baseado na solicitação do usuário ("${userMessage}"). Forneça nome, uma breve história e um objetivo.`;
+    }
+    else if (userMessage.match(/\b(sorte do dia|conselho)\b/i)) {
+        chatPrompt = `Aja como um biscoito da sorte. Forneça uma frase curta, enigmática, engraçada ou inspiradora como um 'conselho do dia'.`;
+    }
+    else {
+        chatPrompt = `Você é um assistente amigável chamado "${client.user.username}" no servidor "${message.guild.name}". Responda às perguntas dos usuários de forma completa, usando o histórico da conversa para manter o contexto e as informações que você possui.`;
+        useKnowledge = true;
+    }
+    return { chatPrompt, useKnowledge };
+}
+
 
 client.login(process.env.DISCORD_TOKEN);
