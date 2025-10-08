@@ -1,11 +1,15 @@
 // handlers/modals/modal_dev_key_create.js
 const db = require('../../database.js');
 const crypto = require('crypto');
+const generateDevKeysMenu = require('../../ui/devPanel/devKeysMenu.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'modal_dev_key_create_',
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        // Atualiza a mensagem original (que contém o menu de features)
+        await interaction.deferUpdate(); 
         
         const features = interaction.customId.split('_')[4];
         const duration = parseInt(interaction.fields.getTextInputValue('input_duration'), 10);
@@ -13,7 +17,7 @@ module.exports = {
         const comment = interaction.fields.getTextInputValue('input_comment');
 
         if (isNaN(duration) || isNaN(uses) || duration <= 0 || uses <= 0) {
-            return interaction.editReply({ content: '❌ Duração e Usos devem ser números maiores que zero.' });
+            return interaction.followUp({ content: '❌ Duração e Usos devem ser números maiores que zero.', ephemeral: true });
         }
 
         const key = `BF-${crypto.randomUUID().toUpperCase()}`;
@@ -24,10 +28,14 @@ module.exports = {
             [key, duration, uses, features, comment]
         );
 
-        await interaction.editReply({ content: `✅ Chave criada com sucesso!\n\`\`\`${key}\`\`\`` });
+        // Busca a lista atualizada de chaves e redesenha o menu principal
+        const updatedKeys = (await db.query('SELECT * FROM activation_keys ORDER BY key ASC')).rows;
+        await interaction.editReply({
+            components: generateDevKeysMenu(updatedKeys, 0),
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
 
-        // Recarrega o menu de chaves para refletir a nova adição
-        const manageKeysHandler = require('../buttons/dev_manage_keys.js');
-        await manageKeysHandler.execute(interaction);
+        // Envia a nova chave como uma mensagem separada e efêmera
+        await interaction.followUp({ content: `✅ Chave criada com sucesso!\n\`\`\`${key}\`\`\``, ephemeral: true });
     }
 };
