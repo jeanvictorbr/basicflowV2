@@ -8,7 +8,7 @@ module.exports = {
     customId: 'open_roletags_menu',
     async execute(interaction) {
         await interaction.deferUpdate();
-        const tags = (await db.query('SELECT * FROM role_tags WHERE guild_id = $1', [interaction.guild.id])).rows;
+        const tags = (await db.query('SELECT * FROM role_tags WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
         
         await interaction.editReply({
             components: generateRoleTagsMenu(tags),
