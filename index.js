@@ -133,28 +133,57 @@ client.on(Events.MessageCreate, async message => {
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
 
-    // --- NOVA LÓGICA DE CHAT POR MENÇÃO ---
+    // --- LÓGICA DE CHAT POR MENÇÃO E BRINCADEIRAS ---
     if (message.mentions.has(client.user.id) && settings.guardian_ai_mention_chat_enabled) {
         try {
-            await message.channel.sendTyping();
+            // Limpa a menção da mensagem para entender o que o usuário quer
+            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
+            
+            let chatPrompt = ``; // Será definido pelo if/else
+            let useKnowledge = false; // Por padrão, brincadeiras não usam a base de conhecimento
 
-            // Busca o histórico de mensagens para dar contexto à IA
-            const history = await message.channel.messages.fetch({ limit: 15 });
+            // --- Estrutura para identificar a brincadeira ---
+
+            // 1. Mestre das Piadas
+            if (userMessage.match(/\b(piada|conte uma piada|me faça rir)\b/i)) {
+                chatPrompt = `Você é um comediante. Conte uma piada curta e engraçada, no estilo 'stand-up'. Pode ser sobre qualquer tema, incluindo jogos, tecnologia ou situações do dia a dia.`;
+            } 
+            // 2. Jogo: "O Que Você Prefere?"
+            else if (userMessage.match(/\b(o que você prefere|duas opções|escolha)\b/i)) {
+                chatPrompt = `Crie uma pergunta divertida no formato "O que você prefere?". As duas opções devem ser interessantes, engraçadas ou difíceis de escolher. Por exemplo: 'Ter que lutar com um pato do tamanho de um cavalo ou cem cavalos do tamanho de um pato?'.`;
+            }
+            // 3. Mini Histórias de RP
+            else if (userMessage.match(/\b(crie uma história|narre|conte sobre)\b/i)) {
+                chatPrompt = `Você é um mestre de RPG. Baseado na solicitação do usuário ("${userMessage}"), crie uma pequena narrativa (um ou dois parágrafos) sobre uma cena de roleplay. Use uma linguagem descritiva e imersiva. A história deve ter um começo, meio e um final rápido.`;
+            }
+            // 4. Gerador de Personagem de RP
+            else if (userMessage.match(/\b(crie um personagem|ideia de personagem)\b/i)) {
+                chatPrompt = `Crie um conceito de personagem para um servidor de Roleplay (RP), baseado na solicitação do usuário ("${userMessage}"). Forneça um nome, uma breve história de fundo (2-3 frases) e um objetivo principal para o personagem. Seja criativo e original.`;
+            }
+            // 5. Sorte do Dia / Conselho do Dia
+            else if (userMessage.match(/\b(sorte do dia|conselho)\b/i)) {
+                chatPrompt = `Aja como um biscoito da sorte ou um velho sábio. Forneça uma frase curta, enigmática, engraçada ou inspiradora como um 'conselho do dia'.`;
+            }
+            // Conversa Padrão
+            else {
+                chatPrompt = `Você é um assistente amigável e prestativo chamado "${client.user.username}" no servidor de Discord "${message.guild.name}". Responda às perguntas dos usuários de forma educada e completa, utilizando o histórico da conversa para manter o contexto. Baseie-se no conhecimento geral e nas informações fornecidas.`;
+                useKnowledge = true; // Apenas na conversa padrão usamos a base de conhecimento
+            }
+
+            // --- Lógica Comum de Resposta ---
+            await message.channel.sendTyping();
+            const history = await message.channel.messages.fetch({ limit: 10 });
             const chatHistory = history.map(msg => ({
                 role: msg.author.id === client.user.id ? 'assistant' : 'user',
                 content: msg.content,
-            })).reverse(); // Inverte para a ordem cronológica correta
-
-            // Define o "comportamento" da IA para o chat
-            const chatPrompt = `Você é um assistente amigável e prestativo chamado "${client.user.username}" no servidor de Discord "${message.guild.name}". Responda às perguntas dos usuários de forma educada e completa, utilizando o histórico da conversa para manter o contexto. Baseie-se no conhecimento geral e nas informações fornecidas.`;
+            })).reverse();
             
-            const useBaseKnowledge = settings.tickets_ai_use_base_knowledge !== false;
-            const aiResponse = await getAIResponse(message.guild.id, chatHistory, message.content, chatPrompt, useBaseKnowledge);
+            const aiResponse = await getAIResponse(message.guild.id, chatHistory, userMessage, chatPrompt, useKnowledge);
 
             if (aiResponse) {
                 await message.reply(aiResponse);
             }
-            return; // Para a execução para não cair na lógica de tickets ou moderação
+            return; 
         } catch(err) {
             console.error('[Mention Chat AI] Erro ao responder menção:', err);
         }
