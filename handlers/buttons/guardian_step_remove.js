@@ -22,6 +22,15 @@ module.exports = {
         // CORREÇÃO: Busca a lista de punições antes de renderizar o menu.
         const punishments = (await db.query('SELECT * FROM moderation_punishments WHERE guild_id = $1', [interaction.guild.id])).rows;
         
+        // Adicionada verificação de segurança, igual ao do 'manage_steps'
+        if (!policy) {
+             const allPolicies = (await db.query('SELECT * FROM guardian_policies WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+            return interaction.editReply({ 
+                components: generateGuardianPoliciesMenu(allPolicies),
+                flags: V2_FLAG | EPHEMERAL_FLAG 
+            });
+        }
+        
         await interaction.editReply({ 
             components: generatePolicyStepsMenu(policy, steps, punishments),
             flags: V2_FLAG | EPHEMERAL_FLAG
