@@ -62,7 +62,8 @@ const schema = {
         mod_monitor_enabled: { type: 'BOOLEAN', default: false },
         mod_monitor_channel: { type: 'VARCHAR(255)' },
                 // --- NOVA CONFIGURAÇÃO DE INTEGRAÇÃO ---
-        guardian_use_mod_punishments: { type: 'BOOLEAN', default: false }
+        guardian_use_mod_punishments: { type: 'BOOLEAN', default: false },
+        roletags_enabled: { type: 'BOOLEAN', default: false }
     },
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },

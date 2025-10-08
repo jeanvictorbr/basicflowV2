@@ -213,6 +213,12 @@ client.on(Events.MessageCreate, async message => {
 
 // --- Evento de Atualização de Membro (para RoleTags) ---
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    // Busca as configurações primeiro
+    const settings = (await db.query('SELECT roletags_enabled FROM guild_settings WHERE guild_id = $1', [newMember.guild.id])).rows[0];
+
+    // Se o sistema estiver desativado, não faz nada
+    if (!settings || !settings.roletags_enabled) return;
+
     // Verifica se os cargos do membro mudaram
     if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
         await updateUserTag(newMember);
