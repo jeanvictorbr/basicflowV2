@@ -1,61 +1,46 @@
-// ui/ticketsMenu.js
-module.exports = function generateTicketsMenu(settings, isPremium)  {
-    const categoria = settings?.tickets_category ? `<#${settings.tickets_category}>` : '`❌ Não definida`';
-    const thumbnail = settings?.tickets_thumbnail_url ? '`✅ Definida`' : '`❌ Não definida`';
-    const canalLogs = settings?.tickets_canal_logs ? `<#${settings.tickets_canal_logs}>` : '`❌ Não definido`';
-    const cargoSuporte = settings?.tickets_cargo_suporte ? `<@&${settings.tickets_cargo_suporte}>` : '`❌ Não definido`';
+// ui/uniformesMenu.js
+module.exports = function generateUniformesMenu(settings, isPremium) {
+    const thumbnail = settings?.uniformes_thumbnail_url ? '`✅ Definida`' : '`❌ Não definida`';
+    const color = settings?.uniformes_color ? `\`${settings.uniformes_color}\`` : '`Padrão`';
 
     return [
         {
-            "type": 17, "accent_color": null, "spoiler": false,
+            "type": 17,
+            "accent_color": 15844367,
             "components": [
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 4, "label": "Publicar Painel", "custom_id": "tickets_publicar_painel" },
-                    "components": [{ "type": 10, "content": "# Hub de Tickets" }]
+                    "accessory": { "type": 2, "style": 4, "label": "Publicar Vitrine", "custom_id": "uniformes_publicar_vitrine" },
+                    "components": [{ "type": 10, "content": "# Hub de Uniformes" }]
                 },
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_category" },
-                    "components": [{ "type": 10, "content": `**Categoria dos Tickets**\n> ${categoria}` }]
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "🎨" }, "custom_id": "uniformes_set_color", "disabled": !isPremium },
+                    "components": [{ "type": 10, "content": `**Cor da Vitrine**\n> Cor: ${color}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_thumbnail", "disabled": !isPremium  },
-                    "components": [{ "type": 10, "content": `**Imagem do Ticket**\n> ${thumbnail}` }]
-                },
-                { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_canal_logs" },
-                    "components": [{ "type": 10, "content": `**Canal de Logs**\n> ${canalLogs}` }]
-                },
-                { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "⚙️" }, "custom_id": "tickets_set_cargo_suporte" },
-                    "components": [{ "type": 10, "content": `**Cargo de Suporte (Padrão)**\n> ${cargoSuporte}` }]
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "emoji": { "name": "🖼️" }, "custom_id": "uniformes_set_thumbnail", "disabled": !isPremium },
+                    "components": [{ "type": 10, "content": `**Thumbnail da Vitrine**\n> ${thumbnail}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 1,
                     "components": [
-                        { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" },
-                        { "type": 2, "style": 1, "label": "+ Config. Premium", "emoji": { "name": "✨" }, "custom_id": "tickets_open_premium_menu", "disabled": !isPremium }
+                        { "type": 2, "style": 3, "label": "Adicionar", "emoji": { "name": "➕" }, "custom_id": "uniformes_add" },
+                        { "type": 2, "style": 1, "label": "Editar", "emoji": { "name": "✏️" }, "custom_id": "uniformes_edit" },
+                        { "type": 2, "style": 4, "label": "Remover", "emoji": { "name": "🗑️" }, "custom_id": "uniformes_remove" }
                     ]
                 },
-                                // =======================================================
-                // ==                RODAPÉ ADICIONADO AQUI             ==
-                // =======================================================
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
-                    "type": 10, // Tipo 10 é um componente de Texto
-                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
-                    "content": " ↘  BasicFlow - Todos os direitos Reservados" 
-                }
-                // =======================================================
+                    "type": 1,
+                    "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" }]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 10, "content": " ↘   BasicFlow - Todos os direitos Reservados" }
             ]
         }
     ];
