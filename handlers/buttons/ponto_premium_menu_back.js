@@ -9,7 +9,8 @@ module.exports = {
     async execute(interaction) {
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         
-        const menu = await generatePontoMenu(interaction, settings); // CORRIGIDO
+        // CORRIGIDO: Passa o objeto 'interaction' para a função de UI
+        const menu = await generatePontoMenu(interaction, settings); 
 
         await interaction.update({
             components: menu,

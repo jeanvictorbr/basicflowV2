@@ -10,7 +10,7 @@ module.exports = {
         await db.query(`UPDATE guild_settings SET ponto_status = NOT COALESCE(ponto_status, false) WHERE guild_id = $1`, [interaction.guild.id]);
         const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
         
-        // CORREÇÃO: Passa o objeto 'interaction' para a função de UI
+        // CORRIGIDO: Passa o objeto 'interaction' para a função de UI
         const menu = await generatePontoMenu(interaction, settingsResult.rows[0]);
         
         await interaction.update({ 
