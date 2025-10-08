@@ -1,7 +1,7 @@
 // Substitua o conteúdo em: index.js
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
@@ -17,7 +17,6 @@ client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 
 // --- Carregamento de Comandos e Handlers ---
-// (Esta parte permanece inalterada)
 client.commands = new Collection();
 const commandsToDeploy = [];
 const devCommandsToDeploy = [];
@@ -61,7 +60,6 @@ handlerTypes.forEach(handlerType => {
 console.log('--- Handlers Carregados ---');
 
 // --- Evento de Bot Pronto ---
-// (Esta parte permanece inalterada)
 client.once(Events.ClientReady, async () => {
     await db.synchronizeDatabase();
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -90,8 +88,7 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
 });
 
-// --- Evento de Interações ---
-// (Esta parte permanece inalterada)
+// --- Evento de Interações (COM TRATAMENTO DE ERRO GLOBAL) ---
 client.on(Events.InteractionCreate, async interaction => {
     let handler;
     let customId;
@@ -137,51 +134,54 @@ client.on(Events.MessageCreate, async (message) => {
     if (!message.guild || message.author.bot) return;
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
-
-    // --- NOVA LÓGICA DE IA COM THREADS ---
-    const isAiThread = message.channel.isThread() && message.channel.name.startsWith('💬 Conversa com IA');
-    const isMentioned = message.content.includes(client.user.id);
     
-    if (settings.guardian_ai_mention_chat_enabled && (isMentioned || isAiThread)) {
+    // --- LÓGICA DE IA COM CONTEXTO INTELIGENTE (SEM THREADS) ---
+    if (message.content.includes(client.user.id) && settings.guardian_ai_mention_chat_enabled) {
         try {
             const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
-            if (!userMessage) return;
+            if (!userMessage) return; // Ignora menções vazias
+            
+            await message.channel.sendTyping();
 
-            // Se for uma menção e NÃO estiver já numa thread, cria uma nova.
-            if (isMentioned && !isAiThread) {
-                const thread = await message.startThread({
-                    name: `💬 Conversa com IA - ${message.author.username}`,
-                    autoArchiveDuration: 60, // Arquiva após 1h de inatividade
-                    reason: 'Resposta da IA à menção do usuário.',
-                });
-                await thread.send(`Olá ${message.author}! Estou a analisar a sua questão. Um momento...`);
-                await thread.members.add(message.author); // Garante que o autor está na thread
+            // 1. Busca um histórico maior de mensagens do canal
+            const channelMessages = await message.channel.messages.fetch({ limit: 20 });
+            const oneHourAgo = Date.now() - (60 * 60 * 1000);
+            const chatHistory = [];
 
-                // A IA agora responde dentro da thread, usando a mensagem original como contexto
-                processAiResponse(thread, userMessage, [], settings, client);
-                return; // Impede a execução do resto do código para esta mensagem
+            // 2. Filtra inteligentemente para criar um contexto individual
+            for (const msg of channelMessages.values()) {
+                // Para de adicionar mensagens se já tivermos 5 (limite) ou se a mensagem for muito antiga
+                if (chatHistory.length >= 5 || msg.createdTimestamp < oneHourAgo) {
+                    break;
+                }
+
+                // Adiciona apenas mensagens do autor da menção ou do próprio bot
+                if (msg.author.id === message.author.id || msg.author.id === client.user.id) {
+                    chatHistory.push({
+                        role: msg.author.id === client.user.id ? 'assistant' : 'user',
+                        content: msg.content,
+                    });
+                }
             }
+            
+            // Inverte para a ordem cronológica correta (mais antigo para mais novo)
+            chatHistory.reverse();
 
-            // Se for uma mensagem dentro de uma thread de IA, continua a conversa.
-            if (isAiThread) {
-                const oneHourAgo = Date.now() - (60 * 60 * 1000);
-                const messages = await message.channel.messages.fetch({ limit: 5 });
-                
-                // Filtra mensagens com mais de 1 hora e formata o histórico
-                const recentMessages = messages.filter(m => m.createdTimestamp > oneHourAgo);
-                const chatHistory = recentMessages.map(msg => ({
-                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                    content: msg.content,
-                })).reverse(); // Inverte para ordem cronológica
+            // 3. Define o prompt e chama a IA com o histórico limpo
+            const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
+            const aiResponse = await getAIResponse(message.guild.id, chatHistory, userMessage, systemPrompt, true);
 
-                processAiResponse(message.channel, userMessage, chatHistory, settings, client);
-                return;
+            if (aiResponse) {
+                await message.reply(aiResponse);
             }
+            return; // Termina a execução aqui para não prosseguir para outras lógicas
+
         } catch(err) {
-            console.error('[Mention Chat AI] Erro ao criar/responder na thread:', err);
+            console.error('[Mention Chat AI] Erro ao responder menção:', err);
         }
     }
-    // --- FIM DA NOVA LÓGICA ---
+    // --- FIM DA LÓGICA DE IA ---
+
 
     try {
         await processMessageForGuardian(message);
@@ -227,22 +227,6 @@ client.on(Events.MessageCreate, async (message) => {
     }
 });
 
-// Função Auxiliar para processar a resposta da IA na Thread
-async function processAiResponse(channel, userMessage, chatHistory, settings, client) {
-    await channel.sendTyping();
-    
-    // O prompt do sistema pode continuar o mesmo, pois o contexto é limpo pela thread
-    const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}" no servidor "${channel.guild.name}". Responda às perguntas dos usuários de forma completa, usando o histórico da conversa para manter o contexto.`;
-    const useKnowledge = true; // Sempre usar a base de conhecimento nestas conversas
-
-    const aiResponse = await getAIResponse(channel.guild.id, chatHistory, userMessage, systemPrompt, useKnowledge);
-
-    if (aiResponse) {
-        await channel.send(aiResponse);
-    }
-}
-
-
 // --- Evento de Atualização de Membro ---
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     const settings = (await db.query('SELECT roletags_enabled FROM guild_settings WHERE guild_id = $1', [newMember.guild.id])).rows[0];
@@ -252,9 +236,5 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     }
 });
 
-function isAmbiguous(userMessage) {
-    return (userMessage.match(/\b(registro|premium|configurar|ativar|chat|ia|painel)\b/i)) && 
-           (!userMessage.match(/\b(basicflow|factionflow)\b/i));
-}
 
 client.login(process.env.DISCORD_TOKEN);
