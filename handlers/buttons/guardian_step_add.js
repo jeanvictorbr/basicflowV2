@@ -1,49 +1,58 @@
-// Substitua em: handlers/buttons/guardian_step_add.js
-const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
-const db = require('../../database.js'); // Importar DB
+// Substitua o conteúdo em: handlers/buttons/guardian_step_add.js
+const db = require('../../database.js');
+const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
-    customId: 'guardian_step_add_', // Handler dinâmico
+    customId: 'guardian_step_add_',
     async execute(interaction) {
+        await interaction.deferUpdate();
         const policyId = interaction.customId.split('_')[3];
+
         const settings = (await db.query('SELECT guardian_use_mod_punishments FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
+        const punishments = (await db.query('SELECT punishment_id, name, action FROM moderation_punishments WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows;
 
-        const modal = new ModalBuilder()
-            .setCustomId(`modal_guardian_step_create_${policyId}`)
-            .setTitle('Adicionar Novo Passo de Ação');
+        const isIntegrationActive = settings.guardian_use_mod_punishments && punishments.length > 0;
 
-        let actionsPlaceholder = 'AVISAR_CHAT, DELETAR, TIMEOUT, KICK, BAN';
-        if (settings.guardian_use_mod_punishments) {
-            actionsPlaceholder = 'Use o ID de uma Punição Personalizada (Ex: 3)';
-        }
+        const options = isIntegrationActive ? punishments.map(p => ({
+            label: p.name,
+            value: p.punishment_id.toString(),
+            description: `Ação: ${p.action}`
+        })) : [{ label: 'Nenhuma punição personalizada encontrada', value: 'disabled' }];
 
-        modal.addComponents(
-            new ActionRowBuilder().addComponents(
-                new TextInputBuilder()
-                    .setCustomId('input_threshold')
-                    .setLabel("Limiar do Gatilho (Nº de msgs, %, etc)")
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('Ex: 3 (para 3 mensagens de spam)')
-                    .setRequired(true)
-            ),
-            new ActionRowBuilder().addComponents(
-                new TextInputBuilder()
-                    .setCustomId('input_actions')
-                    .setLabel("Ação a ser Executada")
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder(actionsPlaceholder) // Placeholder dinâmico
-                    .setRequired(true)
-            ),
-            new ActionRowBuilder().addComponents(
-                new TextInputBuilder()
-                    .setCustomId('input_timeout')
-                    .setLabel("Duração do Timeout (se usar ação simples)")
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('Ex: 5 (não preencha se usar ID de Punição)')
-                    .setRequired(false)
-            )
-        );
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId(`select_guardian_step_punishment_${policyId}`)
+            .setPlaceholder(isIntegrationActive ? 'Vincular uma punição pré-configurada' : 'Integração desativada ou sem punições')
+            .addOptions(options)
+            .setDisabled(!isIntegrationActive);
         
-        await interaction.showModal(modal);
+        const simpleActionButton = new ButtonBuilder()
+            .setCustomId(`guardian_step_add_simple_action_${policyId}`)
+            .setLabel('Criar Ação Simples')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('⚙️');
+
+        const cancelButton = new ButtonBuilder()
+            .setCustomId(`guardian_manage_steps_${policyId}`)
+            .setLabel('Cancelar')
+            .setStyle(ButtonStyle.Danger);
+
+        const components = [
+            {
+                "type": 17, "accent_color": 3447003,
+                "components": [
+                    { "type": 10, "content": `## ➕ Adicionar Passo (1/2)` },
+                    { "type": 10, "content": `> Escolha uma punição da sua lista de pré-configuradas ou crie uma ação simples (como avisar no chat, deletar, etc).` }
+                ]
+            },
+            new ActionRowBuilder().addComponents(selectMenu),
+            new ActionRowBuilder().addComponents(simpleActionButton, cancelButton)
+        ];
+
+        await interaction.editReply({
+            components: components,
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
     }
 };

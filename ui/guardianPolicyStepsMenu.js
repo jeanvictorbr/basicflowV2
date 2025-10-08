@@ -1,12 +1,28 @@
-// ui/guardianPolicyStepsMenu.js
-module.exports = function generatePolicyStepsMenu(policy, steps) {
+// Substitua o conteúdo em: ui/guardianPolicyStepsMenu.js
+module.exports = function generatePolicyStepsMenu(policy, steps, punishments = []) {
+    const punishmentMap = new Map(punishments.map(p => [p.punishment_id.toString(), p.name]));
+
     const stepComponents = steps.length > 0
         ? steps.sort((a, b) => a.step_level - b.step_level).flatMap(step => {
             const actions = [];
             if (step.action_delete_message) actions.push('Apagar Msg');
             if (step.action_warn_publicly) actions.push('Avisar no Chat');
-            const punishmentMap = { 'TIMEOUT': `Silenciar (${step.action_punishment_duration_minutes}m)`, 'KICK': 'Expulsar', 'BAN': 'Banir' };
-            if (step.action_punishment !== 'NONE') actions.push(punishmentMap[step.action_punishment]);
+
+            let punishmentText = 'Nenhuma';
+            const simplePunishmentMap = {
+                'TIMEOUT': `Silenciar (${step.action_punishment_duration_minutes}m)`,
+                'KICK': 'Expulsar',
+                'BAN': 'Banir'
+            };
+
+            if (step.action_punishment && step.action_punishment !== 'NONE') {
+                if (simplePunishmentMap[step.action_punishment]) {
+                    punishmentText = simplePunishmentMap[step.action_punishment];
+                } else if (punishmentMap.has(step.action_punishment)) {
+                    punishmentText = `Punição: '${punishmentMap.get(step.action_punishment)}'`;
+                }
+            }
+            if (punishmentText !== 'Nenhuma') actions.push(punishmentText);
 
             return [
                 { type: 10, content: `**Nível ${step.step_level}:** Limiar de \`${step.threshold}\`` },
@@ -16,7 +32,9 @@ module.exports = function generatePolicyStepsMenu(policy, steps) {
         })
         : [{ type: 10, content: '> Nenhum passo definido. Clique em "Adicionar Passo" para começar.' }];
     
-    if (stepComponents.length > 1) stepComponents.pop();
+    if (stepComponents.length > 1 && stepComponents[stepComponents.length - 1].type === 14) {
+        stepComponents.pop();
+    }
 
     return [
         {

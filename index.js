@@ -1,11 +1,11 @@
-// Substitua em: index.js
+// index.js
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
-const { checkExpiredPunishments } = require('./utils/punishmentMonitor.js'); // <-- LINHA ADICIONADA
+const { checkExpiredPunishments } = require('./utils/punishmentMonitor.js');
 require('dotenv').config();
 const db = require('./database.js');
 
@@ -35,7 +35,7 @@ for (const file of commandFiles) {
 console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
-const handlerTypes = ['buttons', 'modals', 'selects', 'commands']; // Adicionado 'commands' para handlers de contexto
+const handlerTypes = ['buttons', 'modals', 'selects', 'commands'];
 
 handlerTypes.forEach(handlerType => {
     const handlerDir = path.join(handlersPath, handlerType);
@@ -87,15 +87,13 @@ client.once(Events.ClientReady, async () => {
 
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
     
-    // Inicia o loop de verificação de tickets inativos
     setInterval(() => {
         checkAndCloseInactiveTickets(client);
-    }, 5 * 60 * 1000); // Executa a cada 5 minutos
+    }, 5 * 60 * 1000);
 
-    // --- NOVO LOOP PARA O MONITOR DE PUNIÇÕES ---
     setInterval(() => {
         checkExpiredPunishments(client);
-    }, 1 * 60 * 1000); // Executa a cada 1 minuto
+    }, 1 * 60 * 1000);
 });
 
 // --- Evento de Interações ---
@@ -106,7 +104,6 @@ client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
         customId = interaction.commandName;
         handler = client.handlers.get(customId);
-        // Se não houver handler específico, usa o do comando
         if (!handler) {
             const command = client.commands.get(customId);
             if (!command) return;
@@ -117,12 +114,14 @@ client.on(Events.InteractionCreate, async interaction => {
             }
             return;
         }
+        } else if (interaction.customId.startsWith('modal_guardian_step_from_punishment_')) {
+    handler = client.handlers.get('modal_guardian_step_from_punishment_');
+} else if (interaction.customId.startsWith('guardian_step_add_simple_action_')) { // <-- ADICIONE ESTA LINHA
+    handler = client.handlers.get('guardian_step_add_simple_action_'); // <-- ADICIONE ESTA LINHA
+} else if (interaction.customId.startsWith('guardian_step_remove_')) {
     } else if (interaction.isUserContextMenuCommand()) {
         customId = interaction.commandName;
         handler = client.handlers.get(customId);
-    } else if (interaction.customId.startsWith('mod_bans_page_')) {
-    handler = client.handlers.get('mod_bans_page_');
-    
     } else {
         customId = interaction.customId;
         handler = client.handlers.get(customId);
@@ -160,8 +159,6 @@ client.on(Events.MessageCreate, async message => {
     if (ticket.warning_sent_at) {
         await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
     }
-
-    
     await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
@@ -195,7 +192,6 @@ client.on(Events.MessageCreate, async message => {
     if (aiResponse) {
         await message.channel.send(aiResponse);
     }
-    
 });
 
 client.login(process.env.DISCORD_TOKEN);
