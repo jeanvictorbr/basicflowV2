@@ -46,11 +46,7 @@ module.exports = async function generateAusenciasMenu(interaction, settings) {
                     "type": 1,
                     "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 10,
-                    "content": " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" 
-                },
+
                               // =======================================================
                 // ==                RODAPÉ ADICIONADO AQUI             ==
                 // =======================================================

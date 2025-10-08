@@ -79,6 +79,7 @@ const schema = {
         nome_rp: { type: 'VARCHAR(255)', notNull: true },
         id_rp: { type: 'VARCHAR(255)', notNull: true }
     },
+    
     tickets: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -248,6 +249,15 @@ const schema = {
         role_id: { type: 'VARCHAR(255)', notNull: true },
         tag: { type: 'VARCHAR(255)', notNull: true },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'role_id'] }
+    },
+        // --- ADICIONE A NOVA TABELA ABAIXO ---
+    guild_features: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        feature_key: { type: 'VARCHAR(100)', notNull: true }, // Ex: 'GUARDIAN_AI'
+        expires_at: { type: 'TIMESTAMPTZ', notNull: true },
+        activated_by_key: { type: 'VARCHAR(255)' }, // Chave que ativou, para agrupar pacotes
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'feature_key'] } // Garante que não haja features duplicadas
     }
 };
 
