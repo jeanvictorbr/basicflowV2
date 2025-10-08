@@ -1,11 +1,16 @@
 // ui/pontoMenu.js
-module.exports = function generatePontoMenu(settings, isPremium) {
+const hasFeature = require('../utils/featureCheck.js');
+
+module.exports = async function generatePontoMenu(interaction, settings) {
     const canalLogs = settings?.ponto_canal_registros ? `<#${settings.ponto_canal_registros}>` : '`❌ Não definido`';
     const cargoServico = settings?.ponto_cargo_em_servico ? `<@&${settings.ponto_cargo_em_servico}>` : '`❌ Não definido`';
     const imagemVitrine = settings?.ponto_imagem_vitrine ? '`✅ Definida`' : '`❌ Não definida`';
 
     const isConfigured = settings?.ponto_canal_registros && settings?.ponto_cargo_em_servico;
     const status = settings?.ponto_status === true ? { label: 'Desativar Sistema', style: 4, emoji: '🔒' } : { label: 'Ativar Sistema', style: 3, emoji: '🔓' };
+
+    const hasPontoPremium = await hasFeature(interaction.guild.id, 'PONTO_PREMIUM');
+    const hasCustomVisuals = await hasFeature(interaction.guild.id, 'CUSTOM_VISUALS');
 
     return [
         {
@@ -31,7 +36,7 @@ module.exports = function generatePontoMenu(settings, isPremium) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
-                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "custom_id": "ponto_set_imagem_vitrine", "disabled": !isPremium },
+                    "accessory": { "type": 2, "style": 3, "label": "Alterar", "custom_id": "ponto_set_imagem_vitrine", "disabled": !hasCustomVisuals },
                     "components": [{ "type": 10, "content": `**Imagem do Painel**\n> ${imagemVitrine}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
@@ -47,19 +52,14 @@ module.exports = function generatePontoMenu(settings, isPremium) {
                 {
                     "type": 1,
                     "components": [
-                        { "type": 2, "style": 1, "label": "+ Config. Premium", "emoji": { "name": "✨" }, "custom_id": "ponto_open_premium_menu", "disabled": !isPremium }
+                        { "type": 2, "style": 1, "label": "+ Config. Premium", "emoji": { "name": "✨" }, "custom_id": "ponto_open_premium_menu", "disabled": !hasPontoPremium }
                     ]
               },
-                                // =======================================================
-                // ==                RODAPÉ ADICIONADO AQUI             ==
-                // =======================================================
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
-                    "type": 10, // Tipo 10 é um componente de Texto
-                    // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
+                    "type": 10,
                     "content": " ↘   Configure para conseguir ativar" 
                 }
-                // =======================================================
             ]
         }   
     ];
