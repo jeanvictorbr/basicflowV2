@@ -9,8 +9,31 @@ const baseKnowledge = [
     { topic: "Sistema de Registros", keywords: ["registro", "registrar", "whitelist", "aprovar", "recusar", "ficha", "id rp"], content: `O sistema de Registros (ou whitelist) serve para aprovar novos membros. O utilizador clica em "Iniciar Registro", preenche um formulário com Nome e ID do RP. A ficha é enviada para a administração. Se for aprovada, o bot automaticamente atribui um cargo e altera o apelido do membro para o padrão do servidor. Se for recusada, o motivo é enviado por DM.` },
     { topic: "Sistema de Ausências", keywords: ["ausência", "ausente", "férias", "afastamento", "licença"], content: `Membros podem solicitar um período de ausência clicando em "Solicitar Ausência". Eles preenchem um formulário com datas de início/término e o motivo. Se a administração aprovar, o bot atribui o cargo de "Ausente" ao membro.` },
     { topic: "Sistema de Uniformes", keywords: ["uniforme", "farda", "preset", "código", "roupa", "vestiário"], content: `O sistema de Uniformes é um vestiário virtual. No painel, o membro seleciona um uniforme da lista. A imagem e o "Código do Preset" são exibidos. Um botão "Copiar Código" envia o código numa mensagem privada para facilitar o uso no jogo.` },
-    { topic: "Sistema Premium", keywords: ["premium", "chave", "key", "vantagens", "pago", "ativar", "estatísticas"], content: `O Premium é ativado com uma chave de licença e desbloqueia funcionalidades avançadas como: Assistente de IA, Estatísticas detalhadas do servidor, personalização completa de imagens e cores, Departamentos de Suporte, Auto-Fechamento de Tickets, Sistema de Avaliações e verificação de inatividade (AFK) no Bate-Ponto.` }
+    { topic: "Sistema Premium", keywords: ["premium", "chave", "key", "vantagens", "pago", "ativar", "estatísticas"], content: `O Premium é ativado com uma chave de licença e desbloqueia funcionalidades avançadas como: Assistente de IA, Estatísticas detalhadas do servidor, personalização completa de imagens e cores, Departamentos de Suporte, Auto-Fechamento de Tickets, Sistema de Avaliações e verificação de inatividade (AFK) no Bate-Ponto, tambem libera EU kkkm, o assistente de IA, Modulo Guardian AI tambem ( um moderador que nao dorme e nao deixe que nada apsse batido).` },
+    // ================== NOVO CONHECIMENTO ADICIONADO ==================
+    { 
+        topic: "Módulo de Moderação", 
+        keywords: ["moderação", "dossiê", "histórico", "notas", "resetar", "punições personalizadas", "punições ativas", "revogar", "monitor de expiração"], 
+        content: `O Módulo de Moderação é uma central de comando para a staff. A principal ferramenta é o "Dossiê de Membro", que mostra um histórico completo de todas as punições (avisos, mutes, kicks, bans) de um usuário, com paginação para visualizar registros antigos. O dossiê também permite adicionar "Notas Internas", que são comentários privados da staff. Através de um menu "Gerenciar" no dossiê, um admin pode remover ocorrências específicas do histórico, apagar notas ou até mesmo resetar completamente o histórico de um membro. O módulo também inclui um painel de "Punições Ativas" (Premium), que lista todos os mutes e bans temporários que ainda não expiraram, permitindo revogá-los manualmente. Além disso, o "Monitor de Expiração" (Premium) remove automaticamente as punições quando o tempo delas acaba.` 
+    },
+    { 
+        topic: "Guardian AI", 
+        keywords: ["guardian", "ia", "moderação automática", "políticas", "passos", "escalonamento", "toxicidade", "spam", "menções", "alertas de conflito"], 
+        content: `O Guardian AI é um sistema de moderação proativo e automático (Premium). Ele funciona com "Políticas" que o administrador cria para diferentes tipos de infração, como 'Toxicidade', 'Repetição de Mensagens' (Spam) ou 'Spam de Menções'. Para cada política, são definidos "Passos" de escalonamento. Por exemplo, para spam: no 1º passo (3 mensagens repetidas), a IA só apaga a mensagem; no 2º passo (5 mensagens), ela apaga e aplica um mute de 10 minutos. O Guardian AI também possui um sistema de "Alertas de Conflito", que analisa o sentimento das conversas e, se detectar um aumento de sarcasmo ou ataques pessoais, envia um alerta discreto para a staff antes que a situação piore.` 
+    },
+    { 
+        topic: "Integração Moderação e Guardian AI", 
+        keywords: ["integração", "punições personalizadas e ia", "guardian e moderação"], 
+        content: `A maior força dos novos módulos é a integração entre eles. As "Punições Personalizadas" criadas no Módulo de Moderação (com cargos e durações específicas, ex: "Mute Grave") podem ser usadas como ações nos "Passos" do Guardian AI. Isso significa que a IA pode executar as mesmas punições padronizadas que um moderador humano, garantindo consistência total nas ações automáticas.` 
+    },
+    { 
+        topic: "Sistema Premium", 
+        keywords: ["premium", "chave", "key", "vantagens", "pago", "ativar", "estatísticas"], 
+        content: `O Premium é ativado com uma chave de licença e desbloqueia funcionalidades avançadas como: o Módulo de Moderação completo (Punições Personalizadas, Painel de Sanções Ativas, Monitor de Expiração), o Guardian AI, Estatísticas detalhadas do servidor, personalização completa de imagens e cores, Departamentos de Suporte, Auto-Fechamento de Tickets, Sistema de Avaliações e verificação de inatividade (AFK) no Bate-Ponto.` 
+    }
+    // ================================================================
 ];
+
 
 async function searchKnowledge(guildId, query, useBaseKnowledge) {
     if (!query) return '';
