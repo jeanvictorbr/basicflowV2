@@ -1,9 +1,8 @@
-// Substitua em: schema.js
+// schema.js
 const schema = {
     guild_settings: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
-        enabled_features: { type: 'TEXT', default: '' },
-        premium_expires_at: { type: 'TIMESTAMPTZ' },
+        // COLUNAS DE PREMIUM REMOVIDAS DAQUI
         ausencias_canal_aprovacoes: { type: 'VARCHAR(255)' },
         ausencias_cargo_ausente: { type: 'VARCHAR(255)' },
         ausencias_canal_logs: { type: 'VARCHAR(255)' },
@@ -52,24 +51,27 @@ const schema = {
         guardian_ai_alert_toxicity_threshold: { type: 'INTEGER', default: 75 },
         guardian_ai_alert_sarcasm_threshold: { type: 'INTEGER', default: 80 },
         guardian_ai_alert_attack_threshold: { type: 'INTEGER', default: 80 },
-                // --- NOVA CONFIGURAÇÃO DE INTEGRAÇÃO ---
         guardian_use_mod_punishments: { type: 'BOOLEAN', default: false },
-
-        // --- NOVAS CONFIGURAÇÕES DE MODERAÇÃO ---
         mod_log_channel: { type: 'VARCHAR(255)' },
-        mod_roles: { type: 'TEXT' }, // IDs dos cargos, separados por vírgula
+        mod_roles: { type: 'TEXT' },
         mod_temp_ban_enabled: { type: 'BOOLEAN', default: false },
         mod_monitor_enabled: { type: 'BOOLEAN', default: false },
         mod_monitor_channel: { type: 'VARCHAR(255)' },
-                // --- NOVA CONFIGURAÇÃO DE INTEGRAÇÃO ---
-        guardian_use_mod_punishments: { type: 'BOOLEAN', default: false },
         roletags_enabled: { type: 'BOOLEAN', default: false }
+    },
+    guild_features: { // <-- NOVA TABELA
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        feature_key: { type: 'VARCHAR(100)', notNull: true }, // Ex: 'GUARDIAN_AI'
+        expires_at: { type: 'TIMESTAMPTZ', notNull: true },
+        activated_by_key: { type: 'VARCHAR(255)' },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'feature_key'] }
     },
     activation_keys: {
         key: { type: 'VARCHAR(255)', primaryKey: true },
         duration_days: { type: 'INTEGER', notNull: true },
         uses_left: { type: 'INTEGER', default: 1 },
-        grants_features: { type: 'TEXT' }, // Ex: "ALL" ou "GUARDIAN_AI,CUSTOM_IMAGES"
+        grants_features: { type: 'TEXT' },
         comment: { type: 'TEXT' }
     },
     pending_registrations: {
@@ -79,7 +81,6 @@ const schema = {
         nome_rp: { type: 'VARCHAR(255)', notNull: true },
         id_rp: { type: 'VARCHAR(255)', notNull: true }
     },
-    
     tickets: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -240,24 +241,14 @@ const schema = {
         action: { type: 'VARCHAR(50)', notNull: true },
         role_id: { type: 'VARCHAR(255)' },
         duration: { type: 'VARCHAR(50)' },
-        auto_create_role: { type: 'BOOLEAN', default: false }, // NOVA COLUNA
+        auto_create_role: { type: 'BOOLEAN', default: false },
     },
-        // --- ADICIONE A NOVA TABELA ABAIXO ---
     role_tags: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         role_id: { type: 'VARCHAR(255)', notNull: true },
         tag: { type: 'VARCHAR(255)', notNull: true },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'role_id'] }
-    },
-        // --- ADICIONE A NOVA TABELA ABAIXO ---
-    guild_features: {
-        id: { type: 'SERIAL', primaryKey: true },
-        guild_id: { type: 'VARCHAR(255)', notNull: true },
-        feature_key: { type: 'VARCHAR(100)', notNull: true }, // Ex: 'GUARDIAN_AI'
-        expires_at: { type: 'TIMESTAMPTZ', notNull: true },
-        activated_by_key: { type: 'VARCHAR(255)' }, // Chave que ativou, para agrupar pacotes
-        _unique: { type: 'UNIQUE', columns: ['guild_id', 'feature_key'] } // Garante que não haja features duplicadas
     }
 };
 
