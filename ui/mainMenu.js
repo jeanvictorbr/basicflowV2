@@ -51,7 +51,14 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !isPremium },
             components: [{ type: 10, content: "🛡️ Guardian AI (Premium)" }, { type: 10, content: "Moderação proativa para **prevenir conflitos**." }]
-        }
+        },
+                // --- ADICIONE O NOVO MÓDULO AQUI (ou onde preferir) ---
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_roletags_menu" },
+            components: [{ type: 10, content: "🏷️ Tags por Cargo (RoleTags)" }, { type: 10, content: "Aplique tags aos apelidos baseadas em cargos." }]
+        },
+
         // --- FIM DA PÁGINA 2 ---
     ];
 

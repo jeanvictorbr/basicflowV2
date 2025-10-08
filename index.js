@@ -6,6 +6,7 @@ const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
 const { checkExpiredPunishments } = require('./utils/punishmentMonitor.js');
+const { updateUserTag } = require('./utils/roleTagUpdater.js'); // <-- ADIÇÃO DA IMPORTAÇÃO
 require('dotenv').config();
 const db = require('./database.js');
 
@@ -103,9 +104,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     if (interaction.isChatInputCommand()) {
         customId = interaction.commandName;
-        // Tenta pegar um handler de comando de barra da pasta /handlers/commands
         handler = client.handlers.get(customId);
-        // Se não encontrar, executa o comando da pasta /commands (lógica padrão)
         if (!handler) {
             const command = client.commands.get(customId);
             if (!command) return;
@@ -113,23 +112,21 @@ client.on(Events.InteractionCreate, async interaction => {
                 await command.execute(interaction);
             } catch (error) {
                 console.error(`Erro executando o comando /${customId}:`, error);
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({ content: 'Houve um erro ao executar este comando!', ephemeral: true });
-                } else {
-                    await interaction.reply({ content: 'Houve um erro ao executar este comando!', ephemeral: true });
-                }
             }
             return;
         }
+        } else if (interaction.customId.startsWith('modal_guardian_step_from_punishment_')) {
+    handler = client.handlers.get('modal_guardian_step_from_punishment_');
+} else if (interaction.customId.startsWith('guardian_step_add_simple_action_')) { 
+    handler = client.handlers.get('guardian_step_add_simple_action_'); 
+} else if (interaction.customId.startsWith('guardian_step_remove_')) {
+    handler = client.handlers.get('guardian_step_remove_');
     } else if (interaction.isUserContextMenuCommand()) {
         customId = interaction.commandName;
         handler = client.handlers.get(customId);
-    } else if (interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
+    } else {
         customId = interaction.customId;
-        // Tenta encontrar um handler com o ID exato
-        handler = client.handlers.get(customId);
         
-        // Se não encontrar, verifica se é um handler dinâmico (que termina com '_')
         if (!handler) {
             const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => key.endsWith('_') && customId.startsWith(key));
             if (dynamicHandlerId) {
@@ -138,20 +135,12 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
         
-    if (!handler) {
-        console.warn(`[HANDLER] Nenhum handler encontrado para a interação "${customId}"`);
-        return;
-    }
+    if (!handler) return;
 
     try {
         await handler(interaction, client);
     } catch (error) {
         console.error(`Erro executando o handler de interação "${customId}":`, error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: 'Houve um erro ao processar sua solicitação.', ephemeral: true });
-        } else {
-            await interaction.reply({ content: 'Houve um erro ao processar sua solicitação.', ephemeral: true });
-        }
     }
 });
 
@@ -205,5 +194,15 @@ client.on(Events.MessageCreate, async message => {
         await message.channel.send(aiResponse);
     }
 });
+
+
+// --- Evento de Atualização de Membro (para RoleTags) ---
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    // Verifica se os cargos do membro mudaram
+    if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
+        await updateUserTag(newMember);
+    }
+});
+
 
 client.login(process.env.DISCORD_TOKEN);

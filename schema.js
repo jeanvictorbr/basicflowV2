@@ -238,6 +238,14 @@ const schema = {
         role_id: { type: 'VARCHAR(255)' },
         duration: { type: 'VARCHAR(50)' },
         auto_create_role: { type: 'BOOLEAN', default: false }, // NOVA COLUNA
+    },
+        // --- ADICIONE A NOVA TABELA ABAIXO ---
+    role_tags: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        role_id: { type: 'VARCHAR(255)', notNull: true },
+        tag: { type: 'VARCHAR(255)', notNull: true },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'role_id'] }
     }
 };
 
