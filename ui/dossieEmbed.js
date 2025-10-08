@@ -24,22 +24,21 @@ module.exports = function generateDossieEmbed(member, history, notes, interactio
         }).join('\n\n')
         : '> Nenhuma ocorrência encontrada para este membro.';
     
-    // ================== BLOCO CORRIGIDO/RESTAURADO ==================
-    // Formata o histórico de notas (até 3 mais recentes, sem paginação)
     const notesText = notes.length > 0
         ? notes.slice(0, 3).map(note => {
             return `> 💬 por <@${note.moderator_id}> em <t:${Math.floor(new Date(note.created_at).getTime() / 1000)}:d>\n> └─ *"${note.content}"*`;
         }).join('\n\n')
         : '> Nenhuma nota interna adicionada.';
-    // ================================================================
     
+    // ================== CORREÇÃO APLICADA AQUI ==================
     const historyPaginationRow = totalHistoryPages > 1 ? {
         "type": 1, "components": [
             { "type": 2, "style": 2, "label": "Anterior", "custom_id": `mod_dossie_history_page_${member.id}_${historyPage - 1}`, "disabled": historyPage === 0 },
-            { "type": 2, "style": 2, "label": `Página ${historyPage + 1} de ${totalPages}`, "custom_id": "disabled_page_button", "disabled": true },
+            { "type": 2, "style": 2, "label": `Página ${historyPage + 1} de ${totalHistoryPages}`, "custom_id": "disabled_page_button", "disabled": true },
             { "type": 2, "style": 2, "label": "Próxima", "custom_id": `mod_dossie_history_page_${member.id}_${historyPage + 1}`, "disabled": historyPage + 1 >= totalHistoryPages }
         ]
     } : null;
+    // =============================================================
 
     // Lógica para alternar entre botões de ação e gerenciamento
     const canPunish = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator) || (member.roles.highest.position < interaction.member.roles.highest.position);
@@ -84,7 +83,7 @@ module.exports = function generateDossieEmbed(member, history, notes, interactio
                 { "type": 10, "content": historyText },
                 historyPaginationRow,
                 { "type": 14, "divider": true, "spacing": 2 },
-                { "type": 10, "content": "### Notas Internas da Staff" },
+                { "type": 10, "content": `### Notas Internas da Staff (${notes.length} total)` },
                 { "type": 10, "content": notesText },
                 { "type": 14, "divider": true, "spacing": 2 },
                 ...actionComponents
