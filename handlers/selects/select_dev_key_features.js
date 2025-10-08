@@ -5,9 +5,12 @@ module.exports = {
     customId: 'select_dev_key_features',
     async execute(interaction) {
         const features = interaction.values.join(',');
+        
+        // CORREÇÃO: Codifica os dados para não serem cortados pelo limite de caracteres do customId.
+        const encodedFeatures = Buffer.from(features).toString('base64');
 
         const modal = new ModalBuilder()
-            .setCustomId(`modal_dev_key_create_${features}`)
+            .setCustomId(`modal_dev_key_create_${encodedFeatures}`)
             .setTitle('Detalhes da Nova Chave');
 
         modal.addComponents(

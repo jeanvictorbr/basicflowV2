@@ -12,14 +12,12 @@ async function synchronizeDatabase() {
     const client = await pool.connect();
     try {
         for (const tableName in schema) {
-            // 1. Verifica se a tabela existe
             const tableExistsResult = await client.query(
                 "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
                 [tableName]
             );
 
             if (!tableExistsResult.rows[0].exists) {
-                // 2. Se não existir, cria a tabela
                 let createQuery = `CREATE TABLE ${tableName} (`;
                 const columns = [];
                 const primaryKeys = [];
@@ -49,7 +47,6 @@ async function synchronizeDatabase() {
                 console.log(`[DB] Tabela '${tableName}' não encontrada, a criar...`);
                 await client.query(createQuery);
             } else {
-                // 3. Se a tabela já existir, verifica se faltam colunas
                 for (const columnName in schema[tableName]) {
                     if (columnName.startsWith('_')) continue;
 

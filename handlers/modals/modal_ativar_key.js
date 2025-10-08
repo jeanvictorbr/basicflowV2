@@ -25,7 +25,8 @@ module.exports = {
             await client.query('BEGIN');
 
             for (const feature of featuresToGrant) {
-                // Todas as queries dentro da transação devem usar 'client.query'
+                if (!feature) continue; // Pula features vazias, se houver
+                
                 const currentFeatureResult = await client.query(
                     'SELECT expires_at FROM guild_features WHERE guild_id = $1 AND feature_key = $2',
                     [interaction.guild.id, feature]
