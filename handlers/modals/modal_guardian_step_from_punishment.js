@@ -1,4 +1,4 @@
-// Crie em: handlers/modals/modal_guardian_step_from_punishment.js
+// Substitua em: handlers/modals/modal_guardian_step_from_punishment.js
 const db = require('../../database.js');
 const generatePolicyStepsMenu = require('../../ui/guardianPolicyStepsMenu.js');
 const V2_FLAG = 1 << 15; 
@@ -9,7 +9,11 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate();
         
-        const [,,,, policyId, punishmentId] = interaction.customId.split('_');
+        // CORREÇÃO: A forma de extrair os IDs do customId foi ajustada.
+        const customIdParts = interaction.customId.split('_');
+        const policyId = customIdParts[5];
+        const punishmentId = customIdParts[6];
+
         const threshold = parseInt(interaction.fields.getTextInputValue('input_threshold'), 10);
 
         if (isNaN(threshold)) {

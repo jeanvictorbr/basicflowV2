@@ -1,4 +1,4 @@
-// Crie em: handlers/buttons/guardian_step_remove.js
+// Substitua em: handlers/buttons/guardian_step_remove.js
 const db = require('../../database.js');
 const generatePolicyStepsMenu = require('../../ui/guardianPolicyStepsMenu.js');
 const V2_FLAG = 1 << 15;
@@ -19,6 +19,7 @@ module.exports = {
 
         const policy = (await db.query('SELECT * FROM guardian_policies WHERE id = $1', [policyId])).rows[0];
         const steps = (await db.query('SELECT * FROM guardian_policy_steps WHERE policy_id = $1 ORDER BY step_level ASC', [policyId])).rows;
+        // CORREÇÃO: Busca a lista de punições antes de renderizar o menu.
         const punishments = (await db.query('SELECT * FROM moderation_punishments WHERE guild_id = $1', [interaction.guild.id])).rows;
         
         await interaction.editReply({ 
