@@ -1,5 +1,5 @@
-// Substitua em: handlers/buttons/mod_aplicar_punicao.js
-const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+// handlers/buttons/mod_aplicar_punicao.js
+const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
 const generateDossieEmbed = require('../../ui/dossieEmbed.js');
 const V2_FLAG = 1 << 15;
@@ -19,6 +19,7 @@ module.exports = {
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
+        // Cria o menu de seleção
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId(`select_mod_punicao_${targetId}`)
             .setPlaceholder('Selecione a punição a ser aplicada')
@@ -29,9 +30,20 @@ module.exports = {
                 { label: 'Banir', value: 'ban', emoji: '🚫' },
             ]);
         
-        const customActionRow = new ActionRowBuilder().addComponents(selectMenu).toJSON();
+        // Cria o botão de cancelar
+        const cancelButton = new ButtonBuilder()
+            .setCustomId(`mod_dossie_cancel_${targetId}`)
+            .setLabel('Cancelar')
+            .setStyle(ButtonStyle.Secondary);
 
-        const dossiePayload = generateDossieEmbed(member, history, notes, interaction, customActionRow);
+        // Monta os novos componentes de ação
+        const actionComponents = [
+            { type: 1, components: [selectMenu.toJSON()] },
+            { type: 1, components: [cancelButton.toJSON()] }
+        ];
+
+        // Gera o Dossiê passando os novos componentes
+        const dossiePayload = generateDossieEmbed(member, history, notes, interaction, actionComponents);
 
         await interaction.editReply({
             components: dossiePayload.components,
