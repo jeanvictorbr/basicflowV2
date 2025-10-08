@@ -29,6 +29,8 @@ const schema = {
         tickets_use_departments: { type: 'BOOLEAN', default: false },
         tickets_ai_assistant_enabled: { type: 'BOOLEAN', default: false },
         tickets_ai_assistant_prompt: { type: 'TEXT' },
+                // --- NOVA OPÇÃO ADICIONADA AQUI ---
+        guardian_ai_mention_chat_enabled: { type: 'BOOLEAN', default: false },
         tickets_ai_use_base_knowledge: { type: 'BOOLEAN', default: true },
         uniformes_thumbnail_url: { type: 'VARCHAR(1024)' },
         uniformes_color: { type: 'VARCHAR(7)', default: '#FFFFFF' },
