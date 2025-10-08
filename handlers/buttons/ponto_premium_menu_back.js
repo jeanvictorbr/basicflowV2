@@ -9,7 +9,7 @@ module.exports = {
     async execute(interaction) {
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         
-        const menu = await generatePontoMenu(interaction, settings);
+        const menu = await generatePontoMenu(interaction, settings); // CORRIGIDO
 
         await interaction.update({
             components: menu,
