@@ -135,53 +135,49 @@ client.on(Events.MessageCreate, async (message) => {
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
     
-    // --- LÓGICA DE IA COM CONTEXTO INTELIGENTE (SEM THREADS) ---
     if (message.content.includes(client.user.id) && settings.guardian_ai_mention_chat_enabled) {
         try {
             const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
-            if (!userMessage) return; // Ignora menções vazias
+            if (!userMessage) return;
             
             await message.channel.sendTyping();
 
-            // 1. Busca um histórico maior de mensagens do canal
             const channelMessages = await message.channel.messages.fetch({ limit: 20 });
             const oneHourAgo = Date.now() - (60 * 60 * 1000);
             const chatHistory = [];
 
-            // 2. Filtra inteligentemente para criar um contexto individual
             for (const msg of channelMessages.values()) {
-                // Para de adicionar mensagens se já tivermos 5 (limite) ou se a mensagem for muito antiga
                 if (chatHistory.length >= 5 || msg.createdTimestamp < oneHourAgo) {
                     break;
                 }
 
-                // Adiciona apenas mensagens do autor da menção ou do próprio bot
-                if (msg.author.id === message.author.id || msg.author.id === client.user.id) {
+                // --- ALTERAÇÃO PRINCIPAL AQUI ---
+                // Verifica se a mensagem é do bot OU se é do usuário E menciona o bot
+                const isFromBot = msg.author.id === client.user.id;
+                const isMentionToBotFromUser = msg.author.id === message.author.id && msg.content.includes(client.user.id);
+
+                if (isFromBot || isMentionToBotFromUser) {
                     chatHistory.push({
                         role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                        content: msg.content,
+                        content: msg.content.replace(/<@!?\d+>/g, '').trim(), // Limpa a menção do conteúdo
                     });
                 }
             }
             
-            // Inverte para a ordem cronológica correta (mais antigo para mais novo)
             chatHistory.reverse();
 
-            // 3. Define o prompt e chama a IA com o histórico limpo
             const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
             const aiResponse = await getAIResponse(message.guild.id, chatHistory, userMessage, systemPrompt, true);
 
             if (aiResponse) {
                 await message.reply(aiResponse);
             }
-            return; // Termina a execução aqui para não prosseguir para outras lógicas
+            return;
 
         } catch(err) {
             console.error('[Mention Chat AI] Erro ao responder menção:', err);
         }
     }
-    // --- FIM DA LÓGICA DE IA ---
-
 
     try {
         await processMessageForGuardian(message);
