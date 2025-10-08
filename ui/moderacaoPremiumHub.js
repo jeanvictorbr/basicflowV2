@@ -1,6 +1,5 @@
-// Substitua em: ui/moderacaoPremiumHub.js
+// ui/moderacaoPremiumHub.js
 module.exports = function generateModeracaoPremiumHub(settings) {
-    // CORREÇÃO: Verifica se o canal do monitor existe antes de tentar exibi-lo
     const monitorLogChannel = settings.mod_monitor_channel ? `<#${settings.mod_monitor_channel}>` : '`Não definido`';
     const monitorStatus = settings.mod_monitor_enabled ? `✅ Ativado (Logs em ${monitorLogChannel})` : '❌ Desativado';
     const toggleMonitorButton = settings.mod_monitor_enabled ? { label: 'Desativar Monitor', style: 4 } : { label: 'Ativar Monitor', style: 3 };
@@ -21,6 +20,13 @@ module.exports = function generateModeracaoPremiumHub(settings) {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Ver Dashboard", "custom_id": "mod_ver_bans_temporarios" },
                     "components": [{ "type": 10, "content": `**Dashboard de Banimentos**\n> Veja e gira todos os bans do servidor.` }]
                 },
+                { "type": 14, "divider": true, "spacing": 1 },
+                // ================== NOVA OPÇÃO ADICIONADA AQUI ==================
+                {
+                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Ver Lista", "custom_id": "mod_ver_punicoes_ativas", "emoji": { "name": "⏳" } },
+                    "components": [{ "type": 10, "content": `**Punições Ativas**\n> Veja e revogue timeouts e bans temporários.` }]
+                },
+                // ==============================================================
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": toggleMonitorButton.style, "label": toggleMonitorButton.label, "custom_id": "mod_toggle_monitor" },
