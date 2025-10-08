@@ -12,9 +12,9 @@ module.exports = {
 
         const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
         
-        // CORRIGIDO: Passa 'interaction' como primeiro argumento
+        // CORRIGIDO: Passa 'interaction' para a função de UI
         const menu = await generateAusenciasMenu(interaction, settingsResult.rows[0]);
-        
+
         await interaction.update({
             content: null,
             components: menu,

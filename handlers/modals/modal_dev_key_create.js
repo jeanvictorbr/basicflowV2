@@ -8,7 +8,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 module.exports = {
     customId: 'modal_dev_key_create_',
     async execute(interaction) {
-        // Atualiza a mensagem original (que contém o menu de features)
+        // CORRIGIDO: Adia a atualização da mensagem original, não cria uma nova resposta.
         await interaction.deferUpdate(); 
         
         const features = interaction.customId.split('_')[4];
@@ -28,14 +28,14 @@ module.exports = {
             [key, duration, uses, features, comment]
         );
 
-        // Busca a lista atualizada de chaves e redesenha o menu principal
+        // CORRIGIDO: Busca a lista atualizada e redesenha o menu na mensagem original.
         const updatedKeys = (await db.query('SELECT * FROM activation_keys ORDER BY key ASC')).rows;
         await interaction.editReply({
             components: generateDevKeysMenu(updatedKeys, 0),
             flags: V2_FLAG | EPHEMERAL_FLAG
         });
 
-        // Envia a nova chave como uma mensagem separada e efêmera
+        // Envia a nova chave como uma mensagem separada e efêmera.
         await interaction.followUp({ content: `✅ Chave criada com sucesso!\n\`\`\`${key}\`\`\``, ephemeral: true });
     }
 };
