@@ -9,12 +9,16 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate();
         
-        // CORREÇÃO: A forma de extrair os IDs do customId foi ajustada.
         const customIdParts = interaction.customId.split('_');
         const policyId = customIdParts[5];
         const punishmentId = customIdParts[6];
 
         const threshold = parseInt(interaction.fields.getTextInputValue('input_threshold'), 10);
+        const additionalActionsStr = interaction.fields.getTextInputValue('input_additional_actions')?.toUpperCase() || '';
+        
+        const additionalActions = additionalActionsStr.split(',').map(a => a.trim());
+        const deleteMessage = additionalActions.includes('DELETAR');
+        const warnPublicly = additionalActions.includes('AVISAR_CHAT');
 
         if (isNaN(threshold)) {
             return interaction.followUp({ content: 'O valor do limiar deve ser um número.', ephemeral: true });
@@ -24,9 +28,9 @@ module.exports = {
         const nextStepLevel = (nextStepLevelResult.rows[0].max || 0) + 1;
 
         await db.query(
-            `INSERT INTO guardian_policy_steps (policy_id, step_level, threshold, action_punishment) 
-             VALUES ($1, $2, $3, $4)`,
-            [policyId, nextStepLevel, threshold, punishmentId]
+            `INSERT INTO guardian_policy_steps (policy_id, step_level, threshold, action_punishment, action_delete_message, action_warn_publicly) 
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [policyId, nextStepLevel, threshold, punishmentId, deleteMessage, warnPublicly]
         );
 
         const policy = (await db.query('SELECT * FROM guardian_policies WHERE id = $1', [policyId])).rows[0];

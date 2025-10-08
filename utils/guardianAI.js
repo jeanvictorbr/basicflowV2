@@ -1,4 +1,4 @@
-// utils/guardianAI.js
+// Substitua o conteúdo em: utils/guardianAI.js
 const { OpenAI } = require('openai');
 const db = require('../database.js');
 const executePunishment = require('./modUtils.js');
@@ -12,7 +12,6 @@ const messageCache = new Map();
 const channelMessageCache = new Map();
 const channelAlertCooldowns = new Map();
 
-// --- FUNÇÃO QUE FALTAVA ---
 function updateMessageCache(message) {
     const key = `${message.guild.id}-${message.author.id}`;
     if (!messageCache.has(key)) {
@@ -24,17 +23,14 @@ function updateMessageCache(message) {
         content: message.content,
         timestamp: message.createdTimestamp,
     });
-    // Mantém apenas as mensagens dos últimos 10 segundos para a verificação de spam
     const tenSecondsAgo = Date.now() - 10000;
     const filteredMessages = userMessages.filter(msg => msg.timestamp > tenSecondsAgo);
     messageCache.set(key, filteredMessages);
     return filteredMessages;
 }
-// --- FIM DA FUNÇÃO ---
-
 
 async function analyzeToxicity(text) {
-    const systemPrompt = `Avalie o nível de toxicidade da mensagem. Responda APENAS com um objeto JSON com a chave "toxicidade" e um valor de 0 a 100. Mensagem: "${text}"`;
+    const systemPrompt = `Avalie o nível de toxicidade da mensagem. Responda APENAS com um objeto JSON com la chave "toxicidade" e um valor de 0 a 100. Mensagem: "${text}"`;
     try {
         const completion = await openai.chat.completions.create({ model: 'gpt-3.5-turbo', messages: [{ role: 'system', content: systemPrompt }], response_format: { type: "json_object" } });
         const result = JSON.parse(completion.choices[0].message.content);
@@ -50,7 +46,6 @@ async function analyzeConflict(conversation) {
 
 Conversa:
 ${conversation}`;
-
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
@@ -219,11 +214,9 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
     if (step.action_delete_message && messageIdsToDelete.length > 0) {
         await channel.bulkDelete(messageIdsToDelete, true).catch(() => {});
     }
-    if (step.action_warn_publicly) {
-        await channel.send(`🛡️ ${member}, sua atividade acionou uma regra de proteção automática (\`${policy.name} - Nível ${step.step_level}\`).`);
-    }
     
     let punishmentDetails = 'Nenhuma';
+    let punishmentActionForPublicMessage = null;
     const punishmentId = parseInt(step.action_punishment, 10);
 
     if (settings.guardian_use_mod_punishments && !isNaN(punishmentId)) {
@@ -231,16 +224,13 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
         
         if (customPunishment) {
             const fakeInteraction = {
-                guild,
-                user: client.user,
-                member: await guild.members.fetch(client.user.id),
-                deferReply: async () => {},
-                editReply: async () => {},
-                followUp: async () => {},
+                guild, user: client.user, member: await guild.members.fetch(client.user.id),
+                deferReply: async () => {}, editReply: async () => {}, followUp: async () => {},
             };
             
             await executePunishment(fakeInteraction, customPunishment.action.toLowerCase(), member, reason, customPunishment.duration);
             punishmentDetails = `Punição Personalizada: \`${customPunishment.name}\``;
+            punishmentActionForPublicMessage = customPunishment.action;
         } else {
             punishmentDetails = '`Falha: Punição Personalizada não encontrada.`';
         }
@@ -248,6 +238,7 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
         try {
             const duration = (step.action_punishment_duration_minutes || 0) * 60 * 1000;
             const punishmentReason = `Guardian AI: ${policy.name} (Nível ${step.step_level})`;
+            punishmentActionForPublicMessage = step.action_punishment;
             switch (step.action_punishment) {
                 case 'TIMEOUT':
                     if (duration > 0) {
@@ -259,6 +250,19 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
                 case 'BAN': await member.ban({ reason: punishmentReason }); punishmentDetails = 'Banido'; break;
             }
         } catch (error) { console.error(`[Guardian AI] Falha ao aplicar punição simples:`, error); punishmentDetails = `Falha ao punir.`; }
+    }
+
+    if (step.action_warn_publicly) {
+        let publicMessage = `🛡️ ${member}, sua atividade acionou a política **${policy.name}** (Nível ${step.step_level}).`;
+        if (punishmentActionForPublicMessage && punishmentActionForPublicMessage.toUpperCase() !== 'NONE' && punishmentActionForPublicMessage.toUpperCase() !== 'WARN') {
+            const actionVerb = {
+                'TIMEOUT': 'silenciado',
+                'KICK': 'expulso',
+                'BAN': 'banido'
+            }[punishmentActionForPublicMessage.toUpperCase()] || 'punido';
+            publicMessage += ` Como resultado, você foi **${actionVerb}**.`;
+        }
+        await channel.send(publicMessage);
     }
 
     if (settings.guardian_ai_log_channel) {

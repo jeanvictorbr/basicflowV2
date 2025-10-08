@@ -1,4 +1,4 @@
-// Crie em: handlers/selects/select_guardian_step_punishment.js
+// Substitua em: handlers/selects/select_guardian_step_punishment.js
 const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 module.exports = {
@@ -9,16 +9,26 @@ module.exports = {
 
         const modal = new ModalBuilder()
             .setCustomId(`modal_guardian_step_from_punishment_${policyId}_${punishmentId}`)
-            .setTitle('Adicionar Passo (2/2)');
+            .setTitle('Adicionar Passo Vinculado (2/2)');
         
         const thresholdInput = new TextInputBuilder()
             .setCustomId('input_threshold')
-            .setLabel("Limiar do Gatilho (Nº, %, etc)")
+            .setLabel("Limiar do Gatilho (Nº de msgs, %, etc)")
             .setStyle(TextInputStyle.Short)
             .setPlaceholder('Ex: 3 (para 3 mensagens de spam)')
             .setRequired(true);
 
-        modal.addComponents(new ActionRowBuilder().addComponents(thresholdInput));
+        const additionalActionsInput = new TextInputBuilder()
+            .setCustomId('input_additional_actions')
+            .setLabel("Ações Adicionais (Opcional)")
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Ex: DELETAR, AVISAR_CHAT')
+            .setRequired(false);
+
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(thresholdInput),
+            new ActionRowBuilder().addComponents(additionalActionsInput)
+        );
         await interaction.showModal(modal);
     }
 };
