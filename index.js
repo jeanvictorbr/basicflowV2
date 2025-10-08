@@ -16,19 +16,25 @@ client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 
-// --- Carregamento de Comandos ---
+// --- Carregamento de Comandos (LÓGICA CORRIGIDA) ---
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+const devOnlyCommands = ['devpanel', 'debugai'];
 const commandsToDeploy = [];
+const devCommandsToDeploy = [];
 
 for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
-    if (command.data && (command.execute || command.data.type === 2)) {
+    // A condição foi simplificada para carregar todos os comandos que têm um 'data' object.
+    if (command.data) {
         client.commands.set(command.data.name, command);
-        // CORREÇÃO: Exclui TODOS os comandos de desenvolvedor da lista de deploy global
-        if (command.data.name !== 'debugai' && command.data.name !== 'devpanel') {
-             commandsToDeploy.push(command.data.toJSON());
+        
+        if (devOnlyCommands.includes(command.data.name)) {
+            devCommandsToDeploy.push(command.data.toJSON());
+        } else {
+            commandsToDeploy.push(command.data.toJSON());
         }
     }
 }
@@ -58,7 +64,7 @@ handlerTypes.forEach(handlerType => {
 console.log('--- Handlers Carregados ---');
 
 
-// --- Evento de Bot Pronto ---
+// --- Evento de Bot Pronto (LÓGICA CORRIGIDA) ---
 client.once(Events.ClientReady, async () => {
     await db.synchronizeDatabase();
     
@@ -66,17 +72,12 @@ client.once(Events.ClientReady, async () => {
     try {
         // Lógica de registro para GUILDA DE DESENVOLVIMENTO
         if (process.env.DEV_GUILD_ID) {
-            const devCommands = [...commandsToDeploy];
-            // Adiciona manualmente os comandos de dev à lista
-            const debugCommand = client.commands.get('debugai');
-            const devPanelCommand = client.commands.get('devpanel');
-            if (debugCommand) devCommands.push(debugCommand.data.toJSON());
-            if (devPanelCommand) devCommands.push(devPanelCommand.data.toJSON());
-
-            console.log(`[CMD] Iniciando registo de ${devCommands.length} comando(s) na guild de desenvolvimento.`);
+            // A lista para a guild de dev inclui os comandos globais + os de dev
+            const allDevGuildCommands = [...commandsToDeploy, ...devCommandsToDeploy];
+            console.log(`[CMD] Iniciando registo de ${allDevGuildCommands.length} comando(s) na guild de desenvolvimento.`);
             await rest.put(
                 Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.DEV_GUILD_ID),
-                { body: devCommands },
+                { body: allDevGuildCommands },
             );
             console.log(`[CMD] Comandos registados com sucesso na guild de desenvolvimento.`);
         
@@ -104,7 +105,7 @@ client.once(Events.ClientReady, async () => {
     }, 1 * 60 * 1000);
 });
 
-// --- Evento de Interações (LÓGICA CORRIGIDA) ---
+// --- Evento de Interações ---
 client.on(Events.InteractionCreate, async interaction => {
     let handler;
     let customId;
