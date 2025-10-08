@@ -26,7 +26,8 @@ for (const file of commandFiles) {
     const command = require(path.join(commandsPath, file));
     if (command.data && (command.execute || command.data.type === 2)) {
         client.commands.set(command.data.name, command);
-        if (command.data.name !== 'debugai') {
+        // CORREÇÃO: Exclui TODOS os comandos de desenvolvedor da lista de deploy global
+        if (command.data.name !== 'debugai' && command.data.name !== 'devpanel') {
              commandsToDeploy.push(command.data.toJSON());
         }
     }
@@ -63,19 +64,25 @@ client.once(Events.ClientReady, async () => {
     
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
-        console.log(`[CMD] Iniciando registo de ${commandsToDeploy.length} comando(s).`);
-        
+        // Lógica de registro para GUILDA DE DESENVOLVIMENTO
         if (process.env.DEV_GUILD_ID) {
-            const debugCommand = client.commands.get('debugai');
             const devCommands = [...commandsToDeploy];
-            if(debugCommand) devCommands.push(debugCommand.data.toJSON());
+            // Adiciona manualmente os comandos de dev à lista
+            const debugCommand = client.commands.get('debugai');
+            const devPanelCommand = client.commands.get('devpanel');
+            if (debugCommand) devCommands.push(debugCommand.data.toJSON());
+            if (devPanelCommand) devCommands.push(devPanelCommand.data.toJSON());
 
+            console.log(`[CMD] Iniciando registo de ${devCommands.length} comando(s) na guild de desenvolvimento.`);
             await rest.put(
                 Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.DEV_GUILD_ID),
                 { body: devCommands },
             );
             console.log(`[CMD] Comandos registados com sucesso na guild de desenvolvimento.`);
+        
+        // Lógica de registro GLOBAL (para produção)
         } else {
+            console.log(`[CMD] Iniciando registo de ${commandsToDeploy.length} comando(s) globais.`);
             await rest.put(
                 Routes.applicationCommands(process.env.CLIENT_ID),
                 { body: commandsToDeploy },
@@ -97,16 +104,14 @@ client.once(Events.ClientReady, async () => {
     }, 1 * 60 * 1000);
 });
 
-// --- Evento de Interações (LÓGICA REATORADA E CORRIGIDA) ---
+// --- Evento de Interações (LÓGICA CORRIGIDA) ---
 client.on(Events.InteractionCreate, async interaction => {
     let handler;
     let customId;
 
     if (interaction.isChatInputCommand()) {
         customId = interaction.commandName;
-        // Tenta pegar um handler de comando de barra da pasta /handlers/commands
         handler = client.handlers.get(customId);
-        // Se não encontrar, executa o comando da pasta /commands (lógica padrão)
         if (!handler) {
             const command = client.commands.get(customId);
             if (!command) {
@@ -130,10 +135,8 @@ client.on(Events.InteractionCreate, async interaction => {
         handler = client.handlers.get(customId);
     } else if (interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
         customId = interaction.customId;
-        // Tenta encontrar um handler com o ID exato
         handler = client.handlers.get(customId);
         
-        // Se não encontrar, verifica se é um handler dinâmico (que termina com '_')
         if (!handler) {
             const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => key.endsWith('_') && customId.startsWith(key));
             if (dynamicHandlerId) {
@@ -213,13 +216,10 @@ client.on(Events.MessageCreate, async message => {
 
 // --- Evento de Atualização de Membro (para RoleTags) ---
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-    // Busca as configurações primeiro
     const settings = (await db.query('SELECT roletags_enabled FROM guild_settings WHERE guild_id = $1', [newMember.guild.id])).rows[0];
 
-    // Se o sistema estiver desativado, não faz nada
     if (!settings || !settings.roletags_enabled) return;
 
-    // Verifica se os cargos do membro mudaram
     if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
         await updateUserTag(newMember);
     }
