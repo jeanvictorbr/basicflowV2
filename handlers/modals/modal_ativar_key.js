@@ -16,10 +16,16 @@ module.exports = {
 
         const featuresToGrant = keyData.grants_features.split(',');
         const durationDays = keyData.duration_days;
-        const client = await db.query('BEGIN'); // Inicia uma transação
+        
+        // CORREÇÃO: Obter um cliente do pool de conexões
+        const client = await db.getClient();
 
         try {
+            // CORREÇÃO: Iniciar a transação com o cliente
+            await client.query('BEGIN');
+
             for (const feature of featuresToGrant) {
+                // Todas as queries dentro da transação devem usar 'client.query'
                 const currentFeatureResult = await client.query(
                     'SELECT expires_at FROM guild_features WHERE guild_id = $1 AND feature_key = $2',
                     [interaction.guild.id, feature]
@@ -28,14 +34,12 @@ module.exports = {
                 let newExpirationDate = new Date();
                 const currentExpiration = currentFeatureResult.rows[0]?.expires_at;
 
-                // Se já existe uma licença e ela ainda é válida, adiciona dias a ela. Senão, calcula a partir de hoje.
                 if (currentExpiration && new Date(currentExpiration) > newExpirationDate) {
                     newExpirationDate = new Date(currentExpiration);
                 }
                 
                 newExpirationDate.setDate(newExpirationDate.getDate() + durationDays);
 
-                // Lógica de "UPSERT": Insere a feature se não existir, ou atualiza a data de expiração se já existir.
                 await client.query(
                     `INSERT INTO guild_features (guild_id, feature_key, expires_at, activated_by_key)
                      VALUES ($1, $2, $3, $4)
@@ -45,18 +49,23 @@ module.exports = {
                 );
             }
 
-            // Decrementa o uso da chave
             await client.query('UPDATE activation_keys SET uses_left = uses_left - 1 WHERE key = $1', [key]);
-            await client.query('COMMIT'); // Confirma a transação
+            
+            // CORREÇÃO: Finalizar a transação com sucesso
+            await client.query('COMMIT');
 
             await interaction.editReply({
                 content: `✅ Licença ativada! As funcionalidades **[${featuresToGrant.join(', ')}]** foram ativadas/estendidas.`
             });
 
         } catch (error) {
-            await client.query('ROLLBACK'); // Desfaz a transação em caso de erro
+            // CORREÇÃO: Desfazer a transação em caso de erro
+            await client.query('ROLLBACK');
             console.error('[ATIVAR KEY] Erro na transação:', error);
             await interaction.editReply({ content: '❌ Ocorreu um erro ao ativar sua chave.' });
+        } finally {
+            // CORREÇÃO: Liberar o cliente de volta para o pool
+            client.release();
         }
     }
 };

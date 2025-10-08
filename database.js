@@ -80,5 +80,7 @@ async function synchronizeDatabase() {
 
 module.exports = {
     query: (text, params) => pool.query(text, params),
-    synchronizeDatabase
+    synchronizeDatabase,
+    // Função adicionada para obter um cliente para transações
+    getClient: () => pool.connect(),
 };
