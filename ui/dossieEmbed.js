@@ -2,14 +2,25 @@
 const hasFeature = require('../utils/featureCheck.js');
 const ITEMS_PER_PAGE = 3; 
 
-module.exports = async function generateDossieEmbed(interaction, target, history, notes, page = 0, options = {}) {
-    // CORREÇÃO: Esta linha agora lida com objetos 'GuildMember' (que têm .user) e 'User' (que não têm)
-    const targetUser = target.user || target;
+module.exports = async function generateDossieEmbed(interaction, member, history, notes, page = 0, options = {}) {
+    const targetUser = member.user;
 
-    if (!targetUser) {
-        return { content: '❌ Não foi possível encontrar o usuário alvo.', components: [] };
-    }
+    // 1. Resumo de Punições
+    const summary = { WARN: 0, TIMEOUT: 0, KICK: 0, BAN: 0 };
+    history.forEach(log => {
+        if (summary[log.action] !== undefined) {
+            summary[log.action]++;
+        }
+    });
+    const summaryText = `> Avisos: \`${summary.WARN}\` | Silenciamentos: \`${summary.TIMEOUT}\` | Expulsões: \`${summary.KICK}\` | Banimentos: \`${summary.BAN}\``;
 
+    // 2. Lista de Cargos
+    const rolesText = member.roles.cache
+        .filter(role => role.name !== '@everyone')
+        .map(role => `<@&${role.id}>`)
+        .join(', ') || '> Nenhum cargo específico.';
+
+    // 3. Paginação e Textos
     const totalPages = Math.ceil(history.length / ITEMS_PER_PAGE);
     const paginatedLogs = history.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
@@ -21,6 +32,7 @@ module.exports = async function generateDossieEmbed(interaction, target, history
         ? notes.map(note => `> **Nota de <@${note.moderator_id}>** em <t:${Math.floor(new Date(note.created_at).getTime() / 1000)}:R>\n> └─ *${note.content}*`).join('\n')
         : '> Nenhuma nota interna encontrada.';
 
+    // 4. Lógica dos Botões
     let actionButtons = [];
     if (options.manageMode) {
         actionButtons = [{
@@ -44,7 +56,7 @@ module.exports = async function generateDossieEmbed(interaction, target, history
             ]},
             { "type": 14, "divider": true, "spacing": 1 },
             { "type": 1, "components": [
-                 { "type": 2, "style": 1, "label": "Analisar (IA)", "emoji": { "name": "🧠" }, "custom_id": `mod_dossie_analyze_${targetUser.id}`, "disabled": !hasAIAccess },
+                 { "type": 2, "style": 1, "label": "Analisar (IA)", "emoji": { "name": "🧠" }, "custom_id": `mod_dossie_analyze_${targetUser.id}`, "disabled": !hasAIAccess || (history.length === 0 && notes.length === 0) },
                  { "type": 2, "style": 2, "label": "Voltar ao Hub", "emoji": { "name": "↩️" }, "custom_id": "mod_open_hub" }
             ]}
         ];
@@ -57,12 +69,26 @@ module.exports = async function generateDossieEmbed(interaction, target, history
         ]
     };
 
+    // 5. Montagem do Componente V2
     return {
         components: [{
             "type": 17, "accent_color": 15158332,
             "components": [
-                { "type": 10, "content": `## ⚖️ Dossiê de Moderação`},
-                { "type": 10, "content": `> Exibindo o perfil de **${targetUser.tag}** (\`${targetUser.id}\`)` },
+                {
+                    "type": 9,
+                    "accessory": { "type": 11, "media": { "url": targetUser.displayAvatarURL() } },
+                    "components": [
+                        { "type": 10, "content": `## ⚖️ Dossiê de: ${targetUser.tag}` },
+                        { "type": 10, "content": `> **ID:** \`${targetUser.id}\`` }
+                    ]
+                },
+                { "type": 10, "content": `> **No Servidor desde:** <t:${Math.floor(member.joinedTimestamp / 1000)}:D>` },
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 10, "content": `### Resumo de Punições`},
+                { "type": 10, "content": summaryText },
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 10, "content": `### Cargos (${member.roles.cache.size - 1})`},
+                { "type": 10, "content": rolesText },
                 { "type": 14, "divider": true, "spacing": 2 },
                 { "type": 10, "content": "### 📋 Histórico de Punições" },
                 { "type": 10, "content": historyText },
