@@ -10,7 +10,6 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate(); 
         
-        // CORREÇÃO: Decodifica os dados recebidos do ID customizado.
         const encodedFeatures = interaction.customId.split('_')[4];
         const features = Buffer.from(encodedFeatures, 'base64').toString('utf8');
 
@@ -30,7 +29,9 @@ module.exports = {
             [key, duration, uses, features, comment]
         );
 
-        const updatedKeys = (await db.query('SELECT * FROM activation_keys ORDER BY key ASC')).rows;
+        // CORREÇÃO APLICADA AQUI: Adicionado "WHERE uses_left > 0"
+        const updatedKeys = (await db.query('SELECT * FROM activation_keys WHERE uses_left > 0 ORDER BY key ASC')).rows;
+        
         await interaction.editReply({
             components: generateDevKeysMenu(updatedKeys, 0),
             flags: V2_FLAG | EPHEMERAL_FLAG
