@@ -30,7 +30,7 @@ function updateMessageCache(message) {
 }
 
 async function analyzeToxicity(text) {
-    const systemPrompt = `Avalie o nível de toxicidade da mensagem. Responda APENAS com um objeto JSON com la chave "toxicidade" e um valor de 0 a 100. Mensagem: "${text}"`;
+    const systemPrompt = `Avalie o nível de toxicidade da mensagem. Responda APENAS com um objeto JSON com a chave "toxicidade" e um valor de 0 a 100. Mensagem: "${text}"`;
     try {
         const completion = await openai.chat.completions.create({ model: 'gpt-3.5-turbo', messages: [{ role: 'system', content: systemPrompt }], response_format: { type: "json_object" } });
         const result = JSON.parse(completion.choices[0].message.content);
@@ -224,11 +224,14 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
         
         if (customPunishment) {
             const fakeInteraction = {
-                guild, user: client.user, member: await guild.members.fetch(client.user.id),
-                deferReply: async () => {}, editReply: async () => {}, followUp: async () => {},
+                guild,
+                user: client.user,
+                member: await guild.members.fetch(client.user.id),
             };
             
-            await executePunishment(fakeInteraction, customPunishment.action.toLowerCase(), member, reason, customPunishment.duration);
+            // CORREÇÃO: Passa o objeto 'customPunishment' como último argumento
+            await executePunishment(fakeInteraction, customPunishment.action.toLowerCase(), member, reason, customPunishment.duration, customPunishment);
+            
             punishmentDetails = `Punição Personalizada: \`${customPunishment.name}\``;
             punishmentActionForPublicMessage = customPunishment.action;
         } else {
