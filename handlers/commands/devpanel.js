@@ -1,18 +1,22 @@
-// handlers/commands/devpanel.js
+// Substitua o conteúdo em: handlers/commands/devpanel.js
 const generateDevMainMenu = require('../../ui/devPanel/mainMenu.js');
+const db = require('../../database.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'devpanel',
     async execute(interaction) {
-        // Trava o comando apenas para o seu ID de usuário
         if (interaction.user.id !== process.env.DEV_USER_ID) {
             return interaction.reply({ content: 'Você não tem permissão para usar este comando.', ephemeral: true });
         }
         
+        // Garante que a linha de status exista
+        await db.query("INSERT INTO bot_status (status_key, ai_services_enabled) VALUES ('main', true) ON CONFLICT (status_key) DO NOTHING");
+        const botStatus = (await db.query("SELECT * FROM bot_status WHERE status_key = 'main'")).rows[0];
+        
         await interaction.reply({
-            components: generateDevMainMenu(),
+            components: generateDevMainMenu(botStatus),
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }

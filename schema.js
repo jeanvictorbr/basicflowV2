@@ -1,8 +1,14 @@
-// schema.js
+// Substitua o conteúdo em: schema.js
 const schema = {
+    // NOVA TABELA PARA CONFIGURAÇÕES GLOBAIS
+    bot_status: {
+        status_key: { type: 'VARCHAR(255)', primaryKey: true, default: 'main' },
+        ai_services_enabled: { type: 'BOOLEAN', default: true },
+        maintenance_message: { type: 'TEXT' }
+    },
     guild_settings: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
-        // COLUNAS DE PREMIUM REMOVIDAS DAQUI
+        // ... (o resto do schema permanece igual) ...
         ausencias_canal_aprovacoes: { type: 'VARCHAR(255)' },
         ausencias_cargo_ausente: { type: 'VARCHAR(255)' },
         ausencias_canal_logs: { type: 'VARCHAR(255)' },
@@ -29,7 +35,6 @@ const schema = {
         tickets_use_departments: { type: 'BOOLEAN', default: false },
         tickets_ai_assistant_enabled: { type: 'BOOLEAN', default: false },
         tickets_ai_assistant_prompt: { type: 'TEXT' },
-                // --- NOVA OPÇÃO ADICIONADA AQUI ---
         guardian_ai_mention_chat_enabled: { type: 'BOOLEAN', default: false },
         tickets_ai_use_base_knowledge: { type: 'BOOLEAN', default: true },
         uniformes_thumbnail_url: { type: 'VARCHAR(1024)' },
@@ -61,10 +66,11 @@ const schema = {
         mod_monitor_channel: { type: 'VARCHAR(255)' },
         roletags_enabled: { type: 'BOOLEAN', default: false }
     },
-    guild_features: { // <-- NOVA TABELA
+    // ... (o resto das tabelas continua aqui)
+    guild_features: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
-        feature_key: { type: 'VARCHAR(100)', notNull: true }, // Ex: 'GUARDIAN_AI'
+        feature_key: { type: 'VARCHAR(100)', notNull: true },
         expires_at: { type: 'TIMESTAMPTZ', notNull: true },
         activated_by_key: { type: 'VARCHAR(255)' },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'feature_key'] }
@@ -245,7 +251,6 @@ const schema = {
         duration: { type: 'VARCHAR(50)' },
         auto_create_role: { type: 'BOOLEAN', default: false },
     },
-        // --- NOVA TABELA DE HISTÓRICO ---
     key_activation_history: {
         id: { type: 'SERIAL', primaryKey: true },
         key: { type: 'VARCHAR(255)', notNull: true },

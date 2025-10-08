@@ -1,13 +1,19 @@
-// ui/mainMenu.js
+// Substitua o conteúdo em: ui/mainMenu.js
 const hasFeature = require('../utils/featureCheck.js');
 const db = require('../database.js');
-const FEATURES = require('../config/features.js'); // Importa a lista de features
+const FEATURES = require('../config/features.js');
 
 module.exports = async function generateMainMenu(interaction, page = 0) {
-    // Cria um mapa para buscar facilmente os labels das features
     const FEATURES_MAP = new Map(FEATURES.map(f => [f.value, f.label]));
 
-    // Busca todas as features ativas e válidas para a guild
+    // --- LÓGICA DO AVISO DE MANUTENÇÃO ---
+    const botStatusResult = await db.query("SELECT * FROM bot_status WHERE status_key = 'main'");
+    const botStatus = botStatusResult.rows[0];
+    const aiMaintenanceNotice = (botStatus && !botStatus.ai_services_enabled)
+        ? { "type": 10, "content": "⚠️ **Aviso do Desenvolvedor:** Os serviços de IA (Guardian, Resumos, Chat) estão temporariamente em manutenção e não funcionarão." }
+        : null;
+    // --- FIM DA LÓGICA ---
+
     const activeFeaturesResult = await db.query(
         "SELECT feature_key, expires_at, activated_by_key FROM guild_features WHERE guild_id = $1 AND expires_at > NOW() ORDER BY expires_at ASC",
         [interaction.guild.id]
@@ -37,7 +43,6 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             const group = groupedFeatures[key];
             const formattedDate = new Date(group.expires_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
             
-            // AGORA, a lista de features mostrará o nome amigável (label)
             const featuresList = group.features.map(f => `\`${FEATURES_MAP.get(f) || f}\``).join(', ');
 
             if (group.features.length > 1 || group.features.includes('ALL')) {
@@ -55,11 +60,9 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         }
     }
     
-    // Verificações de acesso para desabilitar botões
     const hasGuardianAccess = await hasFeature(interaction.guild.id, 'GUARDIAN_AI');
     const hasStatsAccess = await hasFeature(interaction.guild.id, 'STATS');
     
-    // Definição de todos os módulos disponíveis
     const allModules = [
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_ausencias_menu" },
@@ -80,7 +83,6 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_moderacao_menu" },
             components: [{ type: 10, content: "⚖️ Moderação" }, { type: 10, content: "Configure as ferramentas da sua **equipa de staff**." }]
         },
-        // --- FIM DA PÁGINA 1 ---
         { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_uniformes_menu" },
@@ -101,10 +103,8 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_roletags_menu" },
             components: [{ type: 10, content: "🏷️ Tags por Cargo (RoleTags)" }, { type: 10, content: "Aplique tags aos apelidos baseadas em cargos." }]
         },
-        // --- FIM DA PÁGINA 2 ---
     ];
     
-    // Lógica de paginação
     const ITEMS_PER_PAGE = 4; 
     const itemsWithDividersPerPage = ITEMS_PER_PAGE * 2;
     const paginatedModules = allModules.slice(page * itemsWithDividersPerPage, (page + 1) * itemsWithDividersPerPage);
@@ -122,25 +122,26 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         ]
     };
 
-    // Montagem final do menu
     return [
         {
             type: 17, accent_color: 42751,
             components: [
                 { type: 10, content: `## Hub de Configurações - ${interaction.guild.name}` },
+                aiMaintenanceNotice,
+                aiMaintenanceNotice ? { "type": 14, "divider": true, "spacing": 1 } : null,
                 { type: 10, content: premiumStatusText },
-                { type: 14, divider: true, spacing: 2 },
+                { type: 14, divider: true, "spacing": 2 },
                 
                 ...paginatedModules,
                 
-                { type: 14, divider: true, spacing: 2 },
+                { type: 14, divider: true, "spacing": 2 },
                 totalPages > 1 ? paginationButtons : null,
-                { type: 14, divider: true, spacing: 1 },
+                { type: 14, divider: true, "spacing": 1 },
                 {
                     type: 1,
                     components: [
-                        { type: 2, style: 3, "label": "Ativar Key", "custom_id": "main_ativar_key" },
-                        { type: 2, style: 1, "label": "Estatísticas", "emoji": { "name": "📊" }, "disabled": !hasStatsAccess, "custom_id": "main_show_stats" }
+                        { "type": 2, "style": 3, "label": "Ativar Key", "custom_id": "main_ativar_key" },
+                        { "type": 2, "style": 1, "label": "Estatísticas", "emoji": { "name": "📊" }, "disabled": !hasStatsAccess, "custom_id": "main_show_stats" }
                     ]
                 },
                 { type: 14, "divider": true, "spacing": 1 },
