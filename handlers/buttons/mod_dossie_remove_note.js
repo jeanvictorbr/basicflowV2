@@ -1,5 +1,5 @@
 // handlers/buttons/mod_dossie_remove_note.js
-const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
+const { StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
@@ -20,11 +20,22 @@ module.exports = {
             .setCustomId(`select_mod_dossie_remove_note_${targetId}`)
             .setPlaceholder('Selecione a nota a ser removida')
             .addOptions(options);
+
+        const cancelButton = new ButtonBuilder()
+            .setCustomId(`mod_dossie_manage_back_${targetId}`)
+            .setLabel('Cancelar')
+            .setStyle(ButtonStyle.Secondary);
         
-        await interaction.reply({
-            content: 'Selecione a nota interna que deseja apagar permanentemente.',
-            components: [new ActionRowBuilder().addComponents(selectMenu)],
-            ephemeral: true
+        await interaction.update({
+            components: [
+                { type: 17, components: [
+                    { type: 10, content: "### 🗒️ Remoção de Nota Interna" },
+                    { type: 10, content: "> Selecione no menu abaixo qual nota você deseja apagar permanentemente." }
+                ]},
+                new ActionRowBuilder().addComponents(selectMenu),
+                new ActionRowBuilder().addComponents(cancelButton)
+            ],
+            flags: V2_FLAG | EPHEMERAL_FLAG
         });
     }
 };

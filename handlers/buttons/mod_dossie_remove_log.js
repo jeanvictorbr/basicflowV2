@@ -1,6 +1,8 @@
 // handlers/buttons/mod_dossie_remove_log.js
-const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
+const { StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'mod_dossie_remove_log_',
@@ -18,11 +20,22 @@ module.exports = {
             .setCustomId(`select_mod_dossie_remove_log_${targetId}`)
             .setPlaceholder('Selecione a ocorrência a ser removida')
             .addOptions(options);
-        
-        await interaction.reply({
-            content: 'Selecione a ocorrência do histórico que deseja apagar permanentemente.',
-            components: [new ActionRowBuilder().addComponents(selectMenu)],
-            ephemeral: true
+
+        const cancelButton = new ButtonBuilder()
+            .setCustomId(`mod_dossie_manage_back_${targetId}`)
+            .setLabel('Cancelar')
+            .setStyle(ButtonStyle.Secondary);
+
+        await interaction.update({
+            components: [
+                { type: 17, components: [
+                    { type: 10, content: "### 📋 Remoção de Ocorrência" },
+                    { type: 10, content: "> Selecione no menu abaixo qual ocorrência do histórico você deseja apagar permanentemente." }
+                ]},
+                new ActionRowBuilder().addComponents(selectMenu),
+                new ActionRowBuilder().addComponents(cancelButton)
+            ],
+            flags: V2_FLAG | EPHEMERAL_FLAG
         });
     }
 };
