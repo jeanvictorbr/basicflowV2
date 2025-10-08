@@ -25,8 +25,8 @@ module.exports = function generateDevKeysMenu(keys, page = 0) {
         {
             "type": 17, "accent_color": 15844367,
             "components": [
-                { "type": 10, "content": "## 🔑 Gerenciador de Chaves de Ativação" },
-                { "type": 10, "content": `> Crie e revogue chaves para gerenciar o acesso às funcionalidades premium. Página ${page + 1} de ${totalPages || 1}.` },
+                { "type": 10, "content": "## 🔑 Gerenciador de Chaves Ativas" }, // Título alterado
+                { "type": 10, "content": `> Crie e revogue chaves para gerenciar o acesso. Página ${page + 1} de ${totalPages || 1}.` },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": keyList },
                 { "type": 14, "divider": true, "spacing": 2 },
@@ -36,7 +36,11 @@ module.exports = function generateDevKeysMenu(keys, page = 0) {
                     { "type": 2, "style": 4, "label": "Revogar Chave", "emoji": { "name": "🗑️" }, "custom_id": "dev_key_revoke", "disabled": keys.length === 0 }
                 ]},
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 1, "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }] }
+                { "type": 1, "components": [
+                    // --- NOVO BOTÃO DE HISTÓRICO ---
+                    { "type": 2, "style": 1, "label": "Ver Histórico de Uso", "emoji": { "name": "📜" }, "custom_id": "dev_open_key_history" },
+                    { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }
+                ]}
             ].filter(Boolean)
         }
     ];

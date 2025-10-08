@@ -8,7 +8,8 @@ module.exports = {
     customId: 'dev_manage_keys',
     async execute(interaction) {
         await interaction.deferUpdate();
-        const keys = (await db.query('SELECT * FROM activation_keys ORDER BY key ASC')).rows;
+        // CORREÇÃO: Busca apenas chaves com usos restantes
+        const keys = (await db.query('SELECT * FROM activation_keys WHERE uses_left > 0 ORDER BY key ASC')).rows;
 
         await interaction.editReply({
             components: generateDevKeysMenu(keys, 0),

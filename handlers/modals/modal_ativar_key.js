@@ -16,16 +16,13 @@ module.exports = {
 
         const featuresToGrant = keyData.grants_features.split(',');
         const durationDays = keyData.duration_days;
-        
-        // CORREÇÃO: Obter um cliente do pool de conexões
         const client = await db.getClient();
 
         try {
-            // CORREÇÃO: Iniciar a transação com o cliente
             await client.query('BEGIN');
 
             for (const feature of featuresToGrant) {
-                if (!feature) continue; // Pula features vazias, se houver
+                if (!feature) continue;
                 
                 const currentFeatureResult = await client.query(
                     'SELECT expires_at FROM guild_features WHERE guild_id = $1 AND feature_key = $2',
@@ -50,9 +47,21 @@ module.exports = {
                 );
             }
 
-            await client.query('UPDATE activation_keys SET uses_left = uses_left - 1 WHERE key = $1', [key]);
+            // --- LÓGICA DE HISTÓRICO E REMOÇÃO ---
+            await client.query(
+                `INSERT INTO key_activation_history (key, grants_features, guild_id, guild_name, user_id, user_tag)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [key, keyData.grants_features, interaction.guild.id, interaction.guild.name, interaction.user.id, interaction.user.tag]
+            );
+
+            if (keyData.uses_left - 1 <= 0) {
+                // Remove a chave se os usos acabaram
+                await client.query('DELETE FROM activation_keys WHERE key = $1', [key]);
+            } else {
+                // Apenas decrementa se ainda houver usos
+                await client.query('UPDATE activation_keys SET uses_left = uses_left - 1 WHERE key = $1', [key]);
+            }
             
-            // CORREÇÃO: Finalizar a transação com sucesso
             await client.query('COMMIT');
 
             await interaction.editReply({
@@ -60,12 +69,10 @@ module.exports = {
             });
 
         } catch (error) {
-            // CORREÇÃO: Desfazer a transação em caso de erro
             await client.query('ROLLBACK');
             console.error('[ATIVAR KEY] Erro na transação:', error);
             await interaction.editReply({ content: '❌ Ocorreu um erro ao ativar sua chave.' });
         } finally {
-            // CORREÇÃO: Liberar o cliente de volta para o pool
             client.release();
         }
     }

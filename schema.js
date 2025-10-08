@@ -243,6 +243,17 @@ const schema = {
         duration: { type: 'VARCHAR(50)' },
         auto_create_role: { type: 'BOOLEAN', default: false },
     },
+        // --- NOVA TABELA DE HISTÓRICO ---
+    key_activation_history: {
+        id: { type: 'SERIAL', primaryKey: true },
+        key: { type: 'VARCHAR(255)', notNull: true },
+        grants_features: { type: 'TEXT' },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        guild_name: { type: 'VARCHAR(255)' },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        user_tag: { type: 'VARCHAR(255)' },
+        activated_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
     role_tags: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
