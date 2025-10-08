@@ -6,6 +6,11 @@ const hasFeature = require('../utils/featureCheck');
 const ITEMS_PER_PAGE = 5;
 
 module.exports = async function generateDossieEmbed(interaction, targetUser, page = 0) {
+    // Tratamento de segurança caso o targetUser seja inválido
+    if (!targetUser) {
+        return { content: '❌ Não foi possível encontrar o usuário alvo.', embeds: [], components: [], ephemeral: true };
+    }
+
     const logsResult = await db.query('SELECT * FROM moderation_logs WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at DESC', [interaction.guild.id, targetUser.id]);
     const logs = logsResult.rows;
     const totalPages = Math.ceil(logs.length / ITEMS_PER_PAGE);
@@ -16,7 +21,7 @@ module.exports = async function generateDossieEmbed(interaction, targetUser, pag
 
     const embed = new EmbedBuilder()
         .setColor('#FFD700')
-        // CORREÇÃO: Trocado '.tag' por '.username' que é o correto para a v14 do Discord.js
+        // CORREÇÃO: Usando 'username' que é o padrão atual, e displayAvatarURL() que agora funcionará.
         .setAuthor({ name: `Dossiê de Moderação: ${targetUser.username}`, iconURL: targetUser.displayAvatarURL() })
         .addFields(
             { name: '📋 Histórico de Punições', value: paginatedLogs.length > 0 ? paginatedLogs.map(log => `**ID:${log.case_id}** | **Ação:** ${log.action}\n**Motivo:** ${log.reason}\n*Por <@${log.moderator_id}> em <t:${Math.floor(new Date(log.created_at).getTime() / 1000)}:f>*`).join('\n\n') : 'Nenhuma punição registrada.' },

@@ -10,11 +10,10 @@ module.exports = {
         
         await interaction.deferUpdate();
         
-        // CORREÇÃO: Busca o objeto de usuário COMPLETO a partir do ID salvo no botão.
+        // CORREÇÃO CRÍTICA: Busca o objeto de usuário COMPLETO a partir do ID salvo no botão.
         // Isso garante que temos acesso a funções como .displayAvatarURL() e .username
         const targetUser = await interaction.client.users.fetch(targetUserId);
         
-        // A chamada agora passa o objeto de usuário correto
         const dossie = await generateDossieEmbed(interaction, targetUser, page);
 
         await interaction.editReply(dossie);
