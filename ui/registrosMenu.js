@@ -1,6 +1,7 @@
-// ui/registrosMenu.js
+// Substitua o conteúdo em: ui/registrosMenu.js
 const hasFeature = require('../utils/featureCheck.js');
 
+// CORREÇÃO: A função agora aceita 'interaction' como primeiro argumento, seguindo o padrão do projeto.
 module.exports = async function generateRegistrosMenu(interaction, settings) {
 
     const systemStatus = settings.registros_status ? '✅ Ativado' : '❌ Desativado';
@@ -12,7 +13,6 @@ module.exports = async function generateRegistrosMenu(interaction, settings) {
     const cargoAprovado = settings.registros_cargo_aprovado ? `<@&${settings.registros_cargo_aprovado}>` : '`Nenhum`';
     const tagAprovado = settings.registros_tag_aprovado ? `\`${settings.registros_tag_aprovado}\`` : '`Nenhuma`';
 
-    // CORREÇÃO: A verificação de feature agora funciona corretamente
     const hasCustomVisuals = await hasFeature(interaction.guild.id, 'CUSTOM_VISUALS');
 
     return [
