@@ -20,9 +20,10 @@ module.exports = {
         const initialLog = `> 💬 <@${starterId}> iniciou um novo jogo!`;
 
         try {
+            // CORREÇÃO APLICADA AQUI: A lista de valores agora corresponde à lista de colunas.
             await db.query(
                 `INSERT INTO hangman_games (channel_id, guild_id, user_id, secret_word, theme, action_log, status, participants, current_turn_user_id, turn_started_at) 
-                 VALUES ($1, $2, $3, $4, $5, 'loading', $6, $7, NOW())`,
+                 VALUES ($1, $2, $3, $4, $5, $6, 'loading', $7, $8, NOW())`,
                 [interaction.channel.id, interaction.guild.id, starterId, secretWord, theme, initialLog, starterId, starterId]
             );
 
