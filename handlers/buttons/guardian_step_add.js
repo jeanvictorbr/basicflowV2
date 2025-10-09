@@ -28,7 +28,8 @@ module.exports = {
             .setDisabled(!isIntegrationActive);
         
         const simpleActionButton = new ButtonBuilder()
-            .setCustomId(`guardian_step_add_simple_action_${policyId}`)
+            // --- CORREÇÃO APLICADA AQUI ---
+            .setCustomId(`guardian_action_create_simple_${policyId}`) // Usando o novo ID único
             .setLabel('Criar Ação Simples')
             .setStyle(ButtonStyle.Secondary)
             .setEmoji('⚙️');

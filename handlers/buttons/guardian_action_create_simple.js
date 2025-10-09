@@ -1,11 +1,11 @@
-// Garanta que o conteúdo em handlers/buttons/guardian_step_add_simple_action.js é este:
+// Crie este novo ficheiro em: handlers/buttons/guardian_action_create_simple.js
 const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 module.exports = {
-    customId: 'guardian_step_add_simple_action_',
+    customId: 'guardian_action_create_simple_', // ID único e sem conflitos
     async execute(interaction) {
-        // O ID da política é o 6º elemento (índice 5) do custom_id
-        const policyId = interaction.customId.split('_')[5];
+        // O ID da política é o 4º elemento (índice 3)
+        const policyId = interaction.customId.split('_')[4];
 
         const modal = new ModalBuilder()
             .setCustomId(`modal_guardian_step_create_${policyId}`)
