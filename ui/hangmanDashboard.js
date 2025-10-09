@@ -97,7 +97,9 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                     { type: 14, divider: true, spacing: 2 },
                     { type: 1, components: [
                         { type: 2, style: 3, label: "Participar", emoji: { name: "👋" }, custom_id: "hangman_join", disabled: !isGameActive },
-                        { type: 2, style: 1, label: "Adivinhar Palavra", emoji: { name: "🎯" }, custom_id: "hangman_guess_word", disabled: !isGameActive }
+                        { type: 2, style: 1, label: "Adivinhar Palavra", emoji: { name: "🎯" }, custom_id: "hangman_guess_word", disabled: !isGameActive },
+                                             // NOVO BOTÃO DE RANKING
+                        { type: 2, style: 2, label: "Ver Ranking", emoji: { name: "🏆" }, custom_id: "hangman_show_ranking" }
                     ]},
                     new ActionRowBuilder().addComponents(selectMenu1).toJSON(),
                     new ActionRowBuilder().addComponents(selectMenu2).toJSON()
