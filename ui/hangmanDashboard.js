@@ -4,7 +4,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 
 // Arte ASCII para os estágios da forca
 const HANGMAN_STAGES = [
-    ' ', // 7+ vidas (estado inicial, sem desenho)
+    '\u200B', // CORREÇÃO: Usando um caractere invisível (zero-width space) em vez de um espaço normal
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
     '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```', // 4 vidas
@@ -72,7 +72,7 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                             disabled: !isGameActive
                         },
                         components: [
-                            { type: 10, content: HANGMAN_STAGES[7 - (lives+1)] || HANGMAN_STAGES[7] },
+                            { type: 10, content: HANGMAN_STAGES[7 - (lives + 1)] || HANGMAN_STAGES[7] },
                             { type: 10, content: `### ${displayWord}` },
                             { type: 10, content: `> ❤️ **Vidas:** ${lives}/6 | 👎 **Letras Erradas:** ${wrongLetters}` },
                         ]
@@ -85,6 +85,7 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                 ]
             }
         ],
+        // As flags agora são retornadas junto com os componentes para garantir que sejam aplicadas corretamente.
         flags: V2_FLAG | EPHEMERAL_FLAG
     };
 };
