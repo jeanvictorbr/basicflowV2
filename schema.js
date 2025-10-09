@@ -262,16 +262,16 @@ const schema = {
         user_tag: { type: 'VARCHAR(255)' },
         activated_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-        // NOVA TABELA PARA O JOGO DA FORCA
     // TABELA ATUALIZADA PARA O JOGO DA FORCA
     hangman_games: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
-        user_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true }, // Quem iniciou o jogo
         secret_word: { type: 'VARCHAR(100)', notNull: true },
         guessed_letters: { type: 'TEXT', default: '' },
         lives: { type: 'INTEGER', default: 6 },
-        status: { type: 'VARCHAR(20)', default: 'playing' }, // playing, won, lost, given_up
+        status: { type: 'VARCHAR(20)', default: 'playing' }, // loading, playing, won, lost, given_up
+        participants: { type: 'TEXT', default: '' }, // <-- NOVA COLUNA
         message_id: { type: 'VARCHAR(255)' },
         action_log: { type: 'TEXT', default: '' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }

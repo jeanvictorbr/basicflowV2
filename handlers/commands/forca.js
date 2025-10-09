@@ -10,17 +10,18 @@ module.exports = {
 
         const existingGame = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         if (existingGame.rows.length > 0) {
-            return interaction.editReply({ content: '❌ Já existe um jogo da Forca em andamento neste canal. Termine o atual antes de começar um novo.' });
+            return interaction.editReply({ content: '❌ Já existe um jogo da Forca em andamento neste canal.' });
         }
 
         const secretWord = getRandomWord();
-        const initialLog = `> 💬 <@${interaction.user.id}> iniciou um novo jogo!`;
+        const starterId = interaction.user.id;
+        const initialLog = `> 💬 <@${starterId}> iniciou um novo jogo!`;
 
         try {
             await db.query(
-                `INSERT INTO hangman_games (channel_id, guild_id, user_id, secret_word, action_log, status) 
-                 VALUES ($1, $2, $3, $4, $5, 'loading')`,
-                [interaction.channel.id, interaction.guild.id, interaction.user.id, secretWord, initialLog]
+                `INSERT INTO hangman_games (channel_id, guild_id, user_id, secret_word, action_log, status, participants) 
+                 VALUES ($1, $2, $3, $4, $5, 'loading', $6)`,
+                [interaction.channel.id, interaction.guild.id, starterId, secretWord, initialLog, starterId]
             );
 
             const loadButton = new ButtonBuilder()

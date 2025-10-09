@@ -3,20 +3,28 @@ const db = require('../../database.js');
 const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 
 module.exports = {
-    customId: 'hangman_guess_select_', // Agora é um handler dinâmico
+    customId: 'hangman_guess_select_', // Handler dinâmico
     async execute(interaction) {
+        const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
+        if (gameResult.rows.length === 0) {
+            await interaction.deferUpdate();
+            return;
+        }
+        
+        const game = gameResult.rows[0];
+        const participants = game.participants.split(',');
+
+        if (!participants.includes(interaction.user.id)) {
+            return interaction.reply({
+                content: '❌ Você precisa entrar no jogo para adivinhar letras! Clique em "Participar".',
+                ephemeral: true
+            });
+        }
+        
         await interaction.deferUpdate();
 
         const guessedLetter = interaction.values[0];
-        if (guessedLetter === 'none' || guessedLetter === 'ended') return;
-
-        const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
-        if (gameResult.rows.length === 0) {
-            return;
-        }
-
-        const game = gameResult.rows[0];
-        if (game.guessed_letters.includes(guessedLetter)) return;
+        if (guessedLetter === 'none' || game.guessed_letters.includes(guessedLetter)) return;
 
         game.guessed_letters += guessedLetter;
         const isCorrectGuess = game.secret_word.includes(guessedLetter);
