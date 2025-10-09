@@ -267,12 +267,13 @@ const schema = {
     hangman_games: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
-        user_id: { type: 'VARCHAR(255)', notNull: true }, // Quem iniciou o jogo
+        user_id: { type: 'VARCHAR(255)', notNull: true },
         secret_word: { type: 'VARCHAR(100)', notNull: true },
         guessed_letters: { type: 'TEXT', default: '' },
         lives: { type: 'INTEGER', default: 6 },
+        status: { type: 'VARCHAR(20)', default: 'playing' }, // playing, won, lost, given_up
         message_id: { type: 'VARCHAR(255)' },
-        action_log: { type: 'TEXT', default: '' }, // <-- CAMPO ADICIONADO
+        action_log: { type: 'TEXT', default: '' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
     role_tags: {
