@@ -7,7 +7,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 const ms = require('ms');
 
 module.exports = {
-    customId: 'modal_mod_executar_',
+    customId: 'modal_mod_executar_', // Handler dinâmico
     async execute(interaction) {
         await interaction.deferUpdate();
 
@@ -19,10 +19,15 @@ module.exports = {
         try {
             durationStr = interaction.fields.getTextInputValue('input_duration');
             if (durationStr) {
+                // Adiciona 'm' para números puros para facilitar
+                if (/^\d+$/.test(String(durationStr))) {
+                    durationStr = `${durationStr}m`;
+                }
                 durationMs = ms(durationStr);
+                 if (durationMs === undefined) throw new Error('Invalid duration format');
             }
         } catch (error) {
-            // Ignora o erro se o campo 'input_duration' não existir
+            // Ignora o erro se o campo 'input_duration' não existir ou se o formato for inválido no modal
         }
 
         const targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
@@ -33,23 +38,25 @@ module.exports = {
         const settings = (await db.query('SELECT mod_log_channel, mod_temp_ban_enabled FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
 
         try {
-            // ... (lógica de punição permanece a mesma) ...
+            const modReason = `Moderador: ${interaction.user.tag} | Motivo: ${reason}`;
             switch (action) {
                 case 'warn':
-                    await targetMember.send(`⚠️ Você recebeu um aviso no servidor **${interaction.guild.name}**.\n**Motivo:** ${reason}`);
+                    await targetMember.send(`⚠️ Você recebeu um aviso no servidor **${interaction.guild.name}**.\n**Motivo:** ${reason}`).catch(()=>{});
                     break;
                 case 'timeout':
-                    if (!durationMs) throw new Error('Duração inválida ou não fornecida para timeout.');
-                    await targetMember.timeout(durationMs, `Moderador: ${interaction.user.tag} | Motivo: ${reason}`);
+                    if (!durationMs) {
+                        return interaction.followUp({ content: `❌ Formato de duração inválido: \`${durationStr}\`. Use 'm' para minutos, 'h' para horas, 'd' para dias.`, ephemeral: true });
+                    }
+                    await targetMember.timeout(durationMs, modReason);
                     break;
                 case 'kick':
-                    await targetMember.kick(`Moderador: ${interaction.user.tag} | Motivo: ${reason}`);
+                    await targetMember.kick(modReason);
                     break;
                 case 'ban':
                      if (durationStr && !settings.mod_temp_ban_enabled) {
                         return interaction.followUp({ content: '❌ A funcionalidade de banimento temporário é premium e está desativada.', ephemeral: true });
                     }
-                    await interaction.guild.bans.create(targetId, { reason: `Moderador: ${interaction.user.tag} | Motivo: ${reason}` });
+                    await interaction.guild.bans.create(targetId, { reason: modReason });
                     break;
             }
 
@@ -59,17 +66,31 @@ module.exports = {
             );
 
             if (settings.mod_log_channel) {
-                // ... (lógica de log permanece a mesma) ...
+                const logChannel = await interaction.guild.channels.fetch(settings.mod_log_channel).catch(() => null);
+                if (logChannel) {
+                    const logEmbed = new EmbedBuilder()
+                        .setColor(action === 'ban' || action === 'kick' ? 'Red' : 'Orange')
+                        .setTitle(`⚖️ Ação de Moderação: ${action.toUpperCase()}`)
+                        .addFields(
+                            { name: 'Membro Alvo', value: `${targetMember} (\`${targetId}\`)`, inline: true },
+                            { name: 'Moderador', value: `${interaction.user} (\`${interaction.user.id}\`)`, inline: true },
+                            { name: 'Duração', value: durationStr || 'N/A', inline: true},
+                            { name: 'Motivo', value: reason }
+                        )
+                        .setTimestamp();
+                    await logChannel.send({ embeds: [logEmbed] });
+                }
             }
 
         } catch (error) {
             console.error(`[MODERAÇÃO] Falha ao aplicar ${action}:`, error);
-            return interaction.followUp({ content: `❌ Ocorreu um erro ao tentar aplicar a punição. Verifique as minhas permissões e a hierarquia de cargos.`, ephemeral: true });
+            return interaction.followUp({ content: `❌ Ocorreu um erro ao tentar aplicar a punição. Verifique as minhas permissões, a hierarquia de cargos e a formatação da duração.`, ephemeral: true });
         }
         
         const newHistory = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [targetId, interaction.guild.id])).rows;
         const newNotes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [targetId, interaction.guild.id])).rows;
         
+        // CORREÇÃO: Argumentos passados na ordem correta para a função da UI
         const dossiePayload = await generateDossieEmbed(interaction, targetMember, newHistory, newNotes, 0);
 
         await interaction.editReply({

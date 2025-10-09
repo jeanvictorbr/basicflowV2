@@ -18,7 +18,7 @@ module.exports = {
         const history = (await db.query('SELECT * FROM moderation_logs WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
         const notes = (await db.query('SELECT * FROM moderation_notes WHERE user_id = $1 AND guild_id = $2 ORDER BY created_at DESC', [member.id, interaction.guild.id])).rows;
 
-        // CORREÇÃO: Argumentos passados na ordem correta
+        // CORREÇÃO: Argumentos na ordem correta
         const dossiePayload = await generateDossieEmbed(interaction, member, history, notes, 0);
         
         await interaction.editReply({
