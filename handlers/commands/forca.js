@@ -19,9 +19,9 @@ module.exports = {
 
         try {
             await db.query(
-                `INSERT INTO hangman_games (channel_id, guild_id, user_id, secret_word, action_log, status, participants) 
-                 VALUES ($1, $2, $3, $4, $5, 'loading', $6)`,
-                [interaction.channel.id, interaction.guild.id, starterId, secretWord, initialLog, starterId]
+                `INSERT INTO hangman_games (channel_id, guild_id, user_id, secret_word, action_log, status, participants, current_turn_user_id, turn_started_at) 
+                 VALUES ($1, $2, $3, $4, $5, 'loading', $6, $7, NOW())`,
+                [interaction.channel.id, interaction.guild.id, starterId, secretWord, initialLog, starterId, starterId]
             );
 
             const loadButton = new ButtonBuilder()
