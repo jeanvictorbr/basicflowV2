@@ -3,8 +3,8 @@ const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
+// CORREÇÃO: Array ajustado para 7 estágios, do 0 (6 vidas) ao 6 (0 vidas)
 const HANGMAN_STAGES = [
-    '\u200B', // Caractere invisível para o estado inicial
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
     '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```', // 4 vidas
@@ -83,7 +83,8 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                             type: 2, style: 4, label: "Desistir", emoji: { name: "🏳️" },
                             custom_id: "hangman_give_up", disabled: !isGameActive
                         },
-                        components: [ { type: 10, content: HANGMAN_STAGES[6 - lives] || HANGMAN_STAGES[6] } ]
+                        // CORREÇÃO: Lógica de exibição da arte ajustada
+                        components: [ { type: 10, content: HANGMAN_STAGES[6 - lives] } ]
                     },
                     { type: 10, content: `### ${displayWord}` },
                     { type: 10, content: `> ❤️ **Vidas:** ${lives}/6 | 👎 **Letras Erradas:** ${wrongLetters}` },
