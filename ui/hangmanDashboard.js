@@ -1,4 +1,4 @@
-// Crie em: ui/hangmanDashboard.js
+// Substitua o conteúdo em: ui/hangmanDashboard.js
 
 // Arte ASCII para os estágios da forca
 const HANGMAN_STAGES = [
@@ -68,6 +68,7 @@ module.exports = function generateHangmanDashboard(gameData) {
         }]
     });
 
+    // --- ESTRUTURA CORRIGIDA ---
     return [{
         type: 17,
         accent_color: color,
@@ -80,15 +81,9 @@ module.exports = function generateHangmanDashboard(gameData) {
                 ]
             },
             { type: 14, divider: true, spacing: 1 },
-            {
-                type: 9,
-                accessory: { type: 10, content: HANGMAN_STAGES[6 - lives] }, // Arte da Forca
-                components: [
-                    { type: 10, content: `### Palavra Secreta:` },
-                    { type: 10, content: `\`\`\`${displayWord}\`\`\`` },
-                    { type: 10, content: `**Vidas Restantes:** ${'❤️'.repeat(lives) || '💔'}` }
-                ]
-            },
+            { type: 10, content: HANGMAN_STAGES[6 - lives] },
+            { type: 10, content: `### Palavra Secreta:\n\`\`\`${displayWord}\`\`\`` },
+            { type: 10, content: `**Vidas Restantes:** ${'❤️'.repeat(lives) || '💔'}` },
             { type: 14, divider: true, spacing: 2 },
             {
                 type: 10,
