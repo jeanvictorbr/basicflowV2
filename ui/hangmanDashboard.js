@@ -4,13 +4,13 @@ const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 const HANGMAN_STAGES = [
-    '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```',
-    '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```',
-    '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```',
-    '```\n +---+\n |   |\n O   |\n/|   |\n     |\n     |\n=========\n```',
-    '```\n +---+\n |   |\n O   |\n/|\\  |\n     |\n     |\n=========\n```',
-    '```\n +---+\n |   |\n O   |\n/|\\  |\n/    |\n     |\n=========\n```',
-    '```\n +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n=========\n```'
+    '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
+    '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
+    '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```', // 4 vidas
+    '```\n +---+\n |   |\n O   |\n/|   |\n     |\n     |\n=========\n```', // 3 vidas
+    '```\n +---+\n |   |\n O   |\n/|\\  |\n     |\n     |\n=========\n```', // 2 vidas
+    '```\n +---+\n |   |\n O   |\n/|\\  |\n/    |\n     |\n=========\n```', // 1 vida
+    '```\n +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
 ];
 
 const ALPHABET_HALF1 = 'ABCDEFGHIJKLM'.split('');
@@ -19,8 +19,10 @@ const ALPHABET_HALF2 = 'NOPQRSTUVWXYZ'.split('');
 module.exports = function generateHangmanDashboardV2(gameData) {
     const { lives = 6, secret_word = '', guessed_letters = '', theme = 'Desconhecido', action_log = '', user_id, status, participants = '', current_turn_user_id, turn_started_at } = gameData;
 
-    // NOVO ESPAÇAMENTO APLICADO AQUI
-    const displayWord = secret_word.split('').map(letter => (guessed_letters.includes(letter) || letter === ' ' ? ` ${letter} ` : ' __ ')).join(' ');
+    // --- NOVA LÓGICA DE EXIBIÇÃO DA PALAVRA ---
+    const lettersLine = secret_word.split('').map(letter => (letter === ' ' ? ' ' : guessed_letters.includes(letter) ? letter : ' ')).join(' ');
+    const underscoreLine = secret_word.split('').map(letter => (letter === ' ' ? ' ' : '_')).join(' ');
+    const displayWord = `\`\`\`\n${lettersLine}\n${underscoreLine}\n\`\`\``;
 
     const wrongLetters = guessed_letters.split('').filter(l => !secret_word.includes(l) && l !== ' ').join(', ') || 'Nenhuma';
     const allGuessed = guessed_letters.split('').filter(l => l !== ' ').join(', ') || 'Nenhuma';
@@ -48,11 +50,11 @@ module.exports = function generateHangmanDashboardV2(gameData) {
     let turnInfo = `> **Jogadores:** ${participantsList || 'Clique em "Participar" para entrar!'}`;
 
     if (isGameActive && current_turn_user_id) {
-        const turnEndTime = Math.floor((new Date(turn_started_at).getTime() + 30000) / 1000); // 30 segundos
+        const turnEndTime = Math.floor((new Date(turn_started_at).getTime() + 30000) / 1000);
         turnInfo += `\n> 👑 **É a vez de:** <@${current_turn_user_id}> (expira <t:${turnEndTime}:R>)`;
     }
     
-    const gameInfo = `> 📚 **Tema:** ${theme} | 🔢 **Tamanho:** ${secret_word.length} letras`;
+    const gameInfo = `> 📚 **Tema:** ${theme} | 🔢 **Tamanho:** ${secret_word.replace(/ /g, '').length} letras`;
 
     const options1 = ALPHABET_HALF1.map(letter => ({ label: `Letra ${letter}`, value: letter }));
     const selectMenu1 = new StringSelectMenuBuilder()
@@ -75,16 +77,16 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                 components: [
                     { type: 10, content: title },
                     { type: 10, content: statusText },
-                    { type: 10, content: gameInfo }, // <-- NOVA INFORMAÇÃO
+                    { type: 10, content: gameInfo },
                     { type: 14, divider: true, spacing: 1 },
                     {
                         type: 9,
                         accessory: { type: 2, style: 4, label: "Desistir", emoji: { name: "🏳️" }, custom_id: "hangman_give_up", disabled: !isGameActive },
                         components: [ { type: 10, content: HANGMAN_STAGES[6 - lives] || HANGMAN_STAGES[6] } ]
                     },
-                    { type: 10, content: `### ${displayWord}` },
+                    { type: 10, content: displayWord }, // <-- PALAVRA CORRIGIDA AQUI
                     { type: 10, content: `> ❤️ **Vidas:** ${lives}/6 | 👎 **Erradas:** ${wrongLetters}` },
-                    { type: 10, content: `> 📢 **Chutes:** ${allGuessed}` }, // <-- NOVA INFORMAÇÃO
+                    { type: 10, content: `> 📢 **Chutes:** ${allGuessed}` },
                     { type: 14, divider: true, spacing: 1 },
                     { type: 10, content: "### Painel da Partida" },
                     { type: 10, content: turnInfo },
