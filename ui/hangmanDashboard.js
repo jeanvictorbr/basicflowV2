@@ -19,7 +19,9 @@ const ALPHABET_HALF2 = 'NOPQRSTUVWXYZ'.split('');
 module.exports = function generateHangmanDashboardV2(gameData) {
     const { lives = 6, secret_word = '', guessed_letters = '', theme = 'Desconhecido', action_log = '', user_id, status, participants = '', current_turn_user_id, turn_started_at, winnerId } = gameData;
 
-    const displayWord = secret_word.split('').map(letter => (guessed_letters.includes(letter) || letter === ' ' ? ` ${letter} ` : ' __ ')).join(' ');
+    // --- LÓGICA DE EXIBIÇÃO CORRIGIDA ---
+    const displayWord = `\`\`\`${secret_word.split('').map(letter => (letter === ' ' ? '   ' : guessed_letters.includes(letter) ? ` ${letter} ` : ' __ ')).join('')}\`\`\``;
+
     const wrongLetters = guessed_letters.split('').filter(l => !secret_word.includes(l) && l !== ' ').join(', ') || 'Nenhuma';
     const allGuessed = guessed_letters.split('').filter(l => l !== ' ').join(', ') || 'Nenhuma';
     const logText = action_log || '> O jogo começou! Boa sorte.';
@@ -33,7 +35,6 @@ module.exports = function generateHangmanDashboardV2(gameData) {
 
     if (status === 'won') {
         title = "## 🎉 Vitória! 🎉";
-        // LÓGICA ATUALIZADA PARA MOSTRAR O VENCEDOR
         if (winnerId) {
             statusText = `> **Vencedor:** <@${winnerId}>! A palavra era **${secret_word}**.`;
         } else {
@@ -42,7 +43,8 @@ module.exports = function generateHangmanDashboardV2(gameData) {
         color = 3066993;
     } else if (status === 'lost' || status === 'given_up') {
         title = "## ☠️ Fim de Jogo! 💀";
-        statusText = `> A palavra secreta era **${secret_word}**.`;
+        // --- MENSAGEM DE DERROTA ADICIONADA ---
+        statusText = `> Não foi desta vez! A palavra secreta era **${secret_word}**.`;
         color = 10038562;
     }
 
@@ -85,7 +87,7 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                         accessory: { type: 2, style: 4, label: "Desistir", emoji: { name: "🏳️" }, custom_id: "hangman_give_up", disabled: !isGameActive },
                         components: [ { type: 10, content: HANGMAN_STAGES[6 - lives] || HANGMAN_STAGES[6] } ]
                     },
-                    { type: 10, content: `### ${displayWord}` },
+                    { type: 10, content: displayWord },
                     { type: 10, content: `> ❤️ **Vidas:** ${lives}/6 | 👎 **Erradas:** ${wrongLetters}` },
                     { type: 10, content: `> 📢 **Chutes:** ${allGuessed}` },
                     { type: 14, divider: true, spacing: 1 },
