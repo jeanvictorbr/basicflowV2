@@ -19,7 +19,7 @@ module.exports = {
 
         await interaction.update({
             content: '',
-            ...dashboardPayload
+            ...dashboardPayload // Envia embeds e components gerados pela UI
         });
     }
 };

@@ -1,6 +1,7 @@
 // Substitua o conteúdo em: ui/hangmanDashboard.js
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-// Arte ASCII para os estágios da forca
+// Arte ASCII para os estágios da forca, agora dentro do embed
 const HANGMAN_STAGES = [
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
@@ -8,89 +9,71 @@ const HANGMAN_STAGES = [
     '```\n +---+\n |   |\n O   |\n/|   |\n     |\n     |\n=========\n```', // 3 vidas
     '```\n +---+\n |   |\n O   |\n/|\\  |\n     |\n     |\n=========\n```', // 2 vidas
     '```\n +---+\n |   |\n O   |\n/|\\  |\n/    |\n     |\n=========\n```', // 1 vida
-    '```\n +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
+    '```\n +---+\n |   |\n O   |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
 ];
 
-// --- LAYOUT DO TECLADO CORRIGIDO PARA CABER EM 5 FILEIRAS ---
-const ALPHABET_ROWS = [
-    'ABCDE',
-    'FGHIJ',
-    'KLMNO',
-    'PQRSTU',
-    'VWXYZ' 
-];
+const ALPHABET_ROWS = ['ABCDE', 'FGHIJ', 'KLMNO', 'PQRST', 'UVWXY', 'Z'];
 
 module.exports = function generateHangmanDashboard(gameData) {
-    const { lives, secret_word, guessed_letters, action_log, user_id, status } = gameData;
+    const { lives = 6, secret_word = '', guessed_letters = '', action_log = '', user_id, status } = gameData;
 
     const displayWord = secret_word
         .split('')
-        .map(letter => (guessed_letters.includes(letter) ? `${letter} ` : '_ '))
-        .join('');
+        .map(letter => (guessed_letters.includes(letter) ? letter : '_'))
+        .join(' ');
 
     const logText = action_log || '> O jogo começou! Boa sorte.';
 
-    let color = 3447003;
+    let color = 3447003; // Azul
     let title = "Jogo da Forca";
+    let description = `Jogo iniciado por <@${user_id}>. Use os botões abaixo para adivinhar a palavra!`;
     if (status === 'won') {
-        color = 3066993;
+        color = 3066993; // Verde
         title = "🎉 Você Venceu! 🎉";
-    } else if (status === 'lost') {
-        color = 15158332;
-        title = "💀 Você Perdeu! 💀";
+        description = `Parabéns! A palavra era **${secret_word}**.`;
+    } else if (status === 'lost' || status === 'given_up') {
+        color = 15158332; // Vermelho
+        title = "💀 Fim de Jogo! 💀";
+        description = `A palavra secreta era **${secret_word}**.`;
     }
 
-    const guessed = guessed_letters.split('');
+    const embed = new EmbedBuilder()
+        .setColor(color)
+        .setTitle(title)
+        .setDescription(description)
+        .addFields(
+            { name: 'Palavra Secreta', value: `\`\`\`${displayWord}\`\`\`` },
+            { name: 'Vidas', value: `${'❤️'.repeat(lives) || '💔'} (${lives}/6)`, inline: true },
+            { name: 'Letras Erradas', value: `\`${guessed_letters.split('').filter(l => !secret_word.includes(l)).join(', ') || 'Nenhuma'}\``, inline: true },
+            { name: 'Histórico', value: logText },
+            { name: 'Arte', value: HANGMAN_STAGES[6 - lives] }
+        );
 
-    // Gera as fileiras do teclado
-    const keyboardRows = ALPHABET_ROWS.map(rowString => {
-        const row = { type: 1, components: [] };
+    const guessed = guessed_letters.split('');
+    const components = ALPHABET_ROWS.map(rowString => {
+        const row = new ActionRowBuilder();
         rowString.split('').forEach(letter => {
-            row.components.push({
-                type: 2,
-                style: guessed.includes(letter) ? 2 : 1,
-                label: letter,
-                custom_id: `hangman_guess_${letter}`,
-                disabled: guessed.includes(letter) || status !== 'playing'
-            });
+            row.addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`hangman_guess_${letter}`)
+                    .setLabel(letter)
+                    .setStyle(guessed.includes(letter) ? ButtonStyle.Secondary : ButtonStyle.Primary)
+                    .setDisabled(guessed.includes(letter) || status !== 'playing')
+            );
         });
         return row;
     });
 
-    // Botão de desistir (adicionado à última fileira se houver espaço, senão cria uma nova)
-    // ESTA LÓGICA FOI REMOVIDA PARA SIMPLICIDADE E GARANTIA. O BOTÃO DESISTIR FICA SOZINHO.
-    const controlsRow = {
-        type: 1,
-        components: [{
-            type: 2,
-            style: 4,
-            label: "Desistir",
-            custom_id: 'hangman_give_up',
-            emoji: { name: '🏳️' },
-            disabled: status !== 'playing'
-        }]
-    };
+    components.push(
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('hangman_give_up')
+                .setLabel("Desistir")
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🏳️')
+                .setDisabled(status !== 'playing')
+        )
+    );
 
-    return [{
-        type: 17,
-        accent_color: color,
-        components: [
-            { type: 10, content: `## ${title}` },
-            { type: 10, content: `> Jogo iniciado por <@${user_id}>.` },
-            { type: 14, divider: true, spacing: 1 },
-            { type: 10, content: HANGMAN_STAGES[6 - lives] },
-            { type: 10, content: `### Palavra Secreta:\n\`\`\`${displayWord}\`\`\`` },
-            { type: 10, content: `**Vidas Restantes:** ${'❤️'.repeat(lives) || '💔'}` },
-            { type: 14, divider: true, spacing: 2 },
-            { type: 10, content: `### Histórico de Ações:\n${logText}` },
-            { type: 14, divider: true, spacing: 2 },
-            // AQUI ESTÁ A GARANTIA: O spread operator (...) insere as 5 fileiras do teclado.
-            ...keyboardRows,
-            // A fileira de controles é a 6a, mas o limite é 5.
-            // Para resolver, vamos juntar a última fileira do alfabeto com o botão de desistir
-            // Mas a API só permite 5 botões por fileira.
-            // A solução é reorganizar o ALPHABET_ROWS
-            controlsRow // O erro estava aqui.
-        ]
-    }];
+    return { embeds: [embed], components };
 };

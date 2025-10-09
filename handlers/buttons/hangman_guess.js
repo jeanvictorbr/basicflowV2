@@ -3,16 +3,20 @@ const db = require('../../database.js');
 const generateHangmanDashboard = require('../../ui/hangmanDashboard.js');
 
 module.exports = {
-    customId: 'hangman_guess_',
+    customId: 'hangman_guess_', // Handler dinâmico
     async execute(interaction) {
         await interaction.deferUpdate();
 
         const guessedLetter = interaction.customId.split('_')[2];
 
         const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
-        if (gameResult.rows.length === 0) return;
+        if (gameResult.rows.length === 0) {
+            const dashboardPayload = generateHangmanDashboard({ status: 'ended', user_id: '?' });
+            return interaction.message.edit({ embeds: dashboardPayload.embeds, components: dashboardPayload.components });
+        }
 
         const game = gameResult.rows[0];
+
         if (game.guessed_letters.includes(guessedLetter)) return;
 
         game.guessed_letters += guessedLetter;
@@ -29,12 +33,13 @@ module.exports = {
 
         if (allLettersGuessed) {
             game.status = 'won';
+            game.action_log += `\n> 🏆 **VITÓRIA!**`;
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else if (game.lives <= 0) {
             game.status = 'lost';
+            game.action_log += `\n> ☠️ **FIM DE JOGO!**`;
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else {
-            game.status = 'playing';
             await db.query(
                 'UPDATE hangman_games SET guessed_letters = $1, lives = $2, action_log = $3 WHERE channel_id = $4',
                 [game.guessed_letters, game.lives, game.action_log, interaction.channel.id]
@@ -42,6 +47,6 @@ module.exports = {
         }
 
         const updatedDashboard = generateHangmanDashboard(game);
-        await interaction.editReply(updatedDashboard);
+        await interaction.message.edit(updatedDashboard);
     }
 };

@@ -9,7 +9,7 @@ module.exports = {
 
         const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         if (gameResult.rows.length === 0) {
-            return interaction.editReply({ content: 'Este Jogo da Forca já terminou.', components: [] });
+            return interaction.message.edit({ content: 'Este Jogo da Forca já terminou.', components: [] });
         }
 
         const game = gameResult.rows[0];
@@ -22,6 +22,6 @@ module.exports = {
 
         const finalDashboard = generateHangmanDashboard(game);
         
-        await interaction.editReply(finalDashboard);
+        await interaction.message.edit(finalDashboard);
     }
 };
