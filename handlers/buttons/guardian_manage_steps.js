@@ -1,4 +1,4 @@
-// Substitua em: handlers/buttons/guardian_manage_steps.js
+// Substitua o conteúdo em: handlers/buttons/guardian_manage_steps.js
 const db = require('../../database.js');
 const generatePolicyStepsMenu = require('../../ui/guardianPolicyStepsMenu.js');
 const generateGuardianPoliciesMenu = require('../../ui/guardianPoliciesMenu.js');
@@ -10,9 +10,22 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate();
         const policyId = interaction.customId.split('_')[3];
+
+        // --- CORREÇÃO DE ROBUSTEZ ADICIONADA AQUI ---
+        // Verifica se o ID extraído é um número válido antes de consultar a DB.
+        if (isNaN(parseInt(policyId, 10))) {
+            console.error(`[Guardian] Tentativa de gerir passos com um ID inválido: "${policyId}"`);
+            await interaction.followUp({ content: 'Ocorreu um erro: ID de política inválido. A voltar ao menu principal.', ephemeral: true });
+            const policies = (await db.query('SELECT * FROM guardian_policies WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+            return interaction.editReply({ 
+                components: generateGuardianPoliciesMenu(policies),
+                flags: V2_FLAG | EPHEMERAL_FLAG 
+            });
+        }
+        // --- FIM DA CORREÇÃO ---
+
         const policy = (await db.query('SELECT * FROM guardian_policies WHERE id = $1', [policyId])).rows[0];
 
-        // CORREÇÃO: Adiciona uma verificação para o caso da política ter sido removida.
         if (!policy) {
             await interaction.followUp({ content: 'Esta política não existe mais.', ephemeral: true });
             const policies = (await db.query('SELECT * FROM guardian_policies WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
