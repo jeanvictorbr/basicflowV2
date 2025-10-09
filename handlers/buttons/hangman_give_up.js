@@ -2,6 +2,8 @@
 const db = require('../../database.js');
 const generateHangmanDashboard = require('../../ui/hangmanDashboard.js');
 
+const V2_FLAG = 1 << 15;
+
 module.exports = {
     customId: 'hangman_give_up',
     async execute(interaction) {
@@ -22,9 +24,10 @@ module.exports = {
 
         const finalDashboard = generateHangmanDashboard(game);
 
-        // CORREÇÃO APLICADA AQUI
+        // CORREÇÃO DEFINITIVA: Adicionando a V2_FLAG ao editar a mensagem
         await interaction.message.edit({
-            components: finalDashboard
+            components: finalDashboard,
+            flags: V2_FLAG
         });
     }
 };
