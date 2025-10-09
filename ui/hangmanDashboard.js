@@ -1,79 +1,90 @@
 // Substitua o conteúdo em: ui/hangmanDashboard.js
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
-// Arte ASCII para os estágios da forca, agora dentro do embed
+// Arte ASCII para os estágios da forca
 const HANGMAN_STAGES = [
+    ' ', // 7+ vidas (estado inicial, sem desenho)
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
     '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```', // 4 vidas
     '```\n +---+\n |   |\n O   |\n/|   |\n     |\n     |\n=========\n```', // 3 vidas
     '```\n +---+\n |   |\n O   |\n/|\\  |\n     |\n     |\n=========\n```', // 2 vidas
     '```\n +---+\n |   |\n O   |\n/|\\  |\n/    |\n     |\n=========\n```', // 1 vida
-    '```\n +---+\n |   |\n O   |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
+    '```\n +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
 ];
 
 const ALPHABET_ROWS = ['ABCDE', 'FGHIJ', 'KLMNO', 'PQRST', 'UVWXY', 'Z'];
 
-module.exports = function generateHangmanDashboard(gameData) {
+module.exports = function generateHangmanDashboardV2(gameData) {
     const { lives = 6, secret_word = '', guessed_letters = '', action_log = '', user_id, status } = gameData;
 
     const displayWord = secret_word
         .split('')
-        .map(letter => (guessed_letters.includes(letter) ? letter : '_'))
-        .join(' ');
+        .map(letter => (guessed_letters.includes(letter) ? ` ${letter} ` : ' __ '))
+        .join('');
 
+    const wrongLetters = guessed_letters.split('').filter(l => !secret_word.includes(l)).join(', ') || 'Nenhuma';
     const logText = action_log || '> O jogo começou! Boa sorte.';
 
-    let color = 3447003; // Azul
-    let title = "Jogo da Forca";
-    let description = `Jogo iniciado por <@${user_id}>. Use os botões abaixo para adivinhar a palavra!`;
+    let title = "## 💀 Jogo da Forca";
+    let statusText = `> Jogo iniciado por <@${user_id}>. Use os botões abaixo para adivinhar a palavra!`;
+
     if (status === 'won') {
-        color = 3066993; // Verde
-        title = "🎉 Você Venceu! 🎉";
-        description = `Parabéns! A palavra era **${secret_word}**.`;
+        title = "## 🎉 Você Venceu! 🎉";
+        statusText = `> Parabéns! A palavra era **${secret_word}**.`;
     } else if (status === 'lost' || status === 'given_up') {
-        color = 15158332; // Vermelho
-        title = "💀 Fim de Jogo! 💀";
-        description = `A palavra secreta era **${secret_word}**.`;
+        title = "## 💀 Fim de Jogo! 💀";
+        statusText = `> A palavra secreta era **${secret_word}**.`;
     }
 
-    const embed = new EmbedBuilder()
-        .setColor(color)
-        .setTitle(title)
-        .setDescription(description)
-        .addFields(
-            { name: 'Palavra Secreta', value: `\`\`\`${displayWord}\`\`\`` },
-            { name: 'Vidas', value: `${'❤️'.repeat(lives) || '💔'} (${lives}/6)`, inline: true },
-            { name: 'Letras Erradas', value: `\`${guessed_letters.split('').filter(l => !secret_word.includes(l)).join(', ') || 'Nenhuma'}\``, inline: true },
-            { name: 'Histórico', value: logText },
-            { name: 'Arte', value: HANGMAN_STAGES[6 - lives] }
-        );
-
+    // Gera as fileiras de botões do alfabeto
+    const isGameActive = status === 'playing';
     const guessed = guessed_letters.split('');
-    const components = ALPHABET_ROWS.map(rowString => {
-        const row = new ActionRowBuilder();
-        rowString.split('').forEach(letter => {
-            row.addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`hangman_guess_${letter}`)
-                    .setLabel(letter)
-                    .setStyle(guessed.includes(letter) ? ButtonStyle.Secondary : ButtonStyle.Primary)
-                    .setDisabled(guessed.includes(letter) || status !== 'playing')
-            );
-        });
-        return row;
-    });
+    const letterButtons = ALPHABET_ROWS.map(rowString => ({
+        type: 1,
+        components: rowString.split('').map(letter => ({
+            type: 2,
+            style: guessed.includes(letter) ? 2 : 1, // Secondary (cinza) se já foi chutada, Primary (azul) senão
+            label: letter,
+            custom_id: `hangman_guess_${letter}`,
+            disabled: !isGameActive || guessed.includes(letter)
+        }))
+    }));
 
-    components.push(
-        new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('hangman_give_up')
-                .setLabel("Desistir")
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('🏳️')
-                .setDisabled(status !== 'playing')
-        )
-    );
-
-    return { embeds: [embed], components };
+    // Retorna a estrutura V2 completa
+    return {
+        components: [
+            {
+                type: 17,
+                components: [
+                    { type: 10, content: title },
+                    { type: 10, content: statusText },
+                    { type: 14, divider: true, spacing: 1 },
+                    {
+                        type: 9,
+                        accessory: {
+                            type: 2,
+                            style: 4, // Danger
+                            label: "Desistir",
+                            emoji: { name: "🏳️" },
+                            custom_id: "hangman_give_up",
+                            disabled: !isGameActive
+                        },
+                        components: [
+                            { type: 10, content: HANGMAN_STAGES[7 - (lives+1)] || HANGMAN_STAGES[7] },
+                            { type: 10, content: `### ${displayWord}` },
+                            { type: 10, content: `> ❤️ **Vidas:** ${lives}/6 | 👎 **Letras Erradas:** ${wrongLetters}` },
+                        ]
+                    },
+                    { type: 14, divider: true, spacing: 1 },
+                    { type: 10, content: "### Histórico da Partida" },
+                    { type: 10, content: logText },
+                    { type: 14, divider: true, spacing: 2 },
+                    ...letterButtons
+                ]
+            }
+        ],
+        flags: V2_FLAG | EPHEMERAL_FLAG
+    };
 };

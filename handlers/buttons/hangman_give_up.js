@@ -1,6 +1,6 @@
 // Substitua o conteúdo em: handlers/buttons/hangman_give_up.js
 const db = require('../../database.js');
-const generateHangmanDashboard = require('../../ui/hangmanDashboard.js');
+const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 
 module.exports = {
     customId: 'hangman_give_up',
@@ -9,19 +9,19 @@ module.exports = {
 
         const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         if (gameResult.rows.length === 0) {
-            return interaction.message.edit({ content: 'Este Jogo da Forca já terminou.', components: [] });
+            return;
         }
 
         const game = gameResult.rows[0];
         
         game.status = 'given_up';
-        game.lives = 0;
+        game.lives = 0; // Zera as vidas para a arte correta aparecer
         game.action_log += `\n> 🏳️ <@${interaction.user.id}> desistiu do jogo.`;
         
         await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
 
-        const finalDashboard = generateHangmanDashboard(game);
+        const finalDashboard = generateHangmanDashboardV2(game);
         
-        await interaction.message.edit(finalDashboard);
+        await interaction.editReply(finalDashboard);
     }
 };
