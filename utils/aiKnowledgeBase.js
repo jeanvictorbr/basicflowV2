@@ -6,7 +6,7 @@ const baseKnowledge = [
     // --- CONHECIMENTO GERAL ---
     { 
         topic: "Visão Geral e Diferenças dos Bots", 
-        keywords: ["qual a diferença", "basicflow ou factionflow", "qual usar", "ajuda", "comandos", "bots"], 
+        keywords: ["qual a diferença", "vc aprende?","posso adicionar memoria em vc?", "memoria", "basicflow ou factionflow", "qual usar", "ajuda", "comandos", "bots"], 
         content: `Eu sou um assistente com conhecimento sobre dois bots distintos: o **BasicFlow** e o **FactionFlow**.\n\n- **BasicFlow** é um bot de gestão geral para servidores, com módulos como Bate-Ponto, Tickets de Suporte, Registros (Whitelist), Ausências, Uniformes e um poderoso sistema de Moderação. É ideal para a administração diária da comunidade.\n\n- **FactionFlow** é um bot especializado para servidores de RP com foco em facções. Ele gerencia arsenal, finanças, membros, hierarquia, recrutamento, operações, parcerias e muito mais, tudo de forma automatizada para as organizações.\n\nQuando tiver uma dúvida sobre uma função, por favor, especifique sobre qual bot você quer saber para que eu possa te ajudar melhor!` 
     },
 
