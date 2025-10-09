@@ -1,4 +1,4 @@
-// Garanta que este arquivo exista em: handlers/selects/hangman_guess.js
+// Substitua o conteúdo em: handlers/selects/hangman_guess.js
 const db = require('../../database.js');
 const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 
@@ -38,15 +38,24 @@ module.exports = {
 
         if (isCorrectGuess) {
             game.action_log += `\n> 👍 <@${interaction.user.id}> acertou a letra **${guessedLetter}**!`;
+            game.turn_started_at = new Date(); 
         } else {
             game.lives -= 1;
             game.action_log += `\n> 👎 <@${interaction.user.id}> errou a letra **${guessedLetter}**.`;
         }
 
         const allLettersGuessed = game.secret_word.split('').every(letter => game.guessed_letters.includes(letter) || letter === ' ');
-
         if (allLettersGuessed) {
             game.status = 'won';
+            game.winnerId = interaction.user.id; // SALVA O ID DO VENCEDOR
+            game.action_log += `\n> 🏆 <@${interaction.user.id}> acertou a última letra e venceu o jogo!`;
+            
+            await db.query(
+                `INSERT INTO hangman_ranking (guild_id, user_id, points) VALUES ($1, $2, 1)
+                 ON CONFLICT (guild_id, user_id) DO UPDATE SET points = hangman_ranking.points + 1`,
+                [interaction.guild.id, interaction.user.id]
+            );
+            
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else if (game.lives <= 0) {
             game.status = 'lost';

@@ -1,18 +1,28 @@
 // Substitua o conteúdo em: handlers/buttons/hangman_give_up.js
 const db = require('../../database.js');
-const generateHangmanDashboard = require('../../ui/hangmanDashboard.js');
+const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 
 module.exports = {
     customId: 'hangman_give_up',
     async execute(interaction) {
-        await interaction.deferUpdate();
-
         const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         if (gameResult.rows.length === 0) {
-            return interaction.editReply({ content: 'Este Jogo da Forca já terminou.', components: [] });
+            await interaction.deferUpdate();
+            return;
+        }
+        
+        const game = gameResult.rows[0];
+        const participants = game.participants.split(',');
+        
+        // Apenas quem iniciou ou quem está participando pode desistir
+        if (interaction.user.id !== game.user_id && !participants.includes(interaction.user.id)) {
+             return interaction.reply({
+                content: '❌ Apenas quem iniciou o jogo ou está participando pode desistir.',
+                ephemeral: true
+            });
         }
 
-        const game = gameResult.rows[0];
+        await interaction.deferUpdate();
         
         game.status = 'given_up';
         game.lives = 0;
@@ -20,7 +30,7 @@ module.exports = {
         
         await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
 
-        const finalDashboard = generateHangmanDashboard(game);
+        const finalDashboard = generateHangmanDashboardV2(game);
         
         await interaction.editReply(finalDashboard);
     }

@@ -262,18 +262,64 @@ const schema = {
         user_tag: { type: 'VARCHAR(255)' },
         activated_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-        // NOVA TABELA PARA O JOGO DA FORCA
-    // TABELA ATUALIZADA PARA O JOGO DA FORCA
     hangman_games: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
-        user_id: { type: 'VARCHAR(255)', notNull: true }, // Quem iniciou o jogo
+        user_id: { type: 'VARCHAR(255)', notNull: true },
         secret_word: { type: 'VARCHAR(100)', notNull: true },
+        theme: { type: 'VARCHAR(100)' }, // <-- NOVA COLUNA
         guessed_letters: { type: 'TEXT', default: '' },
         lives: { type: 'INTEGER', default: 6 },
+        status: { type: 'VARCHAR(20)', default: 'playing' },
+        participants: { type: 'TEXT', default: '' },
+        current_turn_user_id: { type: 'VARCHAR(255)' },
+        turn_started_at: { type: 'TIMESTAMPTZ' },
+        skipped_turn_user_id: { type: 'VARCHAR(255)' },
         message_id: { type: 'VARCHAR(255)' },
-        action_log: { type: 'TEXT', default: '' }, // <-- CAMPO ADICIONADO
+        action_log: { type: 'TEXT', default: '' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    // NOVA TABELA PARA RANKING
+    stop_ranking: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        points: { type: 'INTEGER', default: 0 },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id'] }
+    },
+    // NOVA TABELA PARA CATEGORIAS
+    stop_categories: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] }
+    },
+       // NOVAS TABELAS PARA O JOGO STOP
+    stop_games: {
+        message_id: { type: 'VARCHAR(255)', primaryKey: true },
+        channel_id: { type: 'VARCHAR(255)', notNull: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        letter: { type: 'CHAR(1)', notNull: true },
+        categories: { type: 'TEXT', notNull: true },
+        status: { type: 'VARCHAR(20)', default: 'playing' }, // playing, finished
+        starter_id: { type: 'VARCHAR(255)', notNull: true },
+        stopper_id: { type: 'VARCHAR(255)' }
+    },
+    stop_submissions: {
+        id: { type: 'SERIAL', primaryKey: true },
+        game_message_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        category: { type: 'VARCHAR(100)', notNull: true },
+        word: { type: 'VARCHAR(255)', notNull: true },
+        _unique: { type: 'UNIQUE', columns: ['game_message_id', 'user_id', 'category'] }
+    },
+       // NOVA TABELA PARA O RANKING DA FORCA
+    hangman_ranking: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        points: { type: 'INTEGER', default: 0 },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id'] }
     },
     role_tags: {
         id: { type: 'SERIAL', primaryKey: true },
