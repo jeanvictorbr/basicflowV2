@@ -4,6 +4,8 @@ const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 const HANGMAN_STAGES = [
+    // Usamos um caractere invisível para o estado inicial para evitar erros da API
+    '\u200B', 
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
     '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```', // 4 vidas
@@ -19,7 +21,6 @@ const ALPHABET_HALF2 = 'NOPQRSTUVWXYZ'.split('');
 module.exports = function generateHangmanDashboardV2(gameData) {
     const { lives = 6, secret_word = '', guessed_letters = '', action_log = '', user_id, status, participants = '', current_turn_user_id, turn_started_at } = gameData;
 
-    // CORREÇÃO: Garante que o display da palavra tenha o tamanho correto
     const displayWord = secret_word
         .split('')
         .map(letter => (guessed_letters.includes(letter) || letter === ' ' ? ` ${letter} ` : ' __ '))
@@ -49,53 +50,55 @@ module.exports = function generateHangmanDashboardV2(gameData) {
     // Lógica de Turnos e Timer
     const participantsArray = participants.split(',').filter(Boolean);
     const participantsList = participantsArray.map(pId => `<@${pId}>`).join(' ');
-    let turnInfo = `> **Jogadores:** ${participantsList || 'Nenhum jogador participando.'}`;
+    let turnInfo = `> **Jogadores:** ${participantsList || 'Clique em "Participar" para entrar!'}`;
 
     if (isGameActive && current_turn_user_id) {
         const turnEndTime = Math.floor((new Date(turn_started_at).getTime() + 20000) / 1000);
-        turnInfo += `\n> \n> 👑 **É a vez de:** <@${current_turn_user_id}>`
-        turnInfo += `\n> ⏳ **Tempo:** Termina <t:${turnEndTime}:R>`;
+        turnInfo += `\n> \n> 👑 **É a vez de:** <@${current_turn_user_id}> (expira <t:${turnEndTime}:R>)`;
     }
 
     // Menus de Seleção
-    const options1 = ALPHABET_HALF1.map(letter => ({ label: `Letra ${letter}`, value: letter, disabled: guessed_letters.includes(letter) }));
+    const options1 = ALPHABET_HALF1.map(letter => ({ label: `Letra ${letter}`, value: letter, default: guessed_letters.includes(letter) }));
     const selectMenu1 = new StringSelectMenuBuilder()
         .setCustomId('hangman_guess_select_1')
         .setPlaceholder(isGameActive ? 'Escolha uma letra (A-M)...' : 'Jogo encerrado')
         .addOptions(options1)
         .setDisabled(!isGameActive);
 
-    const options2 = ALPHABET_HALF2.map(letter => ({ label: `Letra ${letter}`, value: letter, disabled: guessed_letters.includes(letter) }));
+    const options2 = ALPHABET_HALF2.map(letter => ({ label: `Letra ${letter}`, value: letter, default: guessed_letters.includes(letter) }));
     const selectMenu2 = new StringSelectMenuBuilder()
         .setCustomId('hangman_guess_select_2')
         .setPlaceholder(isGameActive ? 'Escolha uma letra (N-Z)...' : 'Jogo encerrado')
         .addOptions(options2)
         .setDisabled(!isGameActive);
 
+    // Retorna a estrutura V2 CORRIGIDA
     return {
         components: [
             {
-                type: 17, accent_color: color,
+                type: 17,
+                accent_color: color,
                 components: [
                     { type: 10, content: title },
                     { type: 10, content: statusText },
                     { type: 14, divider: true, spacing: 1 },
-                    {
+                    { // Componente para a Forca e o botão Desistir
                         type: 9,
-                        components: [
-                            { type: 10, content: HANGMAN_STAGES[6 - lives] || HANGMAN_STAGES[6] },
-                            { type: 10, content: `### ${displayWord}` },
-                            { type: 10, content: `> ❤️ **Vidas:** ${lives}/6 | 👎 **Letras Erradas:** ${wrongLetters}` },
-                        ]
+                        accessory: {
+                            type: 2, style: 4, label: "Desistir", emoji: { name: "🏳️" },
+                            custom_id: "hangman_give_up", disabled: !isGameActive
+                        },
+                        components: [ { type: 10, content: HANGMAN_STAGES[6 - lives] || HANGMAN_STAGES[6] } ]
                     },
+                    { type: 10, content: `### ${displayWord}` },
+                    { type: 10, content: `> ❤️ **Vidas:** ${lives}/6 | 👎 **Letras Erradas:** ${wrongLetters}` },
                     { type: 14, divider: true, spacing: 1 },
                     { type: 10, content: "### Painel da Partida" },
                     { type: 10, content: turnInfo },
                     { type: 10, content: logText },
                     { type: 14, divider: true, spacing: 2 },
                     { type: 1, components: [
-                        { type: 2, style: 3, label: "Participar", emoji: { name: "👋" }, custom_id: "hangman_join", disabled: !isGameActive },
-                        { type: 2, style: 4, label: "Desistir", emoji: { name: "🏳️" }, custom_id: "hangman_give_up", disabled: !isGameActive }
+                        { type: 2, style: 3, label: "Participar", emoji: { name: "👋" }, custom_id: "hangman_join", disabled: !isGameActive }
                     ]},
                     new ActionRowBuilder().addComponents(selectMenu1).toJSON(),
                     new ActionRowBuilder().addComponents(selectMenu2).toJSON()
