@@ -279,6 +279,25 @@ const schema = {
         action_log: { type: 'TEXT', default: '' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
+       // NOVAS TABELAS PARA O JOGO STOP
+    stop_games: {
+        message_id: { type: 'VARCHAR(255)', primaryKey: true },
+        channel_id: { type: 'VARCHAR(255)', notNull: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        letter: { type: 'CHAR(1)', notNull: true },
+        categories: { type: 'TEXT', notNull: true },
+        status: { type: 'VARCHAR(20)', default: 'playing' }, // playing, finished
+        starter_id: { type: 'VARCHAR(255)', notNull: true },
+        stopper_id: { type: 'VARCHAR(255)' }
+    },
+    stop_submissions: {
+        id: { type: 'SERIAL', primaryKey: true },
+        game_message_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        category: { type: 'VARCHAR(100)', notNull: true },
+        word: { type: 'VARCHAR(255)', notNull: true },
+        _unique: { type: 'UNIQUE', columns: ['game_message_id', 'user_id', 'category'] }
+    },
        // NOVA TABELA PARA O RANKING DA FORCA
     hangman_ranking: {
         id: { type: 'SERIAL', primaryKey: true },
