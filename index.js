@@ -150,16 +150,13 @@ client.on(Events.MessageCreate, async (message) => {
                 if (chatHistory.length >= 5 || msg.createdTimestamp < oneHourAgo) {
                     break;
                 }
-
-                // --- ALTERAÇÃO PRINCIPAL AQUI ---
-                // Verifica se a mensagem é do bot OU se é do usuário E menciona o bot
                 const isFromBot = msg.author.id === client.user.id;
                 const isMentionToBotFromUser = msg.author.id === message.author.id && msg.content.includes(client.user.id);
 
                 if (isFromBot || isMentionToBotFromUser) {
                     chatHistory.push({
                         role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                        content: msg.content.replace(/<@!?\d+>/g, '').trim(), // Limpa a menção do conteúdo
+                        content: msg.content.replace(/<@!?\d+>/g, '').trim(),
                     });
                 }
             }
@@ -167,7 +164,16 @@ client.on(Events.MessageCreate, async (message) => {
             chatHistory.reverse();
 
             const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
-            const aiResponse = await getAIResponse(message.guild.id, chatHistory, userMessage, systemPrompt, true);
+            
+            const aiResponse = await getAIResponse({
+                guild: message.guild,
+                user: message.author,
+                featureName: "Chat por Menção",
+                chatHistory: chatHistory,
+                userMessage: userMessage,
+                customPrompt: systemPrompt,
+                useBaseKnowledge: true
+            });
 
             if (aiResponse) {
                 await message.reply(aiResponse);
@@ -215,7 +221,15 @@ client.on(Events.MessageCreate, async (message) => {
         await message.channel.sendTyping();
         
         const useBaseKnowledge = settings.tickets_ai_use_base_knowledge !== false;
-        const aiResponse = await getAIResponse(message.guild.id, chatHistory, message.content, settings.tickets_ai_assistant_prompt, useBaseKnowledge);
+        const aiResponse = await getAIResponse({
+            guild: message.guild,
+            user: message.author,
+            featureName: "Assistente de Ticket",
+            chatHistory: chatHistory,
+            userMessage: message.content,
+            customPrompt: settings.tickets_ai_assistant_prompt,
+            useBaseKnowledge: useBaseKnowledge
+        });
         
         if (aiResponse) {
             await message.channel.send(aiResponse);
@@ -231,6 +245,5 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
         await updateUserTag(newMember);
     }
 });
-
 
 client.login(process.env.DISCORD_TOKEN);

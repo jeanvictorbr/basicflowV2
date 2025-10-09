@@ -1,38 +1,40 @@
 // Substitua o conteúdo em: utils/aiAssistant.js
 const { OpenAI } = require('openai');
 const { searchKnowledge } = require('./aiKnowledgeBase.js');
-const db = require('../database.js'); // Importa a base de dados
+const db = require('../database.js');
+const { logAiUsage } = require('./webhookLogger.js'); // Importa o novo logger
 require('dotenv').config();
 
-if (!process.env.OPENAI_API_KEY) {
-    throw new Error("A variável de ambiente OPENAI_API_KEY não está definida.");
-}
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const defaultPrompt = `Você é um assistente de IA amigável e eficiente chamado "Assistente BasicFlow". Você foi integrado a um bot para Discord chamado BasicFlow, desenvolvido por "ze pqueno". A sua principal função é fornecer o primeiro nível de suporte aos utilizadores que abrem um ticket de ajuda neste servidor. Você deve manter uma conversa com o utilizador até que um membro da equipa humana intervenha. Baseie as suas respostas no conhecimento fornecido e no histórico da conversa.`;
+// Preços por 1 milhão de tokens (GPT-3.5-Turbo)
+const INPUT_PRICE_PER_MILLION = 0.50;
+const OUTPUT_PRICE_PER_MILLION = 1.50;
 
-async function getAIResponse(guildId, chatHistory, userMessage, customPrompt, useBaseKnowledge) {
+const defaultPrompt = `Você é um assistente de IA amigável e eficiente chamado "Assistente BasicFlow". Você foi integrado a um bot para Discord...`;
+
+async function getAIResponse(options) {
+    const { guild, user, featureName, chatHistory, userMessage, customPrompt, useBaseKnowledge } = options;
+
     try {
-        // --- VERIFICAÇÃO GLOBAL ADICIONADA AQUI ---
         const botStatusResult = await db.query("SELECT ai_services_enabled FROM bot_status WHERE status_key = 'main'");
         if (!botStatusResult.rows[0]?.ai_services_enabled) {
             return "Os serviços de IA estão temporariamente em manutenção pelo desenvolvedor. Por favor, tente novamente mais tarde.";
         }
-        // --- FIM DA VERIFICAÇÃO ---
 
-        const retrievedKnowledge = await searchKnowledge(guildId, userMessage, useBaseKnowledge);
+        const guildSettingsResult = await db.query("SELECT ai_services_disabled_by_dev FROM guild_settings WHERE guild_id = $1", [guild.id]);
+        if (guildSettingsResult.rows[0]?.ai_services_disabled_by_dev) {
+            return "Os serviços de IA foram desativados para este servidor pelo desenvolvedor.";
+        }
+
+        const retrievedKnowledge = await searchKnowledge(guild.id, userMessage, useBaseKnowledge);
         
         let systemPrompt = customPrompt || defaultPrompt;
         if (retrievedKnowledge) {
             systemPrompt += `\n\n--- INFORMAÇÕES RELEVANTES ENCONTRADAS ---\n${retrievedKnowledge}\n--- FIM DAS INFORMAÇÕES ---`;
         }
 
-        const messages = [
-            { role: 'system', content: systemPrompt },
-            ...chatHistory
-        ];
+        const messages = [{ role: 'system', content: systemPrompt }, ...chatHistory];
 
         const completion = await openai.chat.completions.create({
             messages: messages,
@@ -40,8 +42,19 @@ async function getAIResponse(guildId, chatHistory, userMessage, customPrompt, us
         });
 
         const response = completion.choices[0].message.content;
+        const usage = completion.usage;
+
+        if (usage) {
+            const inputCost = (usage.prompt_tokens / 1000000) * INPUT_PRICE_PER_MILLION;
+            const outputCost = (usage.completion_tokens / 1000000) * OUTPUT_PRICE_PER_MILLION;
+            const totalCost = inputCost + outputCost;
+
+            await logAiUsage({ guild, user, featureName, usage, cost: totalCost });
+        }
+
         return response.trim();
         
+
     } catch (error) {
         if (error.response && error.response.status === 429) {
             console.error("[AI Assistant] Erro: A conta da OpenAI não tem créditos suficientes.");

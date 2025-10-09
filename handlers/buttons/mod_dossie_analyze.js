@@ -1,11 +1,7 @@
 // Substitua o conteúdo em: handlers/buttons/mod_dossie_analyze.js
 const db = require('../../database.js');
 const { EmbedBuilder } = require('discord.js');
-const { OpenAI } = require('openai');
-require('dotenv').config();
-
-// Inicializa o cliente da OpenAI (necessário para forçar a resposta em JSON)
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const { getAIResponse } = require('../../utils/aiAssistant.js');
 
 module.exports = {
     customId: 'mod_dossie_analyze_',
@@ -20,50 +16,36 @@ module.exports = {
             const notesResult = await db.query('SELECT * FROM moderation_notes WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at ASC', [interaction.guild.id, targetUserId]);
             
             if (logsResult.rows.length === 0 && notesResult.rows.length === 0) {
-                return interaction.editReply({ content: 'ℹ️ Este usuário não possui histórico de punições ou notas para analisar.' });
+                return interaction.editReply({ content: 'ℹ️ Este usuário não possui histórico para analisar.' });
             }
 
-            let historyText = "Histórico de Punições:\n";
-            logsResult.rows.forEach(log => {
-                historyText += `- Ação: ${log.action}, Data: ${new Date(log.created_at).toLocaleDateString('pt-BR')}, Motivo: ${log.reason}\n`;
-            });
-
+            let historyText = "Histórico de Punições:\n" + logsResult.rows.map(log => `- Ação: ${log.action}, Data: ${new Date(log.created_at).toLocaleDateString('pt-BR')}, Motivo: ${log.reason}`).join('\n');
             if (notesResult.rows.length > 0) {
-                historyText += "\nNotas Internas da Staff:\n";
-                notesResult.rows.forEach(note => {
-                    historyText += `- Nota: ${note.content}, Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}\n`;
-                });
+                historyText += "\n\nNotas Internas da Staff:\n" + notesResult.rows.map(note => `- Nota: ${note.content}, Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}`).join('\n');
             }
 
             const systemPrompt = `
-                Você é um assistente de moderação especialista chamado Guardian AI. Sua tarefa é analisar o histórico de um usuário e fornecer um relatório estruturado para o moderador humano.
-                O histórico inclui punições e notas internas.
-                Sua resposta DEVE ser um objeto JSON válido com as seguintes chaves, em português:
-                - "pattern": (string) Um resumo conciso do padrão de comportamento do usuário (ex: "Reincidência de toxicidade em chats de voz", "Infrações isoladas e de baixa gravidade com longo tempo entre elas").
-                - "risk_level": (string) Uma classificação do nível de risco: "Baixo", "Moderado", "Alto", ou "Crítico".
-                - "suggestion": (string) Uma sugestão de ação clara e objetiva para o moderador (ex: "Aplicar um silenciamento de 24h para quebrar o padrão de reincidência.", "Considerar banimento permanente devido à escalada de gravidade.", "Apenas continuar a monitorar, pois o comportamento não é recorrente.").
-
-                Analise a frequência, a gravidade (Ban > Kick > Timeout > Warn) e o tempo entre as infrações. Uma escalada na gravidade das punições é um forte indicador de risco elevado.
-
-                Histórico do Usuário a ser analisado:
-                ${historyText}
+                Você é um assistente de moderação especialista chamado Guardian AI. Sua tarefa é analisar o histórico de um usuário e fornecer um relatório estruturado em JSON com as chaves: "pattern", "risk_level", "suggestion".
             `;
 
-            const completion = await openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
-                messages: [{ role: 'system', content: systemPrompt }],
-                response_format: { type: "json_object" }
+            const analysisJson = await getAIResponse({
+                guild: interaction.guild,
+                user: interaction.user,
+                featureName: "Análise de Dossiê",
+                chatHistory: [],
+                userMessage: historyText,
+                customPrompt: systemPrompt,
+                useBaseKnowledge: false
             });
 
-            const result = JSON.parse(completion.choices[0].message.content);
+            if (!analysisJson) {
+                return interaction.editReply({ content: '❌ A IA não conseguiu gerar uma análise para este histórico.' });
+            }
+
+            const result = JSON.parse(analysisJson);
             const { pattern, risk_level, suggestion } = result;
 
-            const riskColors = {
-                "Baixo": "Green",
-                "Moderado": "Yellow",
-                "Alto": "Orange",
-                "Crítico": "Red"
-            };
+            const riskColors = { "Baixo": "Green", "Moderado": "Yellow", "Alto": "Orange", "Crítico": "Red" };
 
             const analysisEmbed = new EmbedBuilder()
                 .setColor(riskColors[risk_level] || 'Default')
@@ -79,8 +61,8 @@ module.exports = {
             await interaction.editReply({ embeds: [analysisEmbed] });
 
         } catch (error) {
-            console.error('[AI Dossier Analysis] Erro ao analisar dossiê:', error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro ao processar a análise do dossiê. A IA pode ter demorado a responder ou retornado uma resposta em formato inválido.' });
+            console.error('[AI Dossier Analysis] Erro:', error);
+            await interaction.editReply({ content: '❌ Ocorreu um erro ao processar a análise. A IA pode ter retornado um formato inesperado.' });
         }
     }
 };

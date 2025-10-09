@@ -4,9 +4,6 @@ const { getAIResponse } = require('../../utils/aiAssistant.js');
 const hasFeature = require('../../utils/featureCheck.js');
 const db = require('../../database.js');
 
-// Cooldown para evitar spam de requisições à IA
-const cooldowns = new Map();
-
 module.exports = {
     customId: 'ticket_summarize_ai',
     async execute(interaction) {
@@ -17,14 +14,6 @@ module.exports = {
         if (!await hasFeature(interaction.guild.id, 'TICKETS_PREMIUM')) {
             return interaction.reply({ content: 'Esta é uma funcionalidade premium. Ative uma chave para usá-la.', ephemeral: true });
         }
-        
-        const now = Date.now();
-        const userCooldown = cooldowns.get(interaction.user.id);
-        if (userCooldown && now < userCooldown) {
-            const timeLeft = Math.ceil((userCooldown - now) / 1000);
-            return interaction.reply({ content: `⏱️ Por favor, aguarde ${timeLeft} segundos para pedir outra sugestão.`, ephemeral: true });
-        }
-        cooldowns.set(interaction.user.id, now + 20000);
 
         await interaction.deferReply({ ephemeral: true });
 
@@ -33,35 +22,29 @@ module.exports = {
             const messages = await interaction.channel.messages.fetch({ limit: 100 });
             
             const transcript = messages.reverse().map(m => `${m.author.tag}: ${m.content}`).join('\n');
-
-            // --- CORREÇÃO APLICADA AQUI ---
-            // Verifica o tamanho do texto em vez da quantidade de mensagens.
-            const MINIMUM_LENGTH = 200; // Mínimo de 200 caracteres para valer a pena resumir.
+            
+            const MINIMUM_LENGTH = 200;
             if (transcript.length < MINIMUM_LENGTH) {
                 return interaction.editReply({ content: 'ℹ️ O conteúdo deste ticket é muito curto para justificar um resumo.' });
             }
-            // --- FIM DA CORREÇÃO ---
 
             const systemPrompt = `
-                Você é um especialista em suporte ao cliente. Sua tarefa é ler a transcrição de um ticket de suporte do Discord e criar um resumo claro e conciso para um membro da equipe que acabou de assumir o atendimento.
-                Sua resposta DEVE ser um objeto JSON válido com as seguintes chaves em português:
-                - "problem": (string) Identifique e descreva em uma frase qual é a principal solicitação ou problema do usuário.
-                - "solutions_tried": (string) Liste em formato de tópicos as soluções ou etapas que já foram sugeridas ou tentadas. Se nada foi tentado, escreva "Nenhuma solução foi tentada até o momento".
-                - "current_status": (string) Forneça um resumo de 1-2 frases sobre o estado atual da conversa.
-                - "user_sentiment": (string) Analise o tom do usuário e descreva seu sentimento (ex: 'Calmo e informativo', 'Frustrado e com pressa', 'Confuso', 'Urgente').
-
-                Seja objetivo e foque em extrair a informação mais relevante para acelerar a resolução do ticket.
-
-                Transcrição do Ticket:
-                ---
-                ${transcript}
-                ---
+                Você é um especialista em suporte ao cliente. Sua tarefa é ler a transcrição de um ticket e criar um resumo JSON.
+                Sua resposta DEVE ser um objeto JSON válido com as chaves: "problem", "solutions_tried", "current_status", "user_sentiment".
             `;
             
-            const summaryJson = await getAIResponse(interaction.guild.id, [], transcript, systemPrompt, false);
+            const summaryJson = await getAIResponse({
+                guild: interaction.guild,
+                user: interaction.user,
+                featureName: "Resumo de Ticket",
+                chatHistory: [],
+                userMessage: transcript,
+                customPrompt: systemPrompt,
+                useBaseKnowledge: false
+            });
             
             if (!summaryJson) {
-                return interaction.editReply({ content: '❌ A IA não conseguiu gerar um resumo para este ticket. Tente novamente mais tarde.' });
+                return interaction.editReply({ content: '❌ A IA não conseguiu gerar um resumo para este ticket.' });
             }
 
             const result = JSON.parse(summaryJson);
@@ -77,15 +60,15 @@ module.exports = {
                     { name: '🛠️ Soluções Tentadas', value: result.solutions_tried || 'Nenhuma.' },
                     { name: '⏳ Status Atual', value: result.current_status || 'Aguardando resposta.' }
                 )
-                .setFooter({ text: `${messages.size} mensagens analisadas. A decisão final é do moderador.` })
+                .setFooter({ text: `${messages.size} mensagens analisadas.` })
                 .setTimestamp();
 
             await interaction.channel.send({ embeds: [summaryEmbed] });
-            await interaction.editReply({ content: '✅ O resumo foi gerado e enviado no ticket para todos verem.' });
+            await interaction.editReply({ content: '✅ O resumo foi gerado e enviado no ticket.' });
 
         } catch (error) {
-            console.error('[Ticket Summarize AI] Erro ao gerar resumo:', error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro. A IA pode ter retornado um formato inesperado. Verifique os logs.' });
+            console.error('[Ticket Summarize AI] Erro:', error);
+            await interaction.editReply({ content: '❌ Ocorreu um erro. A IA pode ter retornado um formato inesperado.' });
         }
     }
 };
