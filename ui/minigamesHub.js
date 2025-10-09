@@ -1,4 +1,4 @@
-// Crie este arquivo em: ui/minigamesHub.js
+// Substitua o conteúdo em: ui/minigamesHub.js
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -16,7 +16,8 @@ module.exports = function generateMinigamesHub() {
                     {
                         type: 1,
                         components: [
-                            { type: 2, style: 2, label: "Ver Ranking", emoji: { name: "🏆" }, custom_id: "hangman_show_ranking" },
+                            { type: 2, style: 3, label: "Iniciar Novo Jogo", emoji: { name: "▶️" }, custom_id: "hangman_start_from_hub" },
+                            { type: 2, style: 2, label: "Ver Ranking", emoji: { name: "🏆" }, custom_id: "hangman_show_ranking" }
                         ]
                     },
                     { type: 14, divider: true, spacing: 2 },
@@ -24,8 +25,9 @@ module.exports = function generateMinigamesHub() {
                     {
                         type: 1,
                         components: [
+                            { type: 2, style: 3, label: "Iniciar Novo Jogo", emoji: { name: "▶️" }, custom_id: "stop_start_from_hub" },
                             { type: 2, style: 1, label: "Gerenciar Categorias", emoji: { name: "⚙️" }, custom_id: "stop_manage_categories" },
-                            { type: 2, style: 2, label: "Ver Ranking", emoji: { name: "🏆" }, custom_id: "stop_show_ranking" },
+                            { type: 2, style: 2, label: "Ver Ranking", emoji: { name: "🏆" }, custom_id: "stop_show_ranking" }
                         ]
                     },
                     { type: 14, divider: true, spacing: 2 },
