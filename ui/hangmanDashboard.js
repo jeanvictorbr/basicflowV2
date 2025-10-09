@@ -1,10 +1,11 @@
 // Substitua o conteúdo em: ui/hangmanDashboard.js
+const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 // Arte ASCII para os estágios da forca
 const HANGMAN_STAGES = [
-    '\u200B', // CORREÇÃO: Usando um caractere invisível (zero-width space) em vez de um espaço normal
+    '\u200B', // Caractere invisível para o estado inicial
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
     '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```', // 4 vidas
@@ -14,7 +15,7 @@ const HANGMAN_STAGES = [
     '```\n +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
 ];
 
-const ALPHABET_ROWS = ['ABCDE', 'FGHIJ', 'KLMNO', 'PQRST', 'UVWXY', 'Z'];
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 module.exports = function generateHangmanDashboardV2(gameData) {
     const { lives = 6, secret_word = '', guessed_letters = '', action_log = '', user_id, status } = gameData;
@@ -26,9 +27,9 @@ module.exports = function generateHangmanDashboardV2(gameData) {
 
     const wrongLetters = guessed_letters.split('').filter(l => !secret_word.includes(l)).join(', ') || 'Nenhuma';
     const logText = action_log || '> O jogo começou! Boa sorte.';
-
+    
     let title = "## 💀 Jogo da Forca";
-    let statusText = `> Jogo iniciado por <@${user_id}>. Use os botões abaixo para adivinhar a palavra!`;
+    let statusText = `> Jogo iniciado por <@${user_id}>. Use o menu abaixo para adivinhar uma letra!`;
 
     if (status === 'won') {
         title = "## 🎉 Você Venceu! 🎉";
@@ -38,21 +39,22 @@ module.exports = function generateHangmanDashboardV2(gameData) {
         statusText = `> A palavra secreta era **${secret_word}**.`;
     }
 
-    // Gera as fileiras de botões do alfabeto
     const isGameActive = status === 'playing';
-    const guessed = guessed_letters.split('');
-    const letterButtons = ALPHABET_ROWS.map(rowString => ({
-        type: 1,
-        components: rowString.split('').map(letter => ({
-            type: 2,
-            style: guessed.includes(letter) ? 2 : 1, // Secondary (cinza) se já foi chutada, Primary (azul) senão
-            label: letter,
-            custom_id: `hangman_guess_${letter}`,
-            disabled: !isGameActive || guessed.includes(letter)
-        }))
+
+    // Cria as opções para o Select Menu, mostrando apenas as letras ainda não adivinhadas
+    const availableLetters = ALPHABET.filter(letter => !guessed_letters.includes(letter));
+    const selectOptions = availableLetters.map(letter => ({
+        label: `Letra ${letter}`,
+        value: letter,
     }));
 
-    // Retorna a estrutura V2 completa
+    const letterSelectMenu = new StringSelectMenuBuilder()
+        .setCustomId('hangman_guess_select')
+        .setPlaceholder(isGameActive ? 'Escolha uma letra...' : 'O jogo terminou.')
+        .addOptions(selectOptions.length > 0 ? selectOptions : [{ label: 'Fim de jogo', value: 'ended' }])
+        .setDisabled(!isGameActive || selectOptions.length === 0);
+
+    // Retorna a estrutura V2 completa e corrigida
     return {
         components: [
             {
@@ -65,7 +67,7 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                         type: 9,
                         accessory: {
                             type: 2,
-                            style: 4, // Danger
+                            style: 4,
                             label: "Desistir",
                             emoji: { name: "🏳️" },
                             custom_id: "hangman_give_up",
@@ -81,11 +83,11 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                     { type: 10, content: "### Histórico da Partida" },
                     { type: 10, content: logText },
                     { type: 14, divider: true, spacing: 2 },
-                    ...letterButtons
+                    // A única fileira de ação agora contém o Select Menu
+                    new ActionRowBuilder().addComponents(letterSelectMenu).toJSON()
                 ]
             }
         ],
-        // As flags agora são retornadas junto com os componentes para garantir que sejam aplicadas corretamente.
         flags: V2_FLAG | EPHEMERAL_FLAG
     };
 };
