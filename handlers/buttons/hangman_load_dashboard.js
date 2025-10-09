@@ -2,8 +2,6 @@
 const db = require('../../database.js');
 const generateHangmanDashboard = require('../../ui/hangmanDashboard.js');
 
-const V2_FLAG = 1 << 15;
-
 module.exports = {
     customId: 'hangman_load_dashboard',
     async execute(interaction) {
@@ -17,13 +15,11 @@ module.exports = {
 
         await db.query('UPDATE hangman_games SET message_id = $1 WHERE channel_id = $2', [interaction.message.id, interaction.channel.id]);
 
-        const dashboard = generateHangmanDashboard(game);
+        const dashboardPayload = generateHangmanDashboard(game);
 
-        // CORREÇÃO DEFINITIVA: Adicionando a V2_FLAG obrigatória para renderizar componentes type: 17
         await interaction.update({
             content: '',
-            components: dashboard,
-            flags: V2_FLAG,
+            ...dashboardPayload
         });
     }
 };

@@ -2,8 +2,6 @@
 const db = require('../../database.js');
 const generateHangmanDashboard = require('../../ui/hangmanDashboard.js');
 
-const V2_FLAG = 1 << 15;
-
 module.exports = {
     customId: 'hangman_guess_',
     async execute(interaction) {
@@ -12,7 +10,7 @@ module.exports = {
         const guessedLetter = interaction.customId.split('_')[2];
 
         const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
-        if (gameResult.rows.length === 0) { return; }
+        if (gameResult.rows.length === 0) return;
 
         const game = gameResult.rows[0];
         if (game.guessed_letters.includes(guessedLetter)) return;
@@ -31,11 +29,9 @@ module.exports = {
 
         if (allLettersGuessed) {
             game.status = 'won';
-            game.action_log += `\n> 🏆 **VITÓRIA!** A palavra era **${game.secret_word}**.`;
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else if (game.lives <= 0) {
             game.status = 'lost';
-            game.action_log += `\n> ☠️ **FIM DE JOGO!** A palavra era **${game.secret_word}**.`;
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else {
             game.status = 'playing';
@@ -46,11 +42,6 @@ module.exports = {
         }
 
         const updatedDashboard = generateHangmanDashboard(game);
-        
-        // CORREÇÃO DEFINITIVA: Adicionando a V2_FLAG ao editar a mensagem
-        await interaction.message.edit({
-            components: updatedDashboard,
-            flags: V2_FLAG
-        });
+        await interaction.editReply(updatedDashboard);
     }
 };
