@@ -1,6 +1,5 @@
 // Substitua o conteúdo em: ui/hangmanDashboard.js
 
-// Arte ASCII para os estágios da forca
 const HANGMAN_STAGES = [
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
@@ -11,11 +10,14 @@ const HANGMAN_STAGES = [
     '```\n +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
 ];
 
+// LAYOUT DO TECLADO CORRIGIDO (5 BOTÕES POR FILEIRA)
 const ALPHABET_ROWS = [
-    'QWERTYU',
-    'ASDFGHJ',
-    'ZXCVBNM',
-    'IOPKL' // Linhas adaptadas para caberem 7/7/7/5 botões
+    'ABCDE',
+    'FGHIJ',
+    'KLMNO',
+    'PQRST',
+    'UVWXY',
+    'Z'
 ];
 
 module.exports = function generateHangmanDashboard(gameData) {
@@ -28,13 +30,13 @@ module.exports = function generateHangmanDashboard(gameData) {
 
     const logText = action_log || '> O jogo começou! Boa sorte.';
 
-    let color = 3447003;
+    let color = 3447003; // Azul
     let title = "Jogo da Forca";
     if (status === 'won') {
-        color = 3066993;
+        color = 3066993; // Verde
         title = "🎉 Você Venceu! 🎉";
     } else if (status === 'lost') {
-        color = 15158332;
+        color = 15158332; // Vermelho
         title = "💀 Você Perdeu! 💀";
     }
 
