@@ -13,15 +13,17 @@ module.exports = {
             return interaction.editReply({ content: '❌ Já existe um jogo da Forca em andamento neste canal.' });
         }
 
-        const secretWord = getRandomWord();
+        const wordData = getRandomWord();
+        const secretWord = wordData.word.toUpperCase();
+        const theme = wordData.theme;
         const starterId = interaction.user.id;
         const initialLog = `> 💬 <@${starterId}> iniciou um novo jogo!`;
 
         try {
             await db.query(
-                `INSERT INTO hangman_games (channel_id, guild_id, user_id, secret_word, action_log, status, participants, current_turn_user_id, turn_started_at) 
+                `INSERT INTO hangman_games (channel_id, guild_id, user_id, secret_word, theme, action_log, status, participants, current_turn_user_id, turn_started_at) 
                  VALUES ($1, $2, $3, $4, $5, 'loading', $6, $7, NOW())`,
-                [interaction.channel.id, interaction.guild.id, starterId, secretWord, initialLog, starterId, starterId]
+                [interaction.channel.id, interaction.guild.id, starterId, secretWord, theme, initialLog, starterId, starterId]
             );
 
             const loadButton = new ButtonBuilder()
