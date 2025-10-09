@@ -1,4 +1,4 @@
-// Crie este arquivo em: handlers/buttons/hangman_join.js
+// Garanta que este arquivo exista em: handlers/buttons/hangman_join.js
 const db = require('../../database.js');
 const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 

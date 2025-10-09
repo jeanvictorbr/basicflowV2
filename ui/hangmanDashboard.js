@@ -4,8 +4,7 @@ const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 const HANGMAN_STAGES = [
-    // Usamos um caractere invisível para o estado inicial para evitar erros da API
-    '\u200B', 
+    '\u200B', // Caractere invisível para o estado inicial
     '```\n +---+\n |   |\n     |\n     |\n     |\n     |\n=========\n```', // 6 vidas
     '```\n +---+\n |   |\n O   |\n     |\n     |\n     |\n=========\n```', // 5 vidas
     '```\n +---+\n |   |\n O   |\n |   |\n     |\n     |\n=========\n```', // 4 vidas
@@ -30,24 +29,22 @@ module.exports = function generateHangmanDashboardV2(gameData) {
     const logText = action_log || '> O jogo começou! Boa sorte.';
     const isGameActive = status === 'playing';
 
-    // Lógica de Título, Status e Cor
     let title = "## 💀 Jogo da Forca";
     let statusText = `> Jogo iniciado por <@${user_id}>.`;
-    let color = 3447003; // Azul
-    if (lives <= 3) color = 16705372; // Amarelo
-    if (lives <= 1) color = 15158332; // Vermelho
+    let color = 3447003;
+    if (lives <= 3) color = 16705372;
+    if (lives <= 1) color = 15158332;
 
     if (status === 'won') {
         title = "## 🎉 Vitória! 🎉";
         statusText = `> Parabéns aos jogadores! A palavra era **${secret_word}**.`;
-        color = 3066993; // Verde
+        color = 3066993;
     } else if (status === 'lost' || status === 'given_up') {
         title = "## ☠️ Fim de Jogo! 💀";
         statusText = `> A palavra secreta era **${secret_word}**.`;
-        color = 10038562; // Cinza escuro
+        color = 10038562;
     }
 
-    // Lógica de Turnos e Timer
     const participantsArray = participants.split(',').filter(Boolean);
     const participantsList = participantsArray.map(pId => `<@${pId}>`).join(' ');
     let turnInfo = `> **Jogadores:** ${participantsList || 'Clique em "Participar" para entrar!'}`;
@@ -57,22 +54,20 @@ module.exports = function generateHangmanDashboardV2(gameData) {
         turnInfo += `\n> \n> 👑 **É a vez de:** <@${current_turn_user_id}> (expira <t:${turnEndTime}:R>)`;
     }
 
-    // Menus de Seleção
-    const options1 = ALPHABET_HALF1.map(letter => ({ label: `Letra ${letter}`, value: letter, default: guessed_letters.includes(letter) }));
+    const options1 = ALPHABET_HALF1.map(letter => ({ label: `Letra ${letter}`, value: letter }));
     const selectMenu1 = new StringSelectMenuBuilder()
         .setCustomId('hangman_guess_select_1')
         .setPlaceholder(isGameActive ? 'Escolha uma letra (A-M)...' : 'Jogo encerrado')
         .addOptions(options1)
         .setDisabled(!isGameActive);
 
-    const options2 = ALPHABET_HALF2.map(letter => ({ label: `Letra ${letter}`, value: letter, default: guessed_letters.includes(letter) }));
+    const options2 = ALPHABET_HALF2.map(letter => ({ label: `Letra ${letter}`, value: letter }));
     const selectMenu2 = new StringSelectMenuBuilder()
         .setCustomId('hangman_guess_select_2')
         .setPlaceholder(isGameActive ? 'Escolha uma letra (N-Z)...' : 'Jogo encerrado')
         .addOptions(options2)
         .setDisabled(!isGameActive);
 
-    // Retorna a estrutura V2 CORRIGIDA
     return {
         components: [
             {
@@ -82,7 +77,7 @@ module.exports = function generateHangmanDashboardV2(gameData) {
                     { type: 10, content: title },
                     { type: 10, content: statusText },
                     { type: 14, divider: true, spacing: 1 },
-                    { // Componente para a Forca e o botão Desistir
+                    {
                         type: 9,
                         accessory: {
                             type: 2, style: 4, label: "Desistir", emoji: { name: "🏳️" },
