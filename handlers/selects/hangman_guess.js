@@ -3,7 +3,7 @@ const db = require('../../database.js');
 const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 
 module.exports = {
-    customId: 'hangman_guess_select_', // Handler dinâmico
+    customId: 'hangman_guess_select_',
     async execute(interaction) {
         const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         if (gameResult.rows.length === 0) {
@@ -38,7 +38,6 @@ module.exports = {
 
         if (isCorrectGuess) {
             game.action_log += `\n> 👍 <@${interaction.user.id}> acertou a letra **${guessedLetter}**!`;
-            // Se acertar, o jogador joga de novo, então resetamos o timer dele
             game.turn_started_at = new Date(); 
         } else {
             game.lives -= 1;
@@ -48,6 +47,15 @@ module.exports = {
         const allLettersGuessed = game.secret_word.split('').every(letter => game.guessed_letters.includes(letter) || letter === ' ');
         if (allLettersGuessed) {
             game.status = 'won';
+            game.winnerId = interaction.user.id; // SALVA O ID DO VENCEDOR
+            game.action_log += `\n> 🏆 <@${interaction.user.id}> acertou a última letra e venceu o jogo!`;
+            
+            await db.query(
+                `INSERT INTO hangman_ranking (guild_id, user_id, points) VALUES ($1, $2, 1)
+                 ON CONFLICT (guild_id, user_id) DO UPDATE SET points = hangman_ranking.points + 1`,
+                [interaction.guild.id, interaction.user.id]
+            );
+            
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else if (game.lives <= 0) {
             game.status = 'lost';

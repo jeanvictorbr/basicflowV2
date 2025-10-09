@@ -1,4 +1,4 @@
-// Crie este arquivo em: handlers/modals/modal_hangman_guess_word.js
+// Substitua o conteúdo em: handlers/modals/modal_hangman_guess_word.js
 const db = require('../../database.js');
 const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 
@@ -11,9 +11,9 @@ module.exports = {
 
         if (guessedWord === game.secret_word) {
             game.status = 'won';
+            game.winnerId = interaction.user.id; // SALVA O ID DO VENCEDOR
             game.action_log += `\n> 🏆 <@${interaction.user.id}> adivinhou a palavra **${game.secret_word}** e venceu o jogo!`;
             
-            // Adiciona pontos ao vencedor
             await db.query(
                 `INSERT INTO hangman_ranking (guild_id, user_id, points) VALUES ($1, $2, 1)
                  ON CONFLICT (guild_id, user_id) DO UPDATE SET points = hangman_ranking.points + 1`,
@@ -23,9 +23,8 @@ module.exports = {
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else {
             game.action_log += `\n> ❌ <@${interaction.user.id}> errou a palavra! Ele ficará uma rodada sem jogar.`;
-            game.skipped_turn_user_id = interaction.user.id; // Marca o usuário para pular a vez
+            game.skipped_turn_user_id = interaction.user.id;
             
-            // Lógica para passar o turno
             const participants = game.participants.split(',').filter(Boolean);
             const currentIndex = participants.indexOf(game.current_turn_user_id);
             const nextIndex = (currentIndex + 1) % participants.length;
