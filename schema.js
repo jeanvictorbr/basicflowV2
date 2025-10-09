@@ -274,9 +274,18 @@ const schema = {
         participants: { type: 'TEXT', default: '' },
         current_turn_user_id: { type: 'VARCHAR(255)' }, // <-- NOVA COLUNA
         turn_started_at: { type: 'TIMESTAMPTZ' },      // <-- NOVA COLUNA
+        skipped_turn_user_id: { type: 'VARCHAR(255)' },
         message_id: { type: 'VARCHAR(255)' },
         action_log: { type: 'TEXT', default: '' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+       // NOVA TABELA PARA O RANKING DA FORCA
+    hangman_ranking: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        points: { type: 'INTEGER', default: 0 },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id'] }
     },
     role_tags: {
         id: { type: 'SERIAL', primaryKey: true },
