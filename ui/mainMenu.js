@@ -98,11 +98,18 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !hasGuardianAccess },
             components: [{ type: 10, content: "🛡️ Guardian AI (Premium)" }, { type: 10, content: "Moderação proativa para **prevenir conflitos**." }]
         },
+        // NOVO MÓDULO DE MINI-GAMES ADICIONADO AQUI
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🎲" }, custom_id: "open_minigames_hub" },
+            components: [{ type: 10, content: "🎲 Mini-Games" }, { type: 10, content: "Configure e gerencie os jogos do servidor." }]
+        },
         { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_roletags_menu" },
             components: [{ type: 10, content: "🏷️ Tags por Cargo (RoleTags)" }, { type: 10, content: "Aplique tags aos apelidos baseadas em cargos." }]
         },
+
     ];
     
     const ITEMS_PER_PAGE = 4; 

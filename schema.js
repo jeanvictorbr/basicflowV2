@@ -279,6 +279,21 @@ const schema = {
         action_log: { type: 'TEXT', default: '' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
+    // NOVA TABELA PARA RANKING
+    stop_ranking: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        points: { type: 'INTEGER', default: 0 },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id'] }
+    },
+    // NOVA TABELA PARA CATEGORIAS
+    stop_categories: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] }
+    },
        // NOVAS TABELAS PARA O JOGO STOP
     stop_games: {
         message_id: { type: 'VARCHAR(255)', primaryKey: true },
