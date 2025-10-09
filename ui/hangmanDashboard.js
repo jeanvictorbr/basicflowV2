@@ -11,56 +11,53 @@ const HANGMAN_STAGES = [
     '```\n +---+\n |   |\n O   |\n/|\\  |\n/ \\  |\n     |\n=========\n```'  // 0 vidas
 ];
 
-const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const ALPHABET_ROWS = [
+    'QWERTYU',
+    'ASDFGHJ',
+    'ZXCVBNM',
+    'IOPKL' // Linhas adaptadas para caberem 7/7/7/5 botões
+];
 
 module.exports = function generateHangmanDashboard(gameData) {
     const { lives, secret_word, guessed_letters, action_log, user_id, status } = gameData;
 
-    // Constrói a palavra a ser exibida (Ex: F _ _ E _ _ L)
     const displayWord = secret_word
         .split('')
         .map(letter => (guessed_letters.includes(letter) ? `${letter} ` : '_ '))
         .join('');
 
-    // Constrói o texto do histórico
     const logText = action_log || '> O jogo começou! Boa sorte.';
 
-    // Define a cor e o título com base no status do jogo
-    let color = 3447003; // Azul padrão
+    let color = 3447003;
     let title = "Jogo da Forca";
     if (status === 'won') {
-        color = 3066993; // Verde
+        color = 3066993;
         title = "🎉 Você Venceu! 🎉";
     } else if (status === 'lost') {
-        color = 15158332; // Vermelho
+        color = 15158332;
         title = "💀 Você Perdeu! 💀";
     }
 
-    // Gera as linhas de botões do teclado
-    const keyboardRows = [];
     const guessed = guessed_letters.split('');
-    const chunkSize = 7;
-    for (let i = 0; i < ALPHABET.length; i += chunkSize) {
-        const chunk = ALPHABET.slice(i, i + chunkSize);
+    const keyboardRows = ALPHABET_ROWS.map(rowString => {
         const row = { type: 1, components: [] };
-        chunk.forEach(letter => {
+        rowString.split('').forEach(letter => {
             row.components.push({
                 type: 2,
-                style: guessed.includes(letter) ? 2 : 1, // Cinza se já foi chutada, Azul se não
+                style: guessed.includes(letter) ? 2 : 1,
                 label: letter,
                 custom_id: `hangman_guess_${letter}`,
                 disabled: guessed.includes(letter) || status !== 'playing'
             });
         });
-        keyboardRows.push(row);
-    }
-    
-    // Adiciona o botão de desistir
+        return row;
+    });
+
     keyboardRows.push({
         type: 1,
         components: [{
             type: 2,
-            style: 4, // Vermelho
+            style: 4,
             label: "Desistir",
             custom_id: 'hangman_give_up',
             emoji: { name: '🏳️' },
@@ -68,27 +65,18 @@ module.exports = function generateHangmanDashboard(gameData) {
         }]
     });
 
-    // --- ESTRUTURA CORRIGIDA ---
     return [{
         type: 17,
         accent_color: color,
         components: [
-            {
-                type: 9,
-                components: [
-                    { type: 10, content: `## ${title}` },
-                    { type: 10, content: `> Jogo iniciado por <@${user_id}>.` }
-                ]
-            },
+            { type: 10, content: `## ${title}` },
+            { type: 10, content: `> Jogo iniciado por <@${user_id}>.` },
             { type: 14, divider: true, spacing: 1 },
             { type: 10, content: HANGMAN_STAGES[6 - lives] },
             { type: 10, content: `### Palavra Secreta:\n\`\`\`${displayWord}\`\`\`` },
             { type: 10, content: `**Vidas Restantes:** ${'❤️'.repeat(lives) || '💔'}` },
             { type: 14, divider: true, spacing: 2 },
-            {
-                type: 10,
-                content: `### Histórico de Ações:\n${logText}`
-            },
+            { type: 10, content: `### Histórico de Ações:\n${logText}` },
             { type: 14, divider: true, spacing: 2 },
             ...keyboardRows
         ]
