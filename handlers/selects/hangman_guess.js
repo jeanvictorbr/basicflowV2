@@ -1,14 +1,14 @@
-// Crie este arquivo em: handlers/selects/hangman_guess.js
+// Substitua o conteúdo em: handlers/selects/hangman_guess.js
 const db = require('../../database.js');
 const generateHangmanDashboardV2 = require('../../ui/hangmanDashboard.js');
 
 module.exports = {
-    customId: 'hangman_guess_select',
+    customId: 'hangman_guess_select_', // Agora é um handler dinâmico
     async execute(interaction) {
         await interaction.deferUpdate();
 
         const guessedLetter = interaction.values[0];
-        if (guessedLetter === 'ended') return; // Ignora se a opção for de fim de jogo
+        if (guessedLetter === 'none' || guessedLetter === 'ended') return;
 
         const gameResult = await db.query('SELECT * FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         if (gameResult.rows.length === 0) {
@@ -37,7 +37,7 @@ module.exports = {
             game.status = 'lost';
             await db.query('DELETE FROM hangman_games WHERE channel_id = $1', [interaction.channel.id]);
         } else {
-            game.status = 'playing'; // Garante que o status continue correto
+            game.status = 'playing';
             await db.query(
                 'UPDATE hangman_games SET guessed_letters = $1, lives = $2, action_log = $3 WHERE channel_id = $4',
                 [game.guessed_letters, game.lives, game.action_log, interaction.channel.id]
