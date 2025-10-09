@@ -1,4 +1,4 @@
-// Crie este arquivo em: handlers/selects/select_stop_start_channel.js
+// Substitua o conteúdo em: handlers/selects/select_stop_start_channel.js
 const db = require('../../database.js');
 const generateStopDashboard = require('../../ui/stopGameDashboard.js');
 
@@ -23,7 +23,14 @@ module.exports = {
         }
 
         const letter = ALPHABET.charAt(Math.floor(Math.random() * ALPHABET.length));
-        const game = { letter, categories, status: 'playing', starter_id: interaction.user.id };
+        
+        // Objeto 'game' com todas as informações necessárias
+        const game = { 
+            letter, 
+            categories, 
+            status: 'playing', 
+            starter_id: interaction.user.id 
+        };
         
         const gameMessage = await channel.send(generateStopDashboard(game));
 
