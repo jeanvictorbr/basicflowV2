@@ -144,7 +144,7 @@ client.on(Events.MessageCreate, async (message) => {
             await message.channel.sendTyping();
 
             // ALTERAÇÃO APLICADA AQUI
-            const channelMessages = await message.channel.messages.fetch({ limit: 4 }); // De 20 para 10
+            const channelMessages = await message.channel.messages.fetch({ limit: 3 }); // De 20 paara 10
             const oneHourAgo = Date.now() - (60 * 60 * 1000);
             const chatHistory = [];
 
