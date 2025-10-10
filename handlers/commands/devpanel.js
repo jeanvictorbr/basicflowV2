@@ -15,8 +15,12 @@ module.exports = {
         await db.query("INSERT INTO bot_status (status_key, ai_services_enabled) VALUES ('main', true) ON CONFLICT (status_key) DO NOTHING");
         const botStatus = (await db.query("SELECT * FROM bot_status WHERE status_key = 'main'")).rows[0];
         
+        // Coleta de estatísticas globais
+        const totalGuilds = interaction.client.guilds.cache.size;
+        const totalMembers = interaction.client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+
         await interaction.reply({
-            components: generateDevMainMenu(botStatus),
+            components: generateDevMainMenu(botStatus, { totalGuilds, totalMembers }),
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }

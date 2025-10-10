@@ -1,9 +1,9 @@
 // Substitua o conteúdo em: ui/devPanel/devGuildsMenu.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-const ITEMS_PER_PAGE = 3; // Reduzido para caber mais informações sem poluir
+const ITEMS_PER_PAGE = 3; 
 
-module.exports = function generateDevGuildsMenu(allGuildData, page = 0) {
+module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals) {
     const totalPages = Math.ceil(allGuildData.length / ITEMS_PER_PAGE);
     const paginatedGuilds = allGuildData.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
@@ -11,12 +11,12 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0) {
         ? paginatedGuilds.map(guild => {
             const expiresAt = guild.premium_expires_at ? `<t:${Math.floor(new Date(guild.premium_expires_at).getTime() / 1000)}:R>` : '`Inativa`';
             
-            // Lógica para o resumo de módulos
             const activeModules = [];
             if (guild.tickets_configurado) activeModules.push('Tickets');
             if (guild.ponto_status) activeModules.push('Ponto');
             if (guild.registros_status) activeModules.push('Registros');
             if (guild.guardian_ai_enabled) activeModules.push('Guardian');
+            if (guild.roletags_enabled) activeModules.push('RoleTags');
             const modulesText = activeModules.length > 0 ? activeModules.join(', ') : 'Nenhum';
 
             return `> 🏢 **${guild.name}** (\`${guild.guild_id}\`)\n` +
@@ -38,7 +38,7 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0) {
             "type": 17, "accent_color": 3447003,
             "components": [
                 { "type": 10, "content": "## 🏢 Gerenciador de Guildas" },
-                { "type": 10, "content": `> Visualize e gerencie as licenças de todos os servidores. Página ${page + 1} de ${totalPages || 1}.` },
+                { "type": 10, "content": `> Visualizando ${allGuildData.length} de ${totals.totalGuilds} servidores. Página ${page + 1} de ${totalPages || 1}.` },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": guildList },
                 { "type": 14, "divider": true, "spacing": 2 },

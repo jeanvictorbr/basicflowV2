@@ -1,5 +1,5 @@
 // Substitua o conteúdo em: ui/devPanel/mainMenu.js
-module.exports = function generateDevMainMenu(botStatus) {
+module.exports = function generateDevMainMenu(botStatus, stats) {
     const aiStatus = botStatus?.ai_services_enabled;
     const aiStatusButton = aiStatus
         ? { label: 'Serviços de IA: Ativados', style: 3, emoji: '✅' } // Verde
@@ -10,7 +10,7 @@ module.exports = function generateDevMainMenu(botStatus) {
             "type": 17, "accent_color": 15844367,
             "components": [
                 { "type": 10, "content": "## 🛠️ Painel do Desenvolvedor" },
-                { "type": 10, "content": "> Ferramentas para gerenciamento global do bot." },
+                { "type": 10, "content": `> Gerenciando **${stats.totalMembers}** membros em **${stats.totalGuilds}** servidores.` },
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 1, "components": [

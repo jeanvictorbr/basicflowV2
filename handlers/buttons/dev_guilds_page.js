@@ -14,40 +14,41 @@ module.exports = {
         
         const guilds = Array.from(interaction.client.guilds.cache.values());
 
-        // CORREÇÃO: A lógica completa de busca de dados foi adicionada aqui,
-        // garantindo que as informações estejam sempre corretas ao mudar de página.
-        const settingsResult = await db.query('SELECT guild_id, premium_expires_at, ponto_status, registros_status, tickets_category, guardian_ai_enabled FROM guild_settings');
-        const featuresResult = await db.query('SELECT guild_id, feature_key FROM guild_features WHERE expires_at > NOW()');
-
+        const settingsResult = await db.query('SELECT guild_id, ponto_status, registros_status, tickets_category, guardian_ai_enabled, roletags_enabled FROM guild_settings');
+        
         const ownerPromises = guilds.map(g => g.fetchOwner().then(owner => ({ id: g.id, ownerTag: owner.user.tag })).catch(() => ({ id: g.id, ownerTag: 'N/A' })));
         const owners = await Promise.all(ownerPromises);
         const ownerMap = new Map(owners.map(o => [o.id, o.ownerTag]));
 
-        const allGuildData = guilds.map(guild => {
+        const allGuildData = [];
+        for (const guild of guilds) {
             const setting = settingsResult.rows.find(s => s.guild_id === guild.id) || {};
-            const enabled_features = featuresResult.rows
-                .filter(feature => feature.guild_id === guild.id)
-                .map(feature => feature.feature_key)
-                .join(',');
             
-            return {
+            // BUSCA A DATA DE EXPIRAÇÃO MAIS RECENTE DA TABELA guild_features
+            const expiryResult = await db.query('SELECT MAX(expires_at) as expires_at FROM guild_features WHERE guild_id = $1 AND expires_at > NOW()', [guild.id]);
+
+            allGuildData.push({
                 guild_id: guild.id,
                 name: guild.name,
                 memberCount: guild.memberCount,
                 joinedAt: guild.joinedAt,
                 ownerTag: ownerMap.get(guild.id),
-                premium_expires_at: setting.premium_expires_at,
-                enabled_features,
+                premium_expires_at: expiryResult.rows[0].expires_at, // Usa a data correta
                 ponto_status: setting.ponto_status,
                 registros_status: setting.registros_status,
                 tickets_configurado: !!setting.tickets_category,
-                guardian_ai_enabled: setting.guardian_ai_enabled
-            };
-        });
+                guardian_ai_enabled: setting.guardian_ai_enabled,
+                roletags_enabled: setting.roletags_enabled
+            });
+        }
         
-        // A chamada para a UI agora está correta, passando os dados processados e o número da página.
+        const totals = {
+            totalGuilds: interaction.client.guilds.cache.size,
+            totalMembers: interaction.client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)
+        };
+        
         await interaction.editReply({
-            components: generateDevGuildsMenu(allGuildData, page),
+            components: generateDevGuildsMenu(allGuildData, page, totals),
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
     }
