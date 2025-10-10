@@ -1,7 +1,7 @@
 // Substitua o conteúdo em: ui/devPanel/devGuildsMenu.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-const ITEMS_PER_PAGE = 3; 
+const ITEMS_PER_PAGE = 2; // Reduzido para caber mais informações
 
 module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals) {
     const totalPages = Math.ceil(allGuildData.length / ITEMS_PER_PAGE);
@@ -18,13 +18,17 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals) 
             if (guild.guardian_ai_enabled) activeModules.push('Guardian');
             if (guild.roletags_enabled) activeModules.push('RoleTags');
             const modulesText = activeModules.length > 0 ? activeModules.join(', ') : 'Nenhum';
+            
+            const cost = guild.total_cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
             return `> 🏢 **${guild.name}** (\`${guild.guild_id}\`)\n` +
                    `> ├─ 👑 **Dono:** \`${guild.ownerTag}\`\n` +
                    `> ├─ 👥 **Membros:** ${guild.memberCount}\n` +
                    `> ├─ 🗓️ **Bot Desde:** ${new Date(guild.joinedAt).toLocaleDateString('pt-BR')}\n` +
                    `> ├─ ✨ **Licença Expira:** ${expiresAt}\n` +
-                   `> └─ ⚙️ **Módulos Ativos:** \`${modulesText}\``;
+                   `> ├─ ⚙️ **Módulos Ativos:** \`${modulesText}\`\n` +
+                   `> ├─ 🤖 **Uso de IA:** \`${guild.total_tokens_used}\` tokens (${cost})\n` +
+                   `> └─ 📈 **Top Uso IA:** \`${guild.top_feature}\``;
         }).join('\n\n')
         : '> O bot não parece estar em nenhum servidor.';
 
