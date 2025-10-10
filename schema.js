@@ -279,6 +279,17 @@ const schema = {
         action_log: { type: 'TEXT', default: '' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
+        ai_usage_logs: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        feature_name: { type: 'VARCHAR(255)', notNull: true },
+        prompt_tokens: { type: 'INTEGER', default: 0 },
+        completion_tokens: { type: 'INTEGER', default: 0 },
+        total_tokens: { type: 'INTEGER', default: 0 },
+        cost: { type: 'NUMERIC(10, 8)', default: 0 }, // NUMERIC para precisão de custo
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
     // NOVA TABELA PARA RANKING
     stop_ranking: {
         id: { type: 'SERIAL', primaryKey: true },
