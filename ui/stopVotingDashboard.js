@@ -1,9 +1,10 @@
-// Crie este arquivo em: ui/stopVotingDashboard.js
+// Substitua o conteúdo em: ui/stopVotingDashboard.js
 const V2_FLAG = 1 << 15;
 
 module.exports = function generateStopVoting(game, submissions = []) {
     const { letter, stopper_id } = game;
 
+    // Agrupa as submissões por categoria
     const results = submissions.reduce((acc, sub) => {
         if (!acc[sub.category]) {
             acc[sub.category] = [];
@@ -12,24 +13,25 @@ module.exports = function generateStopVoting(game, submissions = []) {
         return acc;
     }, {});
 
+    // --- LÓGICA DE GERAÇÃO DE COMPONENTES CORRIGIDA ---
     const categoryFields = Object.keys(results).flatMap(category => {
-        const submissionFields = results[category].map(sub => ({
-            type: 9,
-            accessory: {
-                type: 1,
+        // Para cada categoria, primeiro o título
+        const components = [{ type: 10, content: `### Categoria: ${category}` }];
+        
+        // Depois, para cada resposta, uma linha de texto e uma linha de botões
+        results[category].forEach(sub => {
+            components.push({ type: 10, content: `> **<@${sub.user_id}>:** \`${sub.word}\`` });
+            components.push({
+                type: 1, // Action Row
                 components: [
                     { type: 2, style: 3, label: "Válido", emoji: { name: "👍" }, custom_id: `stop_vote_${sub.id}_true` },
                     { type: 2, style: 4, label: "Inválido", emoji: { name: "👎" }, custom_id: `stop_vote_${sub.id}_false` }
                 ]
-            },
-            components: [{ type: 10, content: `> **<@${sub.user_id}>:** \`${sub.word}\`` }]
-        }));
+            });
+        });
 
-        return [
-            { type: 10, content: `### Categoria: ${category}` },
-            ...submissionFields,
-            { type: 14, divider: true, spacing: 1 },
-        ];
+        components.push({ type: 14, divider: true, spacing: 1 });
+        return components;
     });
 
     return {
