@@ -15,6 +15,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
+client.hangmanTimeouts = new Map();
 
 // --- Carregamento de Comandos e Handlers ---
 client.commands = new Collection();
@@ -142,7 +143,8 @@ client.on(Events.MessageCreate, async (message) => {
             
             await message.channel.sendTyping();
 
-            const channelMessages = await message.channel.messages.fetch({ limit: 20 });
+            // ALTERAÇÃO APLICADA AQUI
+            const channelMessages = await message.channel.messages.fetch({ limit: 6 }); // De 20 para 10
             const oneHourAgo = Date.now() - (60 * 60 * 1000);
             const chatHistory = [];
 
