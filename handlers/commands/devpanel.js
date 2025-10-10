@@ -7,8 +7,9 @@ const EPHEMERAL_FLAG = 1 << 6;
 module.exports = {
     customId: 'devpanel',
     async execute(interaction) {
+        // --- VERIFICAÇÃO DE SEGURANÇA RESTAURADA ---
         if (interaction.user.id !== process.env.DEV_USER_ID) {
-            return interaction.reply({ content: 'Você não tem permissão para usar este comando.', ephemeral: true });
+            return interaction.reply({ content: '❌ Você não tem permissão para usar este comando.', ephemeral: true });
         }
         
         // Garante que a linha de status exista
