@@ -1,21 +1,30 @@
-// ui/devPanel/devGuildsMenu.js
+// Substitua o conteúdo em: ui/devPanel/devGuildsMenu.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 3; // Reduzido para caber mais informações sem poluir
 
-module.exports = function generateDevGuildsMenu(guilds, allSettings, page = 0) {
-    const totalPages = Math.ceil(guilds.length / ITEMS_PER_PAGE);
-    const paginatedGuilds = guilds.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
+module.exports = function generateDevGuildsMenu(allGuildData, page = 0) {
+    const totalPages = Math.ceil(allGuildData.length / ITEMS_PER_PAGE);
+    const paginatedGuilds = allGuildData.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
     const guildList = paginatedGuilds.length > 0
         ? paginatedGuilds.map(guild => {
-            const settings = allSettings.find(s => s.guild_id === guild.id);
-            const features = settings?.enabled_features ? `\`${settings.enabled_features}\`` : '`Nenhuma`';
-            const expiresAt = settings?.premium_expires_at ? `<t:${Math.floor(new Date(settings.premium_expires_at).getTime() / 1000)}:R>` : '`N/A`';
+            const expiresAt = guild.premium_expires_at ? `<t:${Math.floor(new Date(guild.premium_expires_at).getTime() / 1000)}:R>` : '`Inativa`';
             
-            return `> 🏢 **${guild.name}** (\`${guild.id}\`)\n` +
-                   `> └─ **Features:** ${features}\n` +
-                   `> └─ **Expira:** ${expiresAt}`;
+            // Lógica para o resumo de módulos
+            const activeModules = [];
+            if (guild.tickets_configurado) activeModules.push('Tickets');
+            if (guild.ponto_status) activeModules.push('Ponto');
+            if (guild.registros_status) activeModules.push('Registros');
+            if (guild.guardian_ai_enabled) activeModules.push('Guardian');
+            const modulesText = activeModules.length > 0 ? activeModules.join(', ') : 'Nenhum';
+
+            return `> 🏢 **${guild.name}** (\`${guild.guild_id}\`)\n` +
+                   `> ├─ 👑 **Dono:** \`${guild.ownerTag}\`\n` +
+                   `> ├─ 👥 **Membros:** ${guild.memberCount}\n` +
+                   `> ├─ 🗓️ **Bot Desde:** ${new Date(guild.joinedAt).toLocaleDateString('pt-BR')}\n` +
+                   `> ├─ ✨ **Licença Expira:** ${expiresAt}\n` +
+                   `> └─ ⚙️ **Módulos Ativos:** \`${modulesText}\``;
         }).join('\n\n')
         : '> O bot não parece estar em nenhum servidor.';
 
@@ -35,7 +44,7 @@ module.exports = function generateDevGuildsMenu(guilds, allSettings, page = 0) {
                 { "type": 14, "divider": true, "spacing": 2 },
                 totalPages > 1 ? { "type": 1, "components": paginationRow.toJSON().components } : null,
                 { "type": 1, "components": [
-                    { "type": 2, "style": 1, "label": "Gerenciar Guilda", "emoji": { "name": "⚙️" }, "custom_id": "dev_guild_manage_select", "disabled": guilds.length === 0 },
+                    { "type": 2, "style": 1, "label": "Gerenciar Guilda", "emoji": { "name": "⚙️" }, "custom_id": "dev_guild_manage_select", "disabled": allGuildData.length === 0 },
                     { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }
                 ]}
             ].filter(Boolean)
