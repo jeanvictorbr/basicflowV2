@@ -25,8 +25,8 @@ module.exports = function generateMinigamesHub() {
                     {
                         type: 1,
                         components: [
-                            { type: 2, style: 3, label: "Iniciar Novo Jogo", emoji: { name: "▶️" }, custom_id: "stop_start_from_hub" },
-                            { type: 2, style: 1, label: "Gerenciar Categorias", emoji: { name: "⚙️" }, custom_id: "stop_manage_categories" },
+                            { type: 2, style: 3, label: "Iniciar Novo Jogo", emoji: { name: "▶️" }, custom_id: "stop_start_from_hub", disabled: "true" },
+                            { type: 2, style: 1, label: "Gerenciar Categorias", emoji: { name: "⚙️" }, custom_id: "stop_manage_categories", disabled: "true"},
                             { type: 2, style: 2, label: "Ver Ranking", emoji: { name: "🏆" }, custom_id: "stop_show_ranking" }
                         ]
                     },
