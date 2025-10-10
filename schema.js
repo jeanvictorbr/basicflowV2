@@ -17,7 +17,7 @@ const schema = {
         registros_canal_aprovacoes: { type: 'VARCHAR(255)' },
         registros_cargo_aprovado: { type: 'VARCHAR(255)' },
         registros_canal_logs: { type: 'VARCHAR(255)' },
-        ai_services_disabled_by_dev: { type: 'BOOLEAN', default: false },
+        ai_services_disabled_by_dev: { type: 'BOOLEAN', default: false }, // <-- ADICIONE ESTA LINHA
         registros_tag_aprovado: { type: 'VARCHAR(255)' },
         registros_status: { type: 'BOOLEAN', default: true },
         registros_canal_vitrine: { type: 'VARCHAR(255)' },

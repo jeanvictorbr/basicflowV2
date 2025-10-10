@@ -2,10 +2,10 @@
 const FEATURES = require('../../config/features.js');
 
 module.exports = function generateDevGuildManageMenu(guild, settings) {
-    const features = settings?.enabled_features?.split(',').filter(Boolean) || [];
+    const activeFeatures = settings?.enabled_features?.split(',').filter(Boolean) || [];
     const expiresAt = settings?.premium_expires_at ? `<t:${Math.floor(new Date(settings.premium_expires_at).getTime() / 1000)}:f>` : '`Licença Inativa`';
 
-    const featureList = FEATURES.map(f => `> ${features.includes(f.value) ? '✅' : '❌'} ${f.label} (\`${f.value}\`)`).join('\n');
+    const featureList = FEATURES.map(f => `> ${activeFeatures.includes(f.value) ? '✅' : '❌'} ${f.label} (\`${f.value}\`)`).join('\n');
 
     // Lógica para o novo botão de toggle
     const isAiDisabledByDev = settings?.ai_services_disabled_by_dev;

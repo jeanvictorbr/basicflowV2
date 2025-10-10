@@ -19,7 +19,13 @@ module.exports = {
         
         // Recarrega as informações e o menu para refletir a mudança
         const guild = interaction.client.guilds.cache.get(guildId);
-        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId])).rows[0];
+        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId])).rows[0] || {};
+        
+        // Busca os dados corrigidos da licença para remontar o menu
+        const featuresResult = await db.query('SELECT feature_key FROM guild_features WHERE guild_id = $1 AND expires_at > NOW()', [guildId]);
+        const expiryResult = await db.query('SELECT MAX(expires_at) as expires_at FROM guild_features WHERE guild_id = $1 AND expires_at > NOW()', [guildId]);
+        settings.enabled_features = featuresResult.rows.map(r => r.feature_key).join(',');
+        settings.premium_expires_at = expiryResult.rows[0].expires_at;
 
         await interaction.editReply({
             components: generateDevGuildManageMenu(guild, settings),

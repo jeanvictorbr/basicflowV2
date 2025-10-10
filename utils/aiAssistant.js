@@ -2,12 +2,11 @@
 const { OpenAI } = require('openai');
 const { searchKnowledge } = require('./aiKnowledgeBase.js');
 const db = require('../database.js');
-const { logAiUsage } = require('./webhookLogger.js'); // Importa o novo logger
+const { logAiUsage } = require('./webhookLogger.js');
 require('dotenv').config();
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Preços por 1 milhão de tokens (GPT-3.5-Turbo)
 const INPUT_PRICE_PER_MILLION = 0.50;
 const OUTPUT_PRICE_PER_MILLION = 1.50;
 
@@ -17,11 +16,13 @@ async function getAIResponse(options) {
     const { guild, user, featureName, chatHistory, userMessage, customPrompt, useBaseKnowledge } = options;
 
     try {
+        // Verificação 1: Manutenção global da IA pelo DEV
         const botStatusResult = await db.query("SELECT ai_services_enabled FROM bot_status WHERE status_key = 'main'");
         if (!botStatusResult.rows[0]?.ai_services_enabled) {
             return "Os serviços de IA estão temporariamente em manutenção pelo desenvolvedor. Por favor, tente novamente mais tarde.";
         }
 
+        // Verificação 2: IA desativada para esta guilda específica pelo DEV
         const guildSettingsResult = await db.query("SELECT ai_services_disabled_by_dev FROM guild_settings WHERE guild_id = $1", [guild.id]);
         if (guildSettingsResult.rows[0]?.ai_services_disabled_by_dev) {
             return "Os serviços de IA foram desativados para este servidor pelo desenvolvedor.";
@@ -54,7 +55,6 @@ async function getAIResponse(options) {
 
         return response.trim();
         
-
     } catch (error) {
         if (error.response && error.response.status === 429) {
             console.error("[AI Assistant] Erro: A conta da OpenAI não tem créditos suficientes.");
