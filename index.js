@@ -98,25 +98,21 @@ client.once(Events.ClientReady, async () => {
 
 // --- Evento de Interações (COM VERIFICAÇÃO GLOBAL DE MANUTENÇÃO) ---
 client.on(Events.InteractionCreate, async interaction => {
-    // --- VERIFICAÇÃO DE MANUTENÇÃO GLOBAL ---
-    try {
-        // Garante que a linha de status exista antes de tentar ler
-        await db.query("INSERT INTO bot_status (status_key) VALUES ('main') ON CONFLICT (status_key) DO NOTHING");
+        // --- VERIFICAÇÃO DE MANUTENÇÃO GLOBAL ---
         const botStatus = (await db.query("SELECT bot_enabled, maintenance_message_global FROM bot_status WHERE status_key = 'main'")).rows[0];
-        
-        // Se o bot estiver desativado E a interação não for do dev
         if (!botStatus?.bot_enabled && interaction.user.id !== process.env.DEV_USER_ID) {
-            const defaultMsg = "O bot está atualmente em manutenção para receber novas atualizações. Por favor, tente novamente mais tarde.";
-            return interaction.reply({
-                content: botStatus.maintenance_message_global || defaultMsg,
-                ephemeral: true
-            }).catch(() => {});
+            const defaultMsg = "O bot está em manutenção. Por favor, tente novamente mais tarde.";
+            return interaction.reply({ content: botStatus.maintenance_message_global || defaultMsg, ephemeral: true }).catch(() => {});
         }
-        
-    } catch(e) { 
-        console.error("[MAINTENANCE CHECK] Falha ao verificar status do bot no DB:", e);
-    }
-    // --- FIM DA VERIFICAÇÃO ---
+
+        // --- VERIFICAÇÃO DE MANUTENÇÃO POR GUILDA ---
+        if (interaction.guild) {
+            const guildSettings = (await db.query("SELECT bot_enabled_in_guild, maintenance_message_guild FROM guild_settings WHERE guild_id = $1", [interaction.guild.id])).rows[0];
+            if (guildSettings && guildSettings.bot_enabled_in_guild === false && interaction.user.id !== process.env.DEV_USER_ID) {
+                const defaultMsg = "O bot está temporariamente em manutenção neste servidor. Agradecemos a compreensão.";
+                return interaction.reply({ content: guildSettings.maintenance_message_guild || defaultMsg, ephemeral: true }).catch(() => {});
+            }
+        }
 
     let handler;
     let customId;
@@ -164,6 +160,16 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.reply({ content: '🔴 Houve um erro interno ao processar sua solicitação. A equipe de desenvolvimento foi notificada.', ephemeral: true }).catch(console.error);
         }
     }
+            // Se a interação não for de um dev, mas a IA estiver desativada, bloqueia apenas handlers de IA
+        if (interaction.user.id !== process.env.DEV_USER_ID) {
+            const isAiCommand = customId.includes('_ai') || customId.includes('debugai');
+            const aiStatus = (await db.query("SELECT ai_services_enabled, maintenance_message FROM bot_status WHERE status_key = 'main'")).rows[0];
+            if (isAiCommand && !aiStatus?.ai_services_enabled) {
+                const defaultMsg = "Os serviços de IA estão em manutenção. Tente novamente mais tarde.";
+                return interaction.reply({ content: aiStatus.maintenance_message || defaultMsg, ephemeral: true }).catch(()=>{});
+            }
+        }
+
 });
 
 // --- SERVIDOR WEBHOOK MERCADO PAGO ---
