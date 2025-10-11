@@ -7,7 +7,9 @@ const EPHEMERAL_FLAG = 1 << 6;
 module.exports = {
     customId: 'dev_guilds_sort_',
     async execute(interaction) {
-        // A interação já é deferida pela função que chama esta
+        // CORREÇÃO: Adicionado o deferUpdate()
+        await interaction.deferUpdate();
+        
         const sortKey = interaction.customId.split('_')[3];
         
         const { allGuildData, totals } = await getAndPrepareGuildData(interaction.client, sortKey);

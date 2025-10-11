@@ -9,9 +9,23 @@ module.exports = {
         const guildId = interaction.customId.split('_')[4];
         const guild = interaction.client.guilds.cache.get(guildId);
 
+        // CORREÇÃO: Adicionada verificação para o caso do bot não estar mais na guild
+        if (!guild) {
+            return interaction.update({
+                components: [
+                    { type: 17, components: [
+                        { type: 10, content: `## ⚠️ Erro` },
+                        { type: 10, content: `> Não foi possível encontrar a guilda com ID \`${guildId}\`. O bot pode não estar mais nela.` }
+                    ]},
+                    new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`dev_manage_guilds`).setLabel('Voltar').setStyle(ButtonStyle.Secondary))
+                ],
+                flags: V2_FLAG | EPHEMERAL_FLAG
+            });
+        }
+
         const confirmationButtons = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`dev_guild_reset_settings_confirm_${guildId}`).setLabel('Sim, Resetar Configurações').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId(`select_dev_manage_guild`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId(`dev_manage_guilds`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary)
         );
 
         await interaction.update({
