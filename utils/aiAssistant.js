@@ -16,13 +16,16 @@ async function getAIResponse(options) {
     const { guild, user, featureName, chatHistory, userMessage, customPrompt, useBaseKnowledge } = options;
 
     try {
-        // Verificação 1: Manutenção global da IA pelo DEV
-        const botStatusResult = await db.query("SELECT ai_services_enabled FROM bot_status WHERE status_key = 'main'");
-        if (!botStatusResult.rows[0]?.ai_services_enabled) {
-            return "Os serviços de IA estão temporariamente em manutenção pelo desenvolvedor. Por favor, tente novamente mais tarde.";
+        // --- LÓGICA DE MANUTENÇÃO ATUALIZADA ---
+        const botStatusResult = await db.query("SELECT ai_services_enabled, maintenance_message FROM bot_status WHERE status_key = 'main'");
+        const botStatus = botStatusResult.rows[0];
+        
+        if (!botStatus?.ai_services_enabled) {
+            const defaultMaintenanceMsg = "Os serviços de IA estão temporariamente em manutenção pelo desenvolvedor. Por favor, tente novamente mais tarde.";
+            return botStatus.maintenance_message || defaultMaintenanceMsg;
         }
+        // --- FIM DA ATUALIZAÇÃO ---
 
-        // Verificação 2: IA desativada para esta guilda específica pelo DEV
         const guildSettingsResult = await db.query("SELECT ai_services_disabled_by_dev FROM guild_settings WHERE guild_id = $1", [guild.id]);
         if (guildSettingsResult.rows[0]?.ai_services_disabled_by_dev) {
             return "Os serviços de IA foram desativados para este servidor pelo desenvolvedor.";

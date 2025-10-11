@@ -11,7 +11,14 @@ module.exports = {
         
         const guilds = Array.from(interaction.client.guilds.cache.values());
 
-        const settingsResult = await db.query('SELECT guild_id, ponto_status, registros_status, tickets_category, guardian_ai_enabled, roletags_enabled FROM guild_settings');
+        // Query principal para buscar todas as configurações relevantes de uma só vez
+        const query = `
+            SELECT guild_id, ponto_status, registros_status, tickets_category, 
+                   guardian_ai_enabled, roletags_enabled, suggestions_enabled,
+                   store_enabled
+            FROM guild_settings
+        `;
+        const settingsResult = await db.query(query);
         
         const ownerPromises = guilds.map(g => g.fetchOwner().then(owner => ({ id: g.id, ownerTag: owner.user.tag })).catch(() => ({ id: g.id, ownerTag: 'N/A' })));
         const owners = await Promise.all(ownerPromises);
@@ -21,26 +28,16 @@ module.exports = {
         for (const guild of guilds) {
             const setting = settingsResult.rows.find(s => s.guild_id === guild.id) || {};
             
-            // Busca a data de expiração
+            // Busca de dados premium e de uso de IA
             const expiryResult = await db.query('SELECT MAX(expires_at) as expires_at FROM guild_features WHERE guild_id = $1 AND expires_at > NOW()', [guild.id]);
+            const featuresResult = await db.query('SELECT feature_key FROM guild_features WHERE guild_id = $1 AND expires_at > NOW()', [guild.id]);
+            const aiStats = (await db.query(`SELECT SUM(total_tokens) AS total_tokens_used, SUM(cost) AS total_cost FROM ai_usage_logs WHERE guild_id = $1`, [guild.id])).rows[0];
+            const topFeature = (await db.query(`SELECT feature_name FROM ai_usage_logs WHERE guild_id = $1 GROUP BY feature_name ORDER BY SUM(total_tokens) DESC LIMIT 1`, [guild.id])).rows[0];
             
-            // Busca estatísticas de IA
-            const aiStats = (await db.query(`
-                SELECT
-                    SUM(total_tokens) AS total_tokens_used,
-                    SUM(cost) AS total_cost
-                FROM ai_usage_logs
-                WHERE guild_id = $1
-            `, [guild.id])).rows[0];
-
-            const topFeature = (await db.query(`
-                SELECT feature_name
-                FROM ai_usage_logs
-                WHERE guild_id = $1
-                GROUP BY feature_name
-                ORDER BY SUM(total_tokens) DESC
-                LIMIT 1
-            `, [guild.id])).rows[0];
+            // NOVAS QUERIES DE ATIVIDADE (últimos 30 dias)
+            const tickets_30d = (await db.query(`SELECT COUNT(*) FROM tickets WHERE guild_id = $1 AND created_at >= NOW() - INTERVAL '30 days'`, [guild.id])).rows[0].count;
+            const sales_30d = (await db.query(`SELECT COUNT(*) FROM store_sales_log WHERE guild_id = $1 AND status = 'completed' AND created_at >= NOW() - INTERVAL '30 days'`, [guild.id])).rows[0].count;
+            const suggestions_30d = (await db.query(`SELECT COUNT(*) FROM suggestions WHERE guild_id = $1 AND created_at >= NOW() - INTERVAL '30 days'`, [guild.id])).rows[0].count;
 
             allGuildData.push({
                 guild_id: guild.id,
@@ -48,12 +45,21 @@ module.exports = {
                 memberCount: guild.memberCount,
                 joinedAt: guild.joinedAt,
                 ownerTag: ownerMap.get(guild.id),
-                premium_expires_at: expiryResult.rows[0].expires_at,
+                premium_expires_at: expiryResult.rows[0]?.expires_at,
+                // Passando todos os status para a UI
+                tickets_configurado: !!setting.tickets_category,
                 ponto_status: setting.ponto_status,
                 registros_status: setting.registros_status,
-                tickets_configurado: !!setting.tickets_category,
                 guardian_ai_enabled: setting.guardian_ai_enabled,
                 roletags_enabled: setting.roletags_enabled,
+                suggestions_enabled: setting.suggestions_enabled,
+                store_enabled: setting.store_enabled,
+                store_premium: featuresResult.rows.some(r => r.feature_key === 'STORE_AUTOMATION' || r.feature_key === 'CUSTOM_VISUALS'), // Verifica se tem premium da loja
+                // Passando as novas métricas para a UI
+                activity_tickets: tickets_30d,
+                activity_sales: sales_30d,
+                activity_suggestions: suggestions_30d,
+                // Dados de IA
                 total_tokens_used: parseInt(aiStats.total_tokens_used) || 0,
                 total_cost: parseFloat(aiStats.total_cost) || 0.0,
                 top_feature: topFeature?.feature_name || 'N/A',

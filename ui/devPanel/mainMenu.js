@@ -21,7 +21,9 @@ module.exports = function generateDevMainMenu(botStatus, stats) {
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 1, "components": [
-                        { "type": 2, "style": aiStatusButton.style, "label": aiStatusButton.label, "emoji": { "name": aiStatusButton.emoji }, "custom_id": "dev_toggle_ai" }
+                        { "type": 2, "style": aiStatusButton.style, "label": aiStatusButton.label, "emoji": { "name": aiStatusButton.emoji }, "custom_id": "dev_toggle_ai" },
+                        // NOVO BOTÃO ADICIONADO AQUI
+                        { "type": 2, "style": 2, "label": "Definir Mensagem", "emoji": { "name": "📝" }, "custom_id": "dev_set_maintenance_message" }
                     ]
                 }
             ]

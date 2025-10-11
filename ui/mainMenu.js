@@ -6,13 +6,11 @@ const FEATURES = require('../config/features.js');
 module.exports = async function generateMainMenu(interaction, page = 0) {
     const FEATURES_MAP = new Map(FEATURES.map(f => [f.value, f.label]));
 
-    // --- LÓGICA DO AVISO DE MANUTENÇÃO ---
     const botStatusResult = await db.query("SELECT * FROM bot_status WHERE status_key = 'main'");
     const botStatus = botStatusResult.rows[0];
     const aiMaintenanceNotice = (botStatus && !botStatus.ai_services_enabled)
         ? { "type": 10, "content": "⚠️ **Aviso do Desenvolvedor:** Os serviços de IA (Guardian, Resumos, Chat) estão temporariamente em manutenção e não funcionarão." }
         : null;
-    // --- FIM DA LÓGICA ---
 
     const activeFeaturesResult = await db.query(
         "SELECT feature_key, expires_at, activated_by_key FROM guild_features WHERE guild_id = $1 AND expires_at > NOW() ORDER BY expires_at ASC",
@@ -94,11 +92,22 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             components: [{ type: 10, content: "⏰ Bate-Ponto" }, { type: 10, content: "Configure todo o sistema de **bate-ponto**." }]
         },
         { type: 14, divider: true, spacing: 2 },
+        // --- NOVO MÓDULO DE LOJA ADICIONADO AQUI ---
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🏪" }, custom_id: "open_store_menu" },
+            components: [{ type: 10, content: "🏪 Loja (StoreFlow)" }, { type: 10, content: "Gerencie os produtos e vendas da sua loja." }]
+        },
+        { type: 14, divider: true, spacing: 2 },
+        // --- FIM DA ADIÇÃO ---
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "💡" }, custom_id: "open_suggestions_menu" },
+            components: [{ type: 10, content: "💡 Sugestões" }, { type: 10, content: "Gerencie as **sugestões da comunidade**." }]
+        },
+        { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !hasGuardianAccess },
             components: [{ type: 10, content: "🛡️ Guardian AI (Premium)" }, { type: 10, content: "Moderação proativa para **prevenir conflitos**." }]
         },
-        // NOVO MÓDULO DE MINI-GAMES ADICIONADO AQUI
         { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🎲" }, custom_id: "open_minigames_hub" },
@@ -109,7 +118,6 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_roletags_menu" },
             components: [{ type: 10, content: "🏷️ Tags por Cargo (RoleTags)" }, { type: 10, content: "Aplique tags aos apelidos baseadas em cargos." }]
         },
-
     ];
     
     const ITEMS_PER_PAGE = 4; 
@@ -131,28 +139,28 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
 
     return [
         {
-            type: 17, accent_color: 42751,
-            components: [
-                { type: 10, content: `## Hub de Configurações - ${interaction.guild.name}` },
+            "type": 17, "accent_color": 42751,
+            "components": [
+                { type: 10, "content": `## Hub de Configurações - ${interaction.guild.name}` },
                 aiMaintenanceNotice,
                 aiMaintenanceNotice ? { "type": 14, "divider": true, "spacing": 1 } : null,
-                { type: 10, content: premiumStatusText },
-                { type: 14, divider: true, "spacing": 2 },
+                { type: 10, "content": premiumStatusText },
+                { type: 14, "divider": true, "spacing": 2 },
                 
                 ...paginatedModules,
                 
-                { type: 14, divider: true, "spacing": 2 },
+                { type: 14, "divider": true, "spacing": 2 },
                 totalPages > 1 ? paginationButtons : null,
-                { type: 14, divider: true, "spacing": 1 },
+                { type: 14, "divider": true, "spacing": 1 },
                 {
-                    type: 1,
-                    components: [
+                    "type": 1,
+                    "components": [
                         { "type": 2, "style": 3, "label": "Ativar Key", "custom_id": "main_ativar_key" },
                         { "type": 2, "style": 1, "label": "Estatísticas", "emoji": { "name": "📊" }, "disabled": !hasStatsAccess, "custom_id": "main_show_stats" }
                     ]
                 },
                 { type: 14, "divider": true, "spacing": 1 },
-                { type: 10, content: " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
+                { type: 10, "content": " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
             ].filter(Boolean)
         }
     ];

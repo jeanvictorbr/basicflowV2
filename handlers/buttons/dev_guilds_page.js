@@ -14,7 +14,8 @@ module.exports = {
         
         const guilds = Array.from(interaction.client.guilds.cache.values());
 
-        const settingsResult = await db.query('SELECT guild_id, ponto_status, registros_status, tickets_category, guardian_ai_enabled, roletags_enabled FROM guild_settings');
+        // Adicionado 'suggestions_enabled' à consulta
+        const settingsResult = await db.query('SELECT guild_id, ponto_status, registros_status, tickets_category, guardian_ai_enabled, roletags_enabled, suggestions_enabled FROM guild_settings');
         
         const ownerPromises = guilds.map(g => g.fetchOwner().then(owner => ({ id: g.id, ownerTag: owner.user.tag })).catch(() => ({ id: g.id, ownerTag: 'N/A' })));
         const owners = await Promise.all(ownerPromises);
@@ -26,22 +27,8 @@ module.exports = {
             
             const expiryResult = await db.query('SELECT MAX(expires_at) as expires_at FROM guild_features WHERE guild_id = $1 AND expires_at > NOW()', [guild.id]);
             
-            const aiStats = (await db.query(`
-                SELECT
-                    SUM(total_tokens) AS total_tokens_used,
-                    SUM(cost) AS total_cost
-                FROM ai_usage_logs
-                WHERE guild_id = $1
-            `, [guild.id])).rows[0];
-
-            const topFeature = (await db.query(`
-                SELECT feature_name
-                FROM ai_usage_logs
-                WHERE guild_id = $1
-                GROUP BY feature_name
-                ORDER BY SUM(total_tokens) DESC
-                LIMIT 1
-            `, [guild.id])).rows[0];
+            const aiStats = (await db.query(`SELECT SUM(total_tokens) AS total_tokens_used, SUM(cost) AS total_cost FROM ai_usage_logs WHERE guild_id = $1`, [guild.id])).rows[0];
+            const topFeature = (await db.query(`SELECT feature_name FROM ai_usage_logs WHERE guild_id = $1 GROUP BY feature_name ORDER BY SUM(total_tokens) DESC LIMIT 1`, [guild.id])).rows[0];
 
             allGuildData.push({
                 guild_id: guild.id,
@@ -55,6 +42,7 @@ module.exports = {
                 tickets_configurado: !!setting.tickets_category,
                 guardian_ai_enabled: setting.guardian_ai_enabled,
                 roletags_enabled: setting.roletags_enabled,
+                suggestions_enabled: setting.suggestions_enabled, // Passando o novo status
                 total_tokens_used: parseInt(aiStats.total_tokens_used) || 0,
                 total_cost: parseFloat(aiStats.total_cost) || 0.0,
                 top_feature: topFeature?.feature_name || 'N/A',

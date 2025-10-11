@@ -1,14 +1,19 @@
-// Substitua o conteúdo em: index.js
+// index.js
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
 const { checkExpiredPunishments } = require('./utils/punishmentMonitor.js');
 const { updateUserTag } = require('./utils/roleTagUpdater.js');
+const { checkInactiveCarts } = require('./utils/storeInactivityMonitor.js');
+const { checkExpiredRoles } = require('./utils/storeRoleMonitor.js');
 require('dotenv').config();
 const db = require('./database.js');
+const http = require('http');
+const { MercadoPagoConfig, Payment } = require('mercadopago');
+const { approvePurchase } = require('./utils/approvePurchase.js');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers] });
 
@@ -87,10 +92,32 @@ client.once(Events.ClientReady, async () => {
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
     setInterval(() => checkAndCloseInactiveTickets(client), 5 * 60 * 1000);
     setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
+    setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
+    setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
 });
 
-// --- Evento de Interações (COM TRATAMENTO DE ERRO GLOBAL) ---
+// --- Evento de Interações (COM VERIFICAÇÃO GLOBAL DE MANUTENÇÃO) ---
 client.on(Events.InteractionCreate, async interaction => {
+    // --- VERIFICAÇÃO DE MANUTENÇÃO GLOBAL ---
+    try {
+        // Garante que a linha de status exista antes de tentar ler
+        await db.query("INSERT INTO bot_status (status_key) VALUES ('main') ON CONFLICT (status_key) DO NOTHING");
+        const botStatus = (await db.query("SELECT bot_enabled, maintenance_message_global FROM bot_status WHERE status_key = 'main'")).rows[0];
+        
+        // Se o bot estiver desativado E a interação não for do dev
+        if (!botStatus?.bot_enabled && interaction.user.id !== process.env.DEV_USER_ID) {
+            const defaultMsg = "O bot está atualmente em manutenção para receber novas atualizações. Por favor, tente novamente mais tarde.";
+            return interaction.reply({
+                content: botStatus.maintenance_message_global || defaultMsg,
+                ephemeral: true
+            }).catch(() => {});
+        }
+        
+    } catch(e) { 
+        console.error("[MAINTENANCE CHECK] Falha ao verificar status do bot no DB:", e);
+    }
+    // --- FIM DA VERIFICAÇÃO ---
+
     let handler;
     let customId;
 
@@ -117,6 +144,16 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
         }
 
+        // Permite que o dev use o devpanel mesmo em modo de manutenção, com um aviso
+        const botStatus = (await db.query("SELECT bot_enabled FROM bot_status WHERE status_key = 'main'")).rows[0];
+        if (!botStatus?.bot_enabled && customId !== 'devpanel' && interaction.user.id === process.env.DEV_USER_ID) {
+             await interaction.reply({
+                content: "⚠️ **Aviso de Desenvolvedor:** O bot está em modo de manutenção global. Apenas você pode interagir com ele. Use `/devpanel` para reativá-lo.",
+                ephemeral: true
+            }).catch(() => {});
+            return; // Bloqueia a execução de outros comandos para o dev
+        }
+
         await handler(interaction, client);
 
     } catch (error) {
@@ -129,10 +166,107 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
+// --- SERVIDOR WEBHOOK MERCADO PAGO ---
+const server = http.createServer(async (req, res) => {
+    if (req.method === 'POST' && req.url === '/mp-webhook') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const notification = JSON.parse(body);
+                if (notification.type === 'payment') {
+                    const paymentId = notification.data.id;
+                    console.log(`[MP Webhook] Notificação de pagamento recebida: ${paymentId}`);
+
+                    const cartResult = await db.query('SELECT * FROM store_carts WHERE payment_id = $1', [paymentId]);
+                    const cart = cartResult.rows[0];
+                    if (!cart) {
+                        console.warn(`[MP Webhook] Pagamento ${paymentId} recebido, mas nenhum carrinho correspondente encontrado.`);
+                        res.writeHead(200);
+                        res.end('OK');
+                        return;
+                    }
+                    
+                    const settings = (await db.query('SELECT store_mp_token FROM guild_settings WHERE guild_id = $1', [cart.guild_id])).rows[0];
+                    if(!settings || !settings.store_mp_token) {
+                        console.error(`[MP Webhook] Token do MP não encontrado para a guild ${cart.guild_id}`);
+                        res.writeHead(500);
+                        res.end('Internal Server Error');
+                        return;
+                    }
+
+                    const mpClient = new MercadoPagoConfig({ accessToken: settings.store_mp_token });
+                    const payment = new Payment(mpClient);
+                    const paymentInfo = await payment.get({ id: paymentId });
+
+                    if (paymentInfo.status === 'approved') {
+                        console.log(`[MP Webhook] Pagamento ${paymentId} para o carrinho ${cart.channel_id} foi APROVADO. Iniciando entrega...`);
+                        await approvePurchase(client, cart.guild_id, cart.channel_id);
+                    }
+                }
+                res.writeHead(200);
+                res.end('OK');
+            } catch (error) {
+                console.error('[MP Webhook] Erro ao processar notificação:', error);
+                res.writeHead(500);
+                res.end('Internal Server Error');
+            }
+        });
+    } else {
+        res.writeHead(404);
+        res.end('Not Found');
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
+});
 
 // --- Evento de Novas Mensagens ---
 client.on(Events.MessageCreate, async (message) => {
-    if (!message.guild || message.author.bot) return;
+    if (message.author.bot) return;
+
+    // --- LÓGICA DE RELAY ATUALIZADA ---
+    try {
+        if (message.channel.type === ChannelType.DM) {
+            const activeCart = (await db.query("SELECT * FROM store_carts WHERE user_id = $1 AND (status = 'open' OR status = 'payment') AND thread_id IS NOT NULL", [message.author.id])).rows[0];
+            if (activeCart) {
+                const guild = await client.guilds.fetch(activeCart.guild_id);
+                const thread = await guild.channels.fetch(activeCart.thread_id).catch(() => null);
+                if (thread) {
+                    const relayEmbed = new EmbedBuilder()
+                        .setAuthor({ name: `Mensagem de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+                        .setColor('#5865F2')
+                        .setDescription(message.content || '*Nenhuma mensagem, possível anexo abaixo.*');
+                    
+                    const files = message.attachments.map(att => att.url);
+
+                    await thread.send({ embeds: [relayEmbed], files: files });
+                    await message.react('✅').catch(()=>{});
+                }
+            }
+        }
+        else if (message.channel.isThread()) {
+            const activeCart = (await db.query("SELECT * FROM store_carts WHERE thread_id = $1 AND claimed_by_staff_id = $2", [message.channel.id, message.author.id])).rows[0];
+            if (activeCart) {
+                const customer = await client.users.fetch(activeCart.user_id);
+                const relayEmbed = new EmbedBuilder()
+                    .setAuthor({ name: `Resposta de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+                    .setColor('#E67E22')
+                    .setDescription(message.content || '*Nenhuma mensagem, possível anexo abaixo.*');
+                
+                const files = message.attachments.map(att => att.url);
+
+                await customer.send({ embeds: [relayEmbed], files: files });
+                await message.react('✅').catch(()=>{});
+            }
+        }
+    } catch(e) {
+        console.error("[Store Relay] Erro ao retransmitir mensagem:", e);
+    }
+
+    if (!message.guild) return;
 
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
     
@@ -142,29 +276,15 @@ client.on(Events.MessageCreate, async (message) => {
             if (!userMessage) return;
             
             await message.channel.sendTyping();
-
-            // ALTERAÇÃO APLICADA AQUI
-            const channelMessages = await message.channel.messages.fetch({ limit: 3 }); // De 20 paara 10
-            const oneHourAgo = Date.now() - (60 * 60 * 1000);
+            const channelMessages = await message.channel.messages.fetch({ limit: 10 });
             const chatHistory = [];
-
-            for (const msg of channelMessages.values()) {
-                if (chatHistory.length >= 5 || msg.createdTimestamp < oneHourAgo) {
-                    break;
-                }
-                const isFromBot = msg.author.id === client.user.id;
-                const isMentionToBotFromUser = msg.author.id === message.author.id && msg.content.includes(client.user.id);
-
-                if (isFromBot || isMentionToBotFromUser) {
-                    chatHistory.push({
-                        role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                        content: msg.content.replace(/<@!?\d+>/g, '').trim(),
-                    });
-                }
-            }
+            channelMessages.reverse().forEach(msg => {
+                chatHistory.push({
+                    role: msg.author.id === client.user.id ? 'model' : 'user',
+                    parts: [{ text: msg.content.replace(/<@!?\d+>/g, '').trim() }]
+                });
+            });
             
-            chatHistory.reverse();
-
             const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
             
             const aiResponse = await getAIResponse({

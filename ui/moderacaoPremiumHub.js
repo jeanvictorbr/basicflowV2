@@ -1,4 +1,4 @@
-// ui/moderacaoPremiumHub.js
+// Substitua o conteúdo em: ui/moderacaoPremiumHub.js
 module.exports = function generateModeracaoPremiumHub(settings) {
     const monitorLogChannel = settings.mod_monitor_channel ? `<#${settings.mod_monitor_channel}>` : '`Não definido`';
     const monitorStatus = settings.mod_monitor_enabled ? `✅ Ativado (Logs em ${monitorLogChannel})` : '❌ Desativado';
@@ -11,6 +11,15 @@ module.exports = function generateModeracaoPremiumHub(settings) {
                 { "type": 10, "content": "## ✨ Hub Premium de Moderação" },
                 { "type": 10, "content": "> Ferramentas avançadas para otimizar e automatizar o trabalho da sua equipa." },
                 { "type": 14, "divider": true, "spacing": 1 },
+                // ================== NOVA FILEIRA DE BOTÕES ==================
+                {
+                    "type": 1, "components": [
+                        { "type": 2, "style": 1, "label": "Dossiê de Membros", "custom_id": "mod_dossie_manage",disabled: "true", "emoji": { "name": "📁" } },
+                        { "type": 2, "style": 1, "label": "Auditoria da Equipe", "custom_id": "mod_open_audit_panel", "emoji": { "name": "📊" } }
+                    ]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                // ==========================================================
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerir Punições", "custom_id": "mod_gerir_punicoes" },
                     "components": [{ "type": 10, "content": `**Punições Personalizadas com Cargos**\n> Crie punições com cargos associados.` }]
@@ -21,12 +30,10 @@ module.exports = function generateModeracaoPremiumHub(settings) {
                     "components": [{ "type": 10, "content": `**Dashboard de Banimentos**\n> Veja e gira todos os bans do servidor.` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
-                // ================== NOVA OPÇÃO ADICIONADA AQUI ==================
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Ver Lista", "custom_id": "mod_ver_punicoes_ativas", "emoji": { "name": "⏳" } },
                     "components": [{ "type": 10, "content": `**Punições Ativas**\n> Veja e revogue timeouts e bans temporários.` }]
                 },
-                // ==============================================================
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": toggleMonitorButton.style, "label": toggleMonitorButton.label, "custom_id": "mod_toggle_monitor" },

@@ -1,15 +1,16 @@
 // Substitua o conteúdo em: ui/devPanel/devGuildsMenu.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-const ITEMS_PER_PAGE = 2; // Reduzido para caber mais informações
+const ITEMS_PER_PAGE = 2;
 
-module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals) {
+module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals, sortKey = 'default') {
     const totalPages = Math.ceil(allGuildData.length / ITEMS_PER_PAGE);
     const paginatedGuilds = allGuildData.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
     const guildList = paginatedGuilds.length > 0
         ? paginatedGuilds.map(guild => {
             const expiresAt = guild.premium_expires_at ? `<t:${Math.floor(new Date(guild.premium_expires_at).getTime() / 1000)}:R>` : '`Inativa`';
+            const cost = guild.total_cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
             
             const activeModules = [];
             if (guild.tickets_configurado) activeModules.push('Tickets');
@@ -17,24 +18,33 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals) 
             if (guild.registros_status) activeModules.push('Registros');
             if (guild.guardian_ai_enabled) activeModules.push('Guardian');
             if (guild.roletags_enabled) activeModules.push('RoleTags');
-            const modulesText = activeModules.length > 0 ? activeModules.join(', ') : 'Nenhum';
+            if (guild.suggestions_enabled) activeModules.push('Sugestões');
+            if (guild.store_enabled) activeModules.push(`Loja ${guild.store_premium ? '✨' : ''}`);
+            const modulesText = activeModules.join(', ') || 'Nenhum';
             
-            const cost = guild.total_cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+            const activityText = `> 📊 **Atividade (30d):** 🎫 ${guild.activity_tickets} | 🛒 ${guild.activity_sales} | 💡 ${guild.activity_suggestions}`;
 
             return `> 🏢 **${guild.name}** (\`${guild.guild_id}\`)\n` +
                    `> ├─ 👑 **Dono:** \`${guild.ownerTag}\`\n` +
                    `> ├─ 👥 **Membros:** ${guild.memberCount}\n` +
-                   `> ├─ 🗓️ **Bot Desde:** ${new Date(guild.joinedAt).toLocaleDateString('pt-BR')}\n` +
                    `> ├─ ✨ **Licença Expira:** ${expiresAt}\n` +
                    `> ├─ ⚙️ **Módulos Ativos:** \`${modulesText}\`\n` +
-                   `> ├─ 🤖 **Uso de IA:** \`${guild.total_tokens_used}\` tokens (${cost})\n` +
-                   `> └─ 📈 **Top Uso IA:** \`${guild.top_feature}\``;
+                   `> ├─ ${activityText}\n` +
+                   `> └─ 🤖 **Uso de IA:** \`${guild.total_tokens_used}\` tokens (${cost}) - Top: \`${guild.top_feature}\``;
         }).join('\n\n')
         : '> O bot não parece estar em nenhum servidor.';
 
     const paginationRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`dev_guilds_page_${page - 1}`).setLabel('Anterior').setStyle(ButtonStyle.Primary).setDisabled(page === 0),
-        new ButtonBuilder().setCustomId(`dev_guilds_page_${page + 1}`).setLabel('Próxima').setStyle(ButtonStyle.Primary).setDisabled(page + 1 >= totalPages)
+        new ButtonBuilder().setCustomId(`dev_guilds_page_${page - 1}_${sortKey}`).setLabel('Anterior').setStyle(ButtonStyle.Primary).setDisabled(page === 0),
+        new ButtonBuilder().setCustomId(`dev_guilds_page_${page + 1}_${sortKey}`).setLabel('Próxima').setStyle(ButtonStyle.Primary).setDisabled(page + 1 >= totalPages)
+    );
+
+    // NOVOS BOTÕES DE ORDENAÇÃO
+    const sortRow = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`dev_guilds_sort_default`).setLabel('Padrão').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'default'),
+        new ButtonBuilder().setCustomId(`dev_guilds_sort_members`).setLabel('Membros').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'members'),
+        new ButtonBuilder().setCustomId(`dev_guilds_sort_ai_usage`).setLabel('Uso de IA').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'ai_usage'),
+        new ButtonBuilder().setCustomId(`dev_guilds_sort_expiry`).setLabel('Expiração').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'expiry')
     );
 
     return [
@@ -42,7 +52,9 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals) 
             "type": 17, "accent_color": 3447003,
             "components": [
                 { "type": 10, "content": "## 🏢 Gerenciador de Guildas" },
-                { "type": 10, "content": `> Visualizando ${allGuildData.length} de ${totals.totalGuilds} servidores. Página ${page + 1} de ${totalPages || 1}.` },
+                { "type": 10, "content": `> Ordenado por: **${sortKey}**. Visualizando ${paginatedGuilds.length} de ${allGuildData.length} servidores. Página ${page + 1} de ${totalPages || 1}.` },
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 1, "components": sortRow.toJSON().components },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": guildList },
                 { "type": 14, "divider": true, "spacing": 2 },
