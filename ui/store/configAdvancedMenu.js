@@ -5,7 +5,7 @@ module.exports = async function generateConfigAdvancedMenu(interaction, settings
     const inactivityMonitor = settings.store_inactivity_monitor_enabled ? '✅ Ativado' : '❌ Desativado';
     const toggleMonitorButton = settings.store_inactivity_monitor_enabled ? { label: 'Desativar', style: 4 } : { label: 'Ativar', style: 3 };
     const autoCloseHours = settings.store_auto_close_hours || 24;
-
+    const hasStorePremium = await hasFeature(interaction.guild.id, 'STORE_PREMIUM');
     const dmFlowEnabled = settings.store_premium_dm_flow_enabled;
     const dmFlowStatus = dmFlowEnabled ? '✅ Ativado (VIP)' : '❌ Desativado (Padrão)';
     const toggleDmFlowButton = dmFlowEnabled ? { label: 'Desativar', style: 4 } : { label: 'Ativar', style: 3 };
