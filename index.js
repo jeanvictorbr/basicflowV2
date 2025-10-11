@@ -273,7 +273,7 @@ client.on(Events.MessageCreate, async (message) => {
             if (!userMessage) return;
             
             await message.channel.sendTyping();
-            const channelMessages = await message.channel.messages.fetch({ limit: 10 });
+            const channelMessages = await message.channel.messages.fetch({ limit: 3 });
             
             // CORREÇÃO: Mapeia as mensagens para o formato correto e filtra as vazias.
             const chatHistory = channelMessages.map(msg => {
@@ -323,7 +323,7 @@ client.on(Events.MessageCreate, async (message) => {
 
         if (!settings.tickets_ai_assistant_enabled) return;
 
-        const history = await message.channel.messages.fetch({ limit: 15 });
+        const history = await message.channel.messages.fetch({ limit: 6 });
         let humanSupportHasReplied = false;
         for (const msg of history.values()) {
             if (msg.author.bot || msg.author.id === ticket.user_id) continue;
