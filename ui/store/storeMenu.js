@@ -22,7 +22,7 @@ module.exports = async function generateStoreMenu(interaction, settings) {
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                  {
-                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar Cupons", "custom_id": "store_manage_coupons", "disabled": !isEnabled },
+                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar Cupons", "custom_id": "store_manage_coupons", "disabled": false },
                     "components": [{ "type": 10, "content": `**Cupons de Desconto**\n> Crie cupons para suas promoções.` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },

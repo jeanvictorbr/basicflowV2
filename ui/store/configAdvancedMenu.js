@@ -21,7 +21,7 @@ module.exports = async function generateConfigAdvancedMenu(interaction, settings
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, 
-                    "accessory": { "type": 2, "style": 1, "label": "Configurar Token", "custom_id": "store_set_mp_token" },
+                    "accessory": { "type": 2, "style": 1, "label": "Configurar Token", "custom_id": "store_set_mp_token","disabled": !hasStorePremium, },
                     "components": [{ "type": 10, "content": `**Integração com Mercado Pago**\n> Status do Token: ${mpTokenStatus}` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
