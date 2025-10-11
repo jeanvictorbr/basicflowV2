@@ -16,7 +16,6 @@ async function getAIResponse(options) {
     const { guild, user, featureName, chatHistory, userMessage, customPrompt, useBaseKnowledge } = options;
 
     try {
-        // --- LÓGICA DE MANUTENÇÃO ATUALIZADA ---
         const botStatusResult = await db.query("SELECT ai_services_enabled, maintenance_message FROM bot_status WHERE status_key = 'main'");
         const botStatus = botStatusResult.rows[0];
         
@@ -24,7 +23,6 @@ async function getAIResponse(options) {
             const defaultMaintenanceMsg = "Os serviços de IA estão temporariamente em manutenção pelo desenvolvedor. Por favor, tente novamente mais tarde.";
             return botStatus.maintenance_message || defaultMaintenanceMsg;
         }
-        // --- FIM DA ATUALIZAÇÃO ---
 
         const guildSettingsResult = await db.query("SELECT ai_services_disabled_by_dev FROM guild_settings WHERE guild_id = $1", [guild.id]);
         if (guildSettingsResult.rows[0]?.ai_services_disabled_by_dev) {
@@ -38,7 +36,16 @@ async function getAIResponse(options) {
             systemPrompt += `\n\n--- INFORMAÇÕES RELEVANTES ENCONTRADAS ---\n${retrievedKnowledge}\n--- FIM DAS INFORMAÇÕES ---`;
         }
 
-        const messages = [{ role: 'system', content: systemPrompt }, ...chatHistory];
+        // CORREÇÃO: Garante que o histórico de chat não contenha mensagens com conteúdo nulo ou vazio.
+        const filteredChatHistory = chatHistory.filter(msg => msg && (msg.content || (msg.parts && msg.parts[0] && msg.parts[0].text)));
+
+        const messages = [{ role: 'system', content: systemPrompt }, ...filteredChatHistory];
+        
+        // Adiciona a mensagem atual do usuário ao final, se ela existir.
+        if (userMessage) {
+            messages.push({ role: 'user', content: userMessage });
+        }
+
 
         const completion = await openai.chat.completions.create({
             messages: messages,

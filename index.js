@@ -1,3 +1,4 @@
+// Substitua o conteúdo em: index.js
 // index.js
 const fs = require('node:fs');
 const path = require('node:path');
@@ -282,13 +283,16 @@ client.on(Events.MessageCreate, async (message) => {
             if (!userMessage) return;
             
             await message.channel.sendTyping();
-            const channelMessages = await message.channel.messages.fetch({ limit: 10 });
+            const channelMessages = await message.channel.messages.fetch({ limit: 3 });
             const chatHistory = [];
             channelMessages.reverse().forEach(msg => {
-                chatHistory.push({
-                    role: msg.author.id === client.user.id ? 'model' : 'user',
-                    parts: [{ text: msg.content.replace(/<@!?\d+>/g, '').trim() }]
-                });
+                const content = msg.content.replace(/<@!?\d+>/g, '').trim();
+                if (content) { // <-- CORREÇÃO APLICADA AQUI
+                    chatHistory.push({
+                        role: msg.author.id === client.user.id ? 'model' : 'user',
+                        parts: [{ text: content }]
+                    });
+                }
             });
             
             const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
@@ -328,7 +332,7 @@ client.on(Events.MessageCreate, async (message) => {
 
         if (!settings.tickets_ai_assistant_enabled) return;
 
-        const history = await message.channel.messages.fetch({ limit: 15 });
+        const history = await message.channel.messages.fetch({ limit: 5 });
         let humanSupportHasReplied = false;
         for (const msg of history.values()) {
             if (msg.author.bot || msg.author.id === ticket.user_id) continue;
@@ -344,7 +348,7 @@ client.on(Events.MessageCreate, async (message) => {
         const chatHistory = history.map(msg => ({
             role: msg.author.id === client.user.id ? 'assistant' : 'user',
             content: msg.content,
-        })).reverse();
+        })).filter(msg => msg.content).reverse(); // <-- CORREÇÃO APLICADA AQUI
         
         await message.channel.sendTyping();
         
