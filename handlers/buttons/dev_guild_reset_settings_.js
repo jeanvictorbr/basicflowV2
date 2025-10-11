@@ -18,7 +18,7 @@ module.exports = {
             components: [
                 { type: 17, components: [
                     { type: 10, content: `## ⚠️ Confirmação` },
-                    { type: 10, content: `> Tem certeza que deseja resetar **TODAS** as configurações do bot para o servidor **${guild.name}**? O dono precisará reconfigurar tudo do zero.` }
+                    { type: 10, content: `> Tem certeza que deseja resetar **TODAS** as configurações do bot (exceto licenças) para o servidor **${guild.name}**? O dono precisará reconfigurar tudo do zero.` }
                 ]},
                 confirmationButtons
             ],

@@ -1,11 +1,8 @@
 // Crie em: handlers/buttons/dev_guilds_sort_.js
-const db = require('../../database.js');
+const { getAndPrepareGuildData } = require('../../utils/devPanelUtils.js');
 const generateDevGuildsMenu = require('../../ui/devPanel/devGuildsMenu.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
-
-// Reutiliza a mesma lógica de busca de dados do handler principal
-const { execute: fetchAndPrepareGuilds } = require('./dev_manage_guilds.js');
 
 module.exports = {
     customId: 'dev_guilds_sort_',
@@ -13,7 +10,11 @@ module.exports = {
         await interaction.deferUpdate();
         const sortKey = interaction.customId.split('_')[3];
         
-        // Chama a lógica de busca de dados, mas passando a chave de ordenação
-        await fetchAndPrepareGuilds(interaction, sortKey);
+        const { allGuildData, totals } = await getAndPrepareGuildData(interaction.client, sortKey);
+
+        await interaction.editReply({
+            components: generateDevGuildsMenu(allGuildData, 0, totals, sortKey),
+            flags: V2_FLAG | EPHEMERAL_FLAG,
+        });
     }
 };

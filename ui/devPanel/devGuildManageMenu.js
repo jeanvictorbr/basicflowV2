@@ -3,20 +3,26 @@ const FEATURES = require('../../config/features.js');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function generateDevGuildManageMenu(guild, settings) {
-    const activeFeatures = settings?.enabled_features?.split(',').filter(Boolean) || [];
     const expiresAt = settings?.premium_expires_at ? `<t:${Math.floor(new Date(settings.premium_expires_at).getTime() / 1000)}:f>` : '`Licença Inativa`';
-    const featureList = FEATURES.map(f => `> ${activeFeatures.includes(f.value) ? '✅' : '❌'} ${f.label} (\`${f.value}\`)`).join('\n');
 
+    // Status do Bot na Guilda
+    const isBotEnabledInGuild = settings?.bot_enabled_in_guild !== false; // Padrão é true
+    const toggleBotStatusButton = isBotEnabledInGuild
+        ? { label: "Bot na Guild: Ativado", style: ButtonStyle.Success, emoji: "✅" }
+        : { label: "Bot na Guild: Desativado", style: ButtonStyle.Danger, emoji: "❌" };
+
+    // Status da IA na Guilda
     const isAiDisabledByDev = settings?.ai_services_disabled_by_dev;
-    const toggleAiButton = isAiDisabledByDev ? { label: "IA na Guild: Desativada", style: 4, emoji: "❌" } : { label: "IA na Guild: Ativada", style: 3, emoji: "✅" };
+    const toggleAiButton = isAiDisabledByDev 
+        ? { label: "IA na Guild: Desativada", style: ButtonStyle.Danger, emoji: "❌" } 
+        : { label: "IA na Guild: Ativada", style: ButtonStyle.Success, emoji: "✅" };
 
-    // NOVOS BOTÕES DE AÇÃO RÁPIDA
     const quickActions = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`dev_guild_force_leave_${guild.id}`).setLabel("Forçar Saída").setStyle(ButtonStyle.Danger).setEmoji('🚪'),
         new ButtonBuilder().setCustomId(`dev_guild_reset_settings_${guild.id}`).setLabel("Resetar Configs").setStyle(ButtonStyle.Danger).setEmoji('🔄'),
         new ButtonBuilder().setCustomId(`dev_guild_send_dm_${guild.id}`).setLabel("DM Dono").setStyle(ButtonStyle.Primary).setEmoji('✉️')
     );
-
+    
     return [
         {
             "type": 17, "accent_color": 3447003,
@@ -27,17 +33,22 @@ module.exports = function generateDevGuildManageMenu(guild, settings) {
                 { "type": 10, "content": "### Ações Rápidas:" },
                 { "type": 1, "components": quickActions.toJSON().components },
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": "### Features Ativas:" },
-                { "type": 10, "content": featureList },
-                { "type": 14, "divider": true, "spacing": 2 },
-                { "type": 1, "components": [
-                        { "type": 2, "style": 1, "label": "Editar Features", "emoji": { "name": "✨" }, "custom_id": `dev_guild_edit_features_${guild.id}` },
-                        { "type": 2, "style": 1, "label": "Editar Validade", "emoji": { "name": "📅" }, "custom_id": `dev_guild_edit_expiry_${guild.id}` }
+                { "type": 10, "content": "### Controles de Status:" },
+                {
+                    "type": 1, "components": [
+                        { "type": 2, "style": toggleBotStatusButton.style, "label": toggleBotStatusButton.label, "emoji": { "name": toggleBotStatusButton.emoji }, "custom_id": `dev_guild_toggle_status_${guild.id}` },
+                        { "type": 2, "style": 2, "label": "Definir Mensagem", "emoji": { "name": "📝" }, "custom_id": `dev_guild_set_maintenance_message_${guild.id}` },
+                    ]
+                },
+                {
+                    "type": 1, "components": [
+                         { "type": 2, "style": toggleAiButton.style, "label": toggleAiButton.label, "emoji": { "name": toggleAiButton.emoji }, "custom_id": `dev_guild_toggle_ai_${guild.id}` }
                     ]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 1, "components": [
-                        { "type": 2, "style": toggleAiButton.style, "label": toggleAiButton.label, "emoji": { "name": toggleAiButton.emoji }, "custom_id": `dev_guild_toggle_ai_${guild.id}` }
+                        { "type": 2, "style": 1, "label": "Editar Features", "emoji": { "name": "✨" }, "custom_id": `dev_guild_edit_features_${guild.id}` },
+                        { "type": 2, "style": 1, "label": "Editar Validade", "emoji": { "name": "📅" }, "custom_id": `dev_guild_edit_expiry_${guild.id}` }
                     ]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },

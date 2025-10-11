@@ -11,7 +11,7 @@ module.exports = {
 
         const confirmationButtons = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`dev_guild_force_leave_confirm_${guildId}`).setLabel('Sim, Forçar Saída').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId(`select_dev_manage_guild`).setLabel('Cancelar').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('dev_manage_guilds').setLabel('Cancelar').setStyle(ButtonStyle.Secondary) // Volta para a lista de guilds
         );
 
         await interaction.update({

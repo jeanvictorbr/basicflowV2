@@ -15,13 +15,14 @@ module.exports = {
             await guild.leave();
         }
         
-        // Retorna ao menu principal do devpanel
+        await interaction.followUp({ content: `✅ O bot saiu do servidor **${guild?.name || guildId}** com sucesso.`, ephemeral: true });
+
+        // Volta ao menu principal do devpanel
         const botStatus = (await db.query("SELECT * FROM bot_status WHERE status_key = 'main'")).rows[0];
         const totalGuilds = interaction.client.guilds.cache.size;
         const totalMembers = interaction.client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
 
         await interaction.editReply({
-            content: `✅ O bot saiu do servidor **${guild?.name || guildId}** com sucesso.`,
             components: generateDevMainMenu(botStatus, { totalGuilds, totalMembers }),
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
