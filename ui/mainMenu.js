@@ -63,59 +63,59 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
     
     const allModules = [
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_ausencias_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_ausencias_menu" },
             components: [{ type: 10, content: "🏖️ Ausências" }, { type: 10, content: "Configure todo o sistema de **ausências**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_registros_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_registros_menu" },
             components: [{ type: 10, content: "📂 Registros" }, { type: 10, content: "Configure todo o sistema de **registros**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_tickets_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_tickets_menu" },
             components: [{ type: 10, content: "🚨 Tickets" }, { type: 10, content: "Configure todo o sistema de **tickets**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_moderacao_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_moderacao_menu" },
             components: [{ type: 10, content: "⚖️ Moderação" }, { type: 10, content: "Configure as ferramentas da sua **equipa de staff**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_uniformes_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_uniformes_menu" },
             components: [{ type: 10, content: "👔 Uniformes" }, { type: 10, content: "Configure todo o sistema de **uniformes**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_ponto_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_ponto_menu" },
             components: [{ type: 10, content: "⏰ Bate-Ponto" }, { type: 10, content: "Configure todo o sistema de **bate-ponto**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         // --- NOVO MÓDULO DE LOJA ADICIONADO AQUI ---
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🏪" }, custom_id: "open_store_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_store_menu" },
             components: [{ type: 10, content: "🏪 Loja (StoreFlow)" }, { type: 10, content: "Gerencie os produtos e vendas da sua loja." }]
         },
         { type: 14, divider: true, spacing: 2 },
         // --- FIM DA ADIÇÃO ---
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "💡" }, custom_id: "open_suggestions_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_suggestions_menu" },
             components: [{ type: 10, content: "💡 Sugestões" }, { type: 10, content: "Gerencie as **sugestões da comunidade**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🛡️" }, custom_id: "open_guardian_menu", disabled: !hasGuardianAccess },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_guardian_menu", disabled: !hasGuardianAccess },
             components: [{ type: 10, content: "🛡️ Guardian AI (Premium)" }, { type: 10, content: "Moderação proativa para **prevenir conflitos**." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🎲" }, custom_id: "open_minigames_hub" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_minigames_hub" },
             components: [{ type: 10, content: "🎲 Mini-Games" }, { type: 10, content: "Configure e gerencie os jogos do servidor." }]
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "📥" }, custom_id: "open_roletags_menu" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_roletags_menu" },
             components: [{ type: 10, content: "🏷️ Tags por Cargo (RoleTags)" }, { type: 10, content: "Aplique tags aos apelidos baseadas em cargos." }]
         },
     ];

@@ -9,6 +9,21 @@ const baseKnowledge = [
         keywords: ["qual a diferença", "vc aprende?","posso adicionar memoria em vc?", "memoria", "basicflow ou factionflow", "qual usar", "ajuda", "comandos", "bots"], 
         content: `Eu sou um assistente com conhecimento sobre dois bots distintos: o **BasicFlow** e o **FactionFlow**.\n\n- **BasicFlow** é um bot de gestão geral para servidores, com módulos como Bate-Ponto, Tickets de Suporte, Registros (Whitelist), Ausências, Uniformes e um poderoso sistema de Moderação. É ideal para a administração diária da comunidade.\n\n- **FactionFlow** é um bot especializado para servidores de RP com foco em facções. Ele gerencia arsenal, finanças, membros, hierarquia, recrutamento, operações, parcerias e muito mais, tudo de forma automatizada para as organizações.\n\nQuando tiver uma dúvida sobre uma função, por favor, especifique sobre qual bot você quer saber para que eu possa te ajudar melhor!` 
     },
+    {
+    topic: "[BasicFlow] Módulo de Loja (StoreFlow)",
+    keywords: ["basicflow loja", "storeflow", "vender", "produtos", "comprar", "carrinho", "pagamento", "mercado pago", "pix", "cupom"],
+    content: `O **StoreFlow** é um módulo de loja completo integrado ao BasicFlow, permitindo que os servidores criem um sistema de e-commerce robusto.\n\n**Para Administradores (Grátis):**\n- **Gestão de Produtos:** Crie produtos com nome, preço, descrição e defina se o estoque é infinito ('GHOST') ou limitado ('REAL').\n- **Vitrine de Produtos:** Publique uma vitrine interativa onde os membros podem selecionar múltiplos itens para adicionar ao carrinho.\n- **Pagamento Manual:** Configure uma chave PIX para que os membros possam pagar e enviar o comprovativo num canal privado, aguardando a aprovação da staff.\n- **Gestão de Cupons:** Crie e gira cupons de desconto para as suas vendas.\n\n**Recursos Premium (Exclusivos):**\n- **Automação com Mercado Pago:** Integre sua conta para gerar pagamentos PIX automáticos. O bot verifica o pagamento e entrega os produtos instantaneamente, 24/7.\n- **Dashboard de Analytics:** Acompanhe o desempenho da sua loja com dados sobre faturamento, produtos mais vendidos e muito mais.\n- **Personalização Visual:** Altere a cor, título, descrição e imagem da sua vitrine.\n- **Monitor de Inatividade:** Configure o bot para fechar automaticamente carrinhos abandonados após um certo tempo.`
+},
+{
+    topic: "[BasicFlow] Módulo de Sugestões",
+    keywords: ["basicflow sugestões", "sugestão", "ideia", "feedback", "votar", "comunidade", "aprovar sugestão"],
+    content: `O sistema de Sugestões do BasicFlow é uma ferramenta completa e gratuita para gerir o feedback da sua comunidade.\n\n**Como funciona para os Membros:**\n1.  Clicam no botão "Fazer uma Sugestão" na vitrine.\n2.  Preenchem um formulário com o título e a descrição da ideia.\n3.  A sugestão é publicada num canal, onde todos podem votar com 👍 (Upvote) ou 👎 (Downvote).\n4.  Qualquer membro pode iniciar uma **thread de discussão** para debater a ideia sem poluir o canal principal.\n\n**Como funciona para a Staff:**\n- A staff pode gerir o ciclo de vida da sugestão com botões para **Aprovar**, **Negar** ou colocar **Em Análise**.\n- Todas as ações são registadas num canal de logs para total transparência.\n- Os administradores podem configurar o canal de envio, o cargo da staff, um cooldown para evitar spam e se o bot deve ou não mencionar @everyone a cada nova sugestão.`
+},
+{
+    topic: "O Criador do BasicFlow",
+    keywords: ["quem te criou", "desenvolvedor", "criador", "zepiqueno", "zé pequeno", "factionflow", "policeflow"],
+    content: `Fui desenvolvido pelo brilhante **ZÉPIQUENO**, um talentoso desenvolvedor Full Stack e especialista em NodeJS. Ele é a mente por trás não só de mim, o **BasicFlow**, mas também de outros projetos incríveis como o **FactionFlow** e o **PoliceFlow**, que revolucionam a gestão de comunidades e servidores de RP. A sua visão e expertise são a base de toda a minha inteligência e funcionalidade.`
+},
 
     // ===============================================================================================
     // ================================ CONHECIMENTO DO BASICFLOW ====================================
