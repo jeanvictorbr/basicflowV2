@@ -36,17 +36,25 @@ async function getAIResponse(options) {
             systemPrompt += `\n\n--- INFORMAÇÕES RELEVANTES ENCONTRADAS ---\n${retrievedKnowledge}\n--- FIM DAS INFORMAÇÕES ---`;
         }
 
-        // CORREÇÃO: Garante que o histórico de chat não contenha mensagens com conteúdo nulo ou vazio.
-        const filteredChatHistory = chatHistory.filter(msg => msg && (msg.content || (msg.parts && msg.parts[0] && msg.parts[0].text)));
+        // CORREÇÃO: Padroniza o formato do histórico para { role, content } e filtra entradas inválidas
+        const formattedChatHistory = chatHistory
+            .map(msg => {
+                if (!msg || (!msg.content && (!msg.parts || !msg.parts[0] || !msg.parts[0].text))) {
+                    return null;
+                }
+                return {
+                    role: msg.role,
+                    content: msg.content || msg.parts[0].text,
+                };
+            })
+            .filter(Boolean); // Remove qualquer entrada nula
 
-        const messages = [{ role: 'system', content: systemPrompt }, ...filteredChatHistory];
+        const messages = [{ role: 'system', content: systemPrompt }, ...formattedChatHistory];
         
-        // Adiciona a mensagem atual do usuário ao final, se ela existir.
         if (userMessage) {
             messages.push({ role: 'user', content: userMessage });
         }
-
-
+        
         const completion = await openai.chat.completions.create({
             messages: messages,
             model: 'gpt-3.5-turbo',

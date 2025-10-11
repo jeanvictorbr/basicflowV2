@@ -1,5 +1,4 @@
 // Substitua o conteúdo em: index.js
-// index.js
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder } = require('discord.js');
@@ -140,15 +139,15 @@ client.on(Events.InteractionCreate, async interaction => {
             }
             return;
         }
-
-        // Permite que o dev use o devpanel mesmo em modo de manutenção, com um aviso
-        const botStatus = (await db.query("SELECT bot_enabled FROM bot_status WHERE status_key = 'main'")).rows[0];
-        if (!botStatus?.bot_enabled && customId !== 'devpanel' && interaction.user.id === process.env.DEV_USER_ID) {
-             await interaction.reply({
-                content: "⚠️ **Aviso de Desenvolvedor:** O bot está em modo de manutenção global. Apenas você pode interagir com ele. Use `/devpanel` para reativá-lo.",
-                ephemeral: true
-            }).catch(() => {});
-            return; // Bloqueia a execução de outros comandos para o dev
+        
+        // Se a interação não for de um dev, mas a IA estiver desativada, bloqueia apenas handlers de IA
+        if (interaction.user.id !== process.env.DEV_USER_ID) {
+            const isAiCommand = customId.includes('_ai') || customId.includes('debugai');
+            const aiStatus = (await db.query("SELECT ai_services_enabled, maintenance_message FROM bot_status WHERE status_key = 'main'")).rows[0];
+            if (isAiCommand && !aiStatus?.ai_services_enabled) {
+                const defaultMsg = "Os serviços de IA estão em manutenção. Tente novamente mais tarde.";
+                return interaction.reply({ content: aiStatus.maintenance_message || defaultMsg, ephemeral: true }).catch(()=>{});
+            }
         }
 
         await handler(interaction, client);
@@ -161,15 +160,6 @@ client.on(Events.InteractionCreate, async interaction => {
             await interaction.reply({ content: '🔴 Houve um erro interno ao processar sua solicitação. A equipe de desenvolvimento foi notificada.', ephemeral: true }).catch(console.error);
         }
     }
-            // Se a interação não for de um dev, mas a IA estiver desativada, bloqueia apenas handlers de IA
-        if (interaction.user.id !== process.env.DEV_USER_ID) {
-            const isAiCommand = customId.includes('_ai') || customId.includes('debugai');
-            const aiStatus = (await db.query("SELECT ai_services_enabled, maintenance_message FROM bot_status WHERE status_key = 'main'")).rows[0];
-            if (isAiCommand && !aiStatus?.ai_services_enabled) {
-                const defaultMsg = "Os serviços de IA estão em manutenção. Tente novamente mais tarde.";
-                return interaction.reply({ content: aiStatus.maintenance_message || defaultMsg, ephemeral: true }).catch(()=>{});
-            }
-        }
 
 });
 
@@ -283,17 +273,18 @@ client.on(Events.MessageCreate, async (message) => {
             if (!userMessage) return;
             
             await message.channel.sendTyping();
-            const channelMessages = await message.channel.messages.fetch({ limit: 3 });
-            const chatHistory = [];
-            channelMessages.reverse().forEach(msg => {
+            const channelMessages = await message.channel.messages.fetch({ limit: 10 });
+            
+            // CORREÇÃO: Mapeia as mensagens para o formato correto e filtra as vazias.
+            const chatHistory = channelMessages.map(msg => {
                 const content = msg.content.replace(/<@!?\d+>/g, '').trim();
-                if (content) { // <-- CORREÇÃO APLICADA AQUI
-                    chatHistory.push({
-                        role: msg.author.id === client.user.id ? 'model' : 'user',
-                        parts: [{ text: content }]
-                    });
-                }
-            });
+                if (!content) return null; // Retorna nulo para mensagens vazias
+                return {
+                    // AQUI ESTÁ A CORREÇÃO PRINCIPAL: 'model' virou 'assistant'
+                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
+                    content: content
+                };
+            }).filter(Boolean).reverse(); // Filtra os nulos e inverte a ordem
             
             const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
             
@@ -332,7 +323,7 @@ client.on(Events.MessageCreate, async (message) => {
 
         if (!settings.tickets_ai_assistant_enabled) return;
 
-        const history = await message.channel.messages.fetch({ limit: 5 });
+        const history = await message.channel.messages.fetch({ limit: 15 });
         let humanSupportHasReplied = false;
         for (const msg of history.values()) {
             if (msg.author.bot || msg.author.id === ticket.user_id) continue;
@@ -348,7 +339,7 @@ client.on(Events.MessageCreate, async (message) => {
         const chatHistory = history.map(msg => ({
             role: msg.author.id === client.user.id ? 'assistant' : 'user',
             content: msg.content,
-        })).filter(msg => msg.content).reverse(); // <-- CORREÇÃO APLICADA AQUI
+        })).filter(msg => msg.content).reverse();
         
         await message.channel.sendTyping();
         
