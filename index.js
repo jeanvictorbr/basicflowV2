@@ -10,6 +10,7 @@ const { updateUserTag } = require('./utils/roleTagUpdater.js');
 const { checkInactiveCarts } = require('./utils/storeInactivityMonitor.js');
 const { checkExpiredRoles } = require('./utils/storeRoleMonitor.js');
 require('dotenv').config();
+const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
 const http = require('http');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
@@ -21,6 +22,109 @@ client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 client.hangmanTimeouts = new Map();
+
+// --- Evento de Entrada de Membro (Boas-Vindas) ---
+client.on(Events.GuildMemberAdd, async (member) => {
+    const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [member.guild.id]);
+    const settings = settingsResult.rows[0];
+    if (!settings || !settings.welcome_enabled || !settings.welcome_channel_id) return;
+
+    // 1. Adicionar cargo automático
+    if (settings.autorole_id) {
+        try {
+            const role = await member.guild.roles.fetch(settings.autorole_id);
+            if (role) await member.roles.add(role);
+        } catch (error) {
+            console.error(`[Welcome] Falha ao adicionar autorole para ${member.user.tag}:`, error);
+        }
+    }
+
+    // 2. Enviar mensagem de boas-vindas
+    const welcomeChannel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
+    if (!welcomeChannel) return;
+
+    const config = settings.welcome_message_config || {};
+    const isPremium = await hasFeature(member.guild.id, 'CUSTOM_VISUALS');
+
+    // Função para substituir placeholders
+    const replacePlaceholders = (text) => {
+        if (!text) return '';
+        return text
+            .replace(/{user.mention}/g, `<@${member.id}>`)
+            .replace(/{user.tag}/g, member.user.tag)
+            .replace(/{server.name}/g, member.guild.name)
+            .replace(/{member.count}/g, member.guild.memberCount.toString());
+    };
+
+    // **AQUI ESTÁ A CORREÇÃO PRINCIPAL**
+    // Primeiro, substituímos as variáveis nos textos.
+    const finalTitle = replacePlaceholders(config.title || '👋 Bem-vindo(a) ao {server.name}!');
+    const finalDescription = replacePlaceholders(config.description || 'Estamos felizes em ter você aqui, {user.mention}! Esperamos que você se divirta e faça novas amizades.');
+    const finalFooter = isPremium && config.footer_text ? replacePlaceholders(config.footer_text) : 'Junte-se à nossa comunidade!';
+
+    // Depois, montamos a embed com os textos já corrigidos.
+    const welcomeEmbed = new EmbedBuilder()
+        .setColor(config.color || '#2ECC71')
+        .setTitle(finalTitle)
+        .setDescription(finalDescription)
+        .setImage(config.image_url || null)
+        .setThumbnail(isPremium && config.thumbnail_url ? config.thumbnail_url : member.user.displayAvatarURL())
+        .setFooter({ text: finalFooter })
+        .setTimestamp();
+
+    try {
+        await welcomeChannel.send({ embeds: [welcomeEmbed] });
+    } catch (error) {
+        console.error(`[Welcome] Falha ao enviar mensagem de boas-vindas no servidor ${member.guild.name}:`, error);
+    }
+});
+
+// ===================================================================
+// ==          COLE O NOVO CÓDIGO DO WEBHOOK AQUI                   ==
+// ===================================================================
+client.on(Events.GuildCreate, async guild => {
+    if (!process.env.GUILD_ADD_WEBHOOK_URL) {
+        console.log(`[GUILD JOIN] Bot adicionado ao servidor ${guild.name} (${guild.id}), mas o webhook de notificação não está configurado.`);
+        return;
+    }
+
+    try {
+        const owner = await guild.fetchOwner();
+
+        const joinEmbed = new EmbedBuilder()
+            .setColor('#2ECC71') // Verde
+            .setTitle('🎉 Novo Servidor Adicionado!')
+            .setThumbnail(guild.iconURL({ dynamic: true }))
+            .addFields(
+                { name: 'Servidor', value: `**${guild.name}**\n\`${guild.id}\``, inline: true },
+                { name: 'Membros', value: `\`${guild.memberCount}\``, inline: true },
+                { name: 'Dono', value: `${owner.user.tag}\n\`${owner.id}\``, inline: false },
+                { name: 'Criado em', value: `<t:${Math.floor(guild.createdAt.getTime() / 1000)}:f>`, inline: true }
+            )
+            .setTimestamp();
+
+        const payload = {
+            username: 'BasicFlow Alertas',
+            avatar_url: client.user.displayAvatarURL(),
+            embeds: [joinEmbed]
+        };
+
+        await fetch(process.env.GUILD_ADD_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        console.log(`[GUILD JOIN] Notificação enviada para o webhook sobre o servidor ${guild.name}.`);
+
+    } catch (error) {
+        console.error(`[GUILD JOIN] Falha ao enviar notificação para o webhook:`, error);
+    }
+});
+// ===================================================================
+// ==                  FIM DO NOVO CÓDIGO                           ==
+// ===================================================================
+
 
 // --- Carregamento de Comandos e Handlers ---
 client.commands = new Collection();
