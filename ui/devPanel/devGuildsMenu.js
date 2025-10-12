@@ -20,6 +20,9 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals, 
             if (guild.roletags_enabled) activeModules.push('RoleTags');
             if (guild.suggestions_enabled) activeModules.push('Sugestões');
             if (guild.store_enabled) activeModules.push(`Loja ${guild.store_premium ? '✨' : ''}`);
+            if (guild.mod_log_channel) activeModules.push('Moderação');
+            if (guild.ausencias_canal_aprovacoes) activeModules.push('Ausências');
+            if (guild.uniformes_vitrine_channel_id) activeModules.push('Uniformes');
             const modulesText = activeModules.join(', ') || 'Nenhum';
             
             const activityText = `> 📊 **Atividade (30d):** 🎫 ${guild.activity_tickets} | 🛒 ${guild.activity_sales} | 💡 ${guild.activity_suggestions}`;
