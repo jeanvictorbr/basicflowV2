@@ -1,6 +1,8 @@
 // Substitua o conteúdo em: handlers/buttons/dev_key_revoke_page_.js
 const db = require('../../database.js');
 const generateDevKeyRevokeMenu = require('../../ui/devPanel/devKeyRevokeMenu.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'dev_key_revoke_page_',
@@ -8,12 +10,16 @@ module.exports = {
         await interaction.deferUpdate();
         const page = parseInt(interaction.customId.split('_')[4], 10);
 
-        // CORREÇÃO: Ordenando por 'id' que é garantido de existir.
         const keysResult = await db.query('SELECT key, grants_features, uses_left FROM activation_keys WHERE uses_left > 0 ORDER BY id DESC');
         const allKeys = keysResult.rows;
 
-        const menu = generateDevKeyRevokeMenu(allKeys, page);
+        const menuComponents = generateDevKeyRevokeMenu(allKeys, page);
 
-        await interaction.editReply(menu);
+        // CORREÇÃO: Usando a estrutura de resposta correta com flags explícitas
+        await interaction.editReply({
+            content: '',
+            components: menuComponents,
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
     }
 };
