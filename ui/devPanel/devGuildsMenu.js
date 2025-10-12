@@ -48,6 +48,16 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals, 
         new ButtonBuilder().setCustomId(`dev_guilds_sort_ai_usage`).setLabel('Uso de IA').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'ai_usage'),
         new ButtonBuilder().setCustomId(`dev_guilds_sort_expiry`).setLabel('Expiração').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'expiry')
     );
+    
+    const manageButtons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('dev_guild_manage_select').setLabel('Gerenciar Guilda').setStyle(ButtonStyle.Primary).setEmoji('⚙️').setDisabled(allGuildData.length === 0),
+        new ButtonBuilder().setCustomId('devpanel').setLabel('Voltar').setStyle(ButtonStyle.Secondary).setEmoji('↩️')
+    );
+
+    const massDmButtons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('dev_guilds_send_dm_all').setLabel('DM Donos').setStyle(ButtonStyle.Secondary).setEmoji('📣').setDisabled(allGuildData.length === 0),
+        new ButtonBuilder().setCustomId('dev_guilds_send_dm_all_users').setLabel('DM Global (Membros)').setStyle(ButtonStyle.Danger).setEmoji('🗣️').setDisabled(allGuildData.length === 0)
+    );
 
     return [
         {
@@ -61,12 +71,10 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals, 
                 { "type": 10, "content": guildList },
                 { "type": 14, "divider": true, "spacing": 2 },
                 totalPages > 1 ? { "type": 1, "components": paginationRow.toJSON().components } : null,
-                { "type": 1, "components": [
-                    { "type": 2, "style": 1, "label": "Gerenciar Guilda", "emoji": { "name": "⚙️" }, "custom_id": "dev_guild_manage_select", "disabled": allGuildData.length === 0 },
-                    // BOTÃO NOVO ADICIONADO AQUI
-                    { "type": 2, "style": 1, "label": "DM Todos os Donos", "emoji": { "name": "📣" }, "custom_id": "dev_guilds_send_dm_all", "disabled": allGuildData.length === 0 },
-                    { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }
-                ]}
+                { "type": 1, "components": manageButtons.toJSON().components },
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 10, "content": "> **Ações em Massa (CUIDADO):**" },
+                { "type": 1, "components": massDmButtons.toJSON().components }
             ].filter(Boolean)
         }
     ];

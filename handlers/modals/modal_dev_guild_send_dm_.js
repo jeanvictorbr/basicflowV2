@@ -21,6 +21,7 @@ module.exports = {
                 .setTitle('📢 Mensagem da Equipe BasicFlow')
                 .setDescription(messageContent)
                 .setFooter({ text: 'Esta é uma mensagem automática enviada pelo desenvolvedor.' })
+                .setImage("https://media.discordapp.net/attachments/1310610658844475404/1426807423770824704/standard_23.gif?ex=68ec9176&is=68eb3ff6&hm=3d75ef64f0087984b7c942f59037bdd91b83c7ffcef5e33438949cb66b579bc1&=")
                 .setTimestamp();
             
             await owner.send({ embeds: [dmEmbed] });
