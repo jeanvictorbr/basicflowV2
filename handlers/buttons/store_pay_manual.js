@@ -20,7 +20,7 @@ module.exports = {
                 { name: 'Status', value: 'Aguardando comprovante...' }
             );
 
-        // Botões para o usuário
+        // Botões para o usuário (Primeira fileira)
         const userButtons = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`store_attach_receipt`)
@@ -34,7 +34,7 @@ module.exports = {
                 .setEmoji('↩️')
         );
 
-        // Botões para a staff (sempre visíveis, mas com permissão verificada no handler)
+        // Botões para a staff (Segunda fileira)
         const staffButtons = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('store_staff_approve_payment')
@@ -48,6 +48,7 @@ module.exports = {
                 .setEmoji('❌')
         );
 
+        // Envia a mensagem com as duas fileiras de botões
         await interaction.editReply({ embeds: [instructionsEmbed], components: [userButtons, staffButtons] });
     }
 };
