@@ -7,7 +7,8 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate();
 
-        const keysResult = await db.query('SELECT key, grants_features, uses_left FROM activation_keys WHERE uses_left > 0 ORDER BY created_at DESC');
+        // CORREÇÃO: Ordenando por 'id' que é garantido de existir.
+        const keysResult = await db.query('SELECT key, grants_features, uses_left FROM activation_keys WHERE uses_left > 0 ORDER BY id DESC');
         const allKeys = keysResult.rows;
 
         if (allKeys.length === 0) {

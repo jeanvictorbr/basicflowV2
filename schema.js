@@ -5,8 +5,8 @@ const schema = {
         status_key: { type: 'VARCHAR(255)', primaryKey: true, default: 'main' },
         ai_services_enabled: { type: 'BOOLEAN', default: true },
         maintenance_message: { type: 'TEXT' },
-        bot_enabled: { type: 'BOOLEAN', default: true }, // <-- NOVA COLUNA
-        maintenance_message_global: { type: 'TEXT' }    // <-- NOVA COLUNA
+        bot_enabled: { type: 'BOOLEAN', default: true },
+        maintenance_message_global: { type: 'TEXT' }
     },
 
     // Tabela principal de configurações por servidor (guild)
@@ -28,12 +28,11 @@ const schema = {
         registros_imagem_vitrine: { type: 'VARCHAR(1024)' },
         welcome_enabled: { type: 'BOOLEAN', default: false },
         welcome_channel_id: { type: 'VARCHAR(255)' },
-        welcome_message_config: { type: 'JSONB' }, // Armazenará { title, description, color, image, thumbnail, footer }
+        welcome_message_config: { type: 'JSONB' },
         goodbye_enabled: { type: 'BOOLEAN', default: false },
         store_categories_enabled: { type: 'BOOLEAN', default: false },
         goodbye_channel_id: { type: 'VARCHAR(255)' },
         goodbye_message_text: { type: 'TEXT', default: '👋 {user.tag} deixou o servidor.' },
-
         tickets_painel_channel: { type: 'VARCHAR(255)' },
         tickets_cargo_suporte: { type: 'VARCHAR(255)' },
         tickets_canal_logs: { type: 'VARCHAR(255)' },
@@ -70,8 +69,8 @@ const schema = {
         suggestions_cooldown_minutes: { type: 'INTEGER', default: 2 },
         suggestions_mention_everyone: { type: 'BOOLEAN', default: false },
         mod_log_channel: { type: 'VARCHAR(255)' },
-        bot_enabled_in_guild: { type: 'BOOLEAN', default: true }, // <-- NOVA COLUNA
-        maintenance_message_guild: { type: 'TEXT' },              // <-- NOV
+        bot_enabled_in_guild: { type: 'BOOLEAN', default: true },
+        maintenance_message_guild: { type: 'TEXT' },
         mod_roles: { type: 'TEXT' },
         mod_temp_ban_enabled: { type: 'BOOLEAN', default: false },
         mod_monitor_enabled: { type: 'BOOLEAN', default: false },
@@ -97,7 +96,6 @@ const schema = {
         store_client_role_id: { type: 'VARCHAR(255)' },
         store_client_role_duration_days: { type: 'INTEGER' },
         store_vitrine_config: { type: 'JSONB' },
-        store_mp_token: { type: 'TEXT' },
         store_inactivity_monitor_enabled: { type: 'BOOLEAN', default: false },
         store_auto_close_hours: { type: 'INTEGER', default: 24 },
         store_premium_dm_flow_enabled: { type: 'BOOLEAN', default: false }
@@ -115,10 +113,10 @@ const schema = {
         role_id_to_grant: { type: 'VARCHAR(255)' },
         role_duration_days: { type: 'INTEGER' },
         is_enabled: { type: 'BOOLEAN', default: true },
-        category_id: { type: 'INTEGER' }, // <-- NOVA COLUNA
+        category_id: { type: 'INTEGER' },
         image_url: { type: 'VARCHAR(1024)' }
     },
-        store_categories: { // <-- NOVA TABELA
+    store_categories: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },
@@ -133,10 +131,10 @@ const schema = {
         status: { type: 'VARCHAR(20)', default: 'open' },
         coupon_id: { type: 'INTEGER' },
         total_price: { type: 'NUMERIC(10, 2)' },
-        payment_id: { type: 'VARCHAR(255)' }, // NOVA COLUNA
+        payment_id: { type: 'VARCHAR(255)' },
         claimed_by_staff_id: { type: 'VARCHAR(255)' },
         last_activity_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
-        thread_id: { type: 'VARCHAR(255)' } // <-- NOVA COLUNA
+        thread_id: { type: 'VARCHAR(255)' }
     },
     store_coupons: {
         id: { type: 'SERIAL', primaryKey: true },
@@ -170,7 +168,7 @@ const schema = {
         user_id: { type: 'VARCHAR(255)', notNull: true },
         total_amount: { type: 'NUMERIC(10, 2)', notNull: true },
         product_details: { type: 'JSONB', notNull: true },
-        status: { type: 'VARCHAR(50)', notNull: true }, // completed, cancelled
+        status: { type: 'VARCHAR(50)', notNull: true },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
 
@@ -184,13 +182,16 @@ const schema = {
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'feature_key'] }
     },
     activation_keys: {
-        key: { type: 'VARCHAR(255)', primaryKey: true },
+        id: { type: 'SERIAL', primaryKey: true }, // <-- ADICIONADO PARA ORDENAÇÃO
+        key: { type: 'VARCHAR(255)', unique: true, notNull: true }, // <-- Corrigido para ser único mas não chave primária
         duration_days: { type: 'INTEGER', notNull: true },
         uses_left: { type: 'INTEGER', default: 1 },
         grants_features: { type: 'TEXT' },
-        comment: { type: 'TEXT' }
+        comment: { type: 'TEXT' },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' } // <-- COLUNA ADICIONADA
     },
-    key_activation_history: {
+    // CORREÇÃO: Nome da tabela alterado de 'key_activation_history' para 'activation_key_history'
+    activation_key_history: {
         id: { type: 'SERIAL', primaryKey: true },
         key: { type: 'VARCHAR(255)', notNull: true },
         grants_features: { type: 'TEXT' },

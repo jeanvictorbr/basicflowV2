@@ -1,4 +1,4 @@
-// Crie em: handlers/buttons/dev_key_revoke_page_.js
+// Substitua o conteúdo em: handlers/buttons/dev_key_revoke_page_.js
 const db = require('../../database.js');
 const generateDevKeyRevokeMenu = require('../../ui/devPanel/devKeyRevokeMenu.js');
 
@@ -8,7 +8,8 @@ module.exports = {
         await interaction.deferUpdate();
         const page = parseInt(interaction.customId.split('_')[4], 10);
 
-        const keysResult = await db.query('SELECT key, grants_features, uses_left FROM activation_keys WHERE uses_left > 0 ORDER BY created_at DESC');
+        // CORREÇÃO: Ordenando por 'id' que é garantido de existir.
+        const keysResult = await db.query('SELECT key, grants_features, uses_left FROM activation_keys WHERE uses_left > 0 ORDER BY id DESC');
         const allKeys = keysResult.rows;
 
         const menu = generateDevKeyRevokeMenu(allKeys, page);
