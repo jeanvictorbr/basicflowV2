@@ -42,7 +42,6 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals, 
         new ButtonBuilder().setCustomId(`dev_guilds_page_${page + 1}_${sortKey}`).setLabel('Próxima').setStyle(ButtonStyle.Primary).setDisabled(page + 1 >= totalPages)
     );
 
-    // NOVOS BOTÕES DE ORDENAÇÃO
     const sortRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`dev_guilds_sort_default`).setLabel('Padrão').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'default'),
         new ButtonBuilder().setCustomId(`dev_guilds_sort_members`).setLabel('Membros').setStyle(ButtonStyle.Secondary).setDisabled(sortKey === 'members'),
@@ -64,6 +63,8 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals, 
                 totalPages > 1 ? { "type": 1, "components": paginationRow.toJSON().components } : null,
                 { "type": 1, "components": [
                     { "type": 2, "style": 1, "label": "Gerenciar Guilda", "emoji": { "name": "⚙️" }, "custom_id": "dev_guild_manage_select", "disabled": allGuildData.length === 0 },
+                    // BOTÃO NOVO ADICIONADO AQUI
+                    { "type": 2, "style": 1, "label": "DM Todos os Donos", "emoji": { "name": "📣" }, "custom_id": "dev_guilds_send_dm_all", "disabled": allGuildData.length === 0 },
                     { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }
                 ]}
             ].filter(Boolean)

@@ -12,7 +12,8 @@ async function getAndPrepareGuildData(client, sortKey = 'default') {
     // --- OTIMIZAÇÃO: Consultas em massa ---
     const settingsQuery = db.query('SELECT guild_id, ponto_status, registros_status, tickets_category, guardian_ai_enabled, roletags_enabled, suggestions_enabled, store_enabled, mod_log_channel, ausencias_canal_aprovacoes, uniformes_vitrine_channel_id FROM guild_settings WHERE guild_id = ANY($1::text[])', [guildIds]);
     const expiryQuery = db.query("SELECT guild_id, MAX(expires_at) as expires_at FROM guild_features WHERE guild_id = ANY($1::text[]) AND expires_at > NOW() GROUP BY guild_id", [guildIds]);
-    const featuresQuery = db.query('SELECT guild_id, feature_key FROM guild_features WHERE guild_id = ANY($1::text[]) AND expires_at > NOW()', [guildId]);
+    // CORREÇÃO APLICADA AQUI: guildId -> guildIds
+    const featuresQuery = db.query('SELECT guild_id, feature_key FROM guild_features WHERE guild_id = ANY($1::text[]) AND expires_at > NOW()', [guildIds]);
     const aiStatsQuery = db.query("SELECT guild_id, SUM(total_tokens) AS total_tokens_used, SUM(cost) AS total_cost FROM ai_usage_logs WHERE guild_id = ANY($1::text[]) GROUP BY guild_id", [guildIds]);
     const topFeatureQuery = db.query(`
         WITH RankedFeatures AS (
