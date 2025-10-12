@@ -1,8 +1,8 @@
 // Substitua o conteúdo em: ui/registrosMenu.js
 const hasFeature = require('../utils/featureCheck.js');
 
-// CORREÇÃO: A função agora aceita 'interaction' como primeiro argumento, seguindo o padrão do projeto.
-module.exports = async function generateRegistrosMenu(interaction, settings) {
+// CORREÇÃO: A função agora aceita 'interaction' como primeiro argumento e 'settings' é opcional.
+module.exports = async function generateRegistrosMenu(interaction, settings = {}) {
 
     const systemStatus = settings.registros_status ? '✅ Ativado' : '❌ Desativado';
     const toggleButtonLabel = settings.registros_status ? 'Desativar Sistema' : 'Ativar Sistema';
