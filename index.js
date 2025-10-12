@@ -10,6 +10,7 @@ const { checkExpiredPunishments } = require('./utils/punishmentMonitor.js');
 const { updateUserTag } = require('./utils/roleTagUpdater.js');
 const { checkInactiveCarts } = require('./utils/storeInactivityMonitor.js');
 const { checkExpiredRoles } = require('./utils/storeRoleMonitor.js');
+const { syncUsedKeys } = require('./utils/keyStockMonitor.js');
 require('dotenv').config();
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
@@ -27,6 +28,7 @@ client.hangmanTimeouts = new Map();
 const commandUsage = new Map();
 const COMMAND_THRESHOLD = 15; // Ex: 15 usos
 const COMMAND_TIMEFRAME = 60 * 1000; // Em 1 minuto (60 segundos)
+
 
 // --- Evento de Entrada de Membro (Boas-Vindas) ---
 client.on(Events.GuildMemberAdd, async (member) => {
@@ -243,6 +245,7 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
     setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
     setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000); // Executa uma vez a cada 24 horas
+    setInterval(() => syncUsedKeys(client), 60 * 1000); // Executa a cada 1 minuto
 });
 
 // --- Evento de Interações (COM VERIFICAÇÃO GLOBAL DE MANUTENÇÃO) ---
