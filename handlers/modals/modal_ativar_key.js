@@ -1,117 +1,97 @@
-// handlers/modals/modal_ativar_key.js
+// Substitua o conteúdo em: handlers/modals/modal_ativar_key.js
 const db = require('../../database.js');
+const fetch = require('node-fetch');
+const { EmbedBuilder } = require('discord.js'); // CORREÇÃO: Importação adicionada
 
 module.exports = {
     customId: 'modal_ativar_key',
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
+
         const key = interaction.fields.getTextInputValue('input_key');
-
-        const keyDataResult = await db.query('SELECT * FROM activation_keys WHERE key = $1', [key]);
-        const keyData = keyDataResult.rows[0];
-
-        if (!keyData || keyData.uses_left <= 0) {
-            return interaction.editReply({ content: '❌ Chave de ativação inválida, expirada ou já utilizada.' });
-        }
-
-        // --- NOVA VERIFICAÇÃO DE SEGURANÇA ---
-        // Verifica se esta guild já ativou esta chave específica no passado.
-        const historyCheckResult = await db.query(
-            'SELECT 1 FROM key_activation_history WHERE guild_id = $1 AND key = $2',
-            [interaction.guild.id, key]
-        );
-
-        if (historyCheckResult.rows.length > 0) {
-            return interaction.editReply({ content: '❌ Este servidor já utilizou esta chave de ativação. Cada chave só pode ser usada uma vez por servidor.' });
-        }
-        // --- FIM DA NOVA VERIFICAÇÃO ---
-
-        const featuresToGrant = keyData.grants_features.split(',');
-        const durationDays = keyData.duration_days;
-        
         const client = await db.getClient();
 
         try {
             await client.query('BEGIN');
 
-            // --- INÍCIO DO CÓDIGO DO WEBHOOK ---
-        if (process.env.PREMIUM_LOG_WEBHOOK_URL) {
-            try {
-                const activationEmbed = new EmbedBuilder()
-                    .setColor('Gold')
-                    .setTitle('✨ Licença Premium Ativada!')
-                    .addFields(
-                        { name: 'Servidor', value: `**${interaction.guild.name}**\n\`${interaction.guild.id}\``, inline: true },
-                        { name: 'Ativada por', value: `${interaction.user.tag}\n\`${interaction.user.id}\``, inline: true },
-                        { name: 'Chave Utilizada', value: `\`${key}\`` },
-                        { name: 'Features Liberadas', value: `\`${featuresToGrant.join(', ')}\`` },
-                        { name: 'Duração', value: `\`${durationDays} dias\`` }
-                    )
-                    .setTimestamp();
+            const keyResult = await client.query('SELECT * FROM activation_keys WHERE key = $1 AND uses_left > 0 FOR UPDATE', [key]);
+            const keyData = keyResult.rows[0];
 
-                await fetch(process.env.PREMIUM_LOG_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: 'BasicFlow Vendas',
-                        avatar_url: interaction.client.user.displayAvatarURL(),
-                        embeds: [activationEmbed]
-                    })
-                });
-            } catch (webhookError) {
-                console.error('[WEBHOOK] Falha ao enviar notificação de ativação de chave:', webhookError);
+            if (!keyData) {
+                await client.query('ROLLBACK');
+                return interaction.editReply({ content: '❌ Chave de ativação inválida ou já utilizada.' });
             }
-        }
-        // --- FIM DO CÓDIGO DO WEBHOOK ---
+
+            const { grants_features, duration_days } = keyData;
+            const featuresToGrant = grants_features.split(',').map(f => f.trim());
 
             for (const feature of featuresToGrant) {
-                if (!feature) continue;
-                
-                const currentFeatureResult = await client.query(
-                    'SELECT expires_at FROM guild_features WHERE guild_id = $1 AND feature_key = $2',
+                const existingFeature = await client.query(
+                    'SELECT * FROM guild_features WHERE guild_id = $1 AND feature_key = $2',
                     [interaction.guild.id, feature]
                 );
-                
-                let newExpirationDate = new Date();
-                const currentExpiration = currentFeatureResult.rows[0]?.expires_at;
 
-                if (currentExpiration && new Date(currentExpiration) > newExpirationDate) {
-                    newExpirationDate = new Date(currentExpiration);
+                if (existingFeature.rows.length > 0) {
+                    await client.query(
+                        `UPDATE guild_features 
+                         SET expires_at = CASE 
+                                            WHEN expires_at < NOW() THEN NOW() + INTERVAL '1 day' * $3 
+                                            ELSE expires_at + INTERVAL '1 day' * $3 
+                                          END 
+                         WHERE guild_id = $1 AND feature_key = $2`,
+                        [interaction.guild.id, feature, duration_days]
+                    );
+                } else {
+                    await client.query(
+                        `INSERT INTO guild_features (guild_id, feature_key, expires_at) 
+                         VALUES ($1, $2, NOW() + INTERVAL '1 day' * $3)`,
+                        [interaction.guild.id, feature, duration_days]
+                    );
                 }
-                
-                newExpirationDate.setDate(newExpirationDate.getDate() + durationDays);
-
-                await client.query(
-                    `INSERT INTO guild_features (guild_id, feature_key, expires_at, activated_by_key)
-                     VALUES ($1, $2, $3, $4)
-                     ON CONFLICT (guild_id, feature_key)
-                     DO UPDATE SET expires_at = $3, activated_by_key = $4`,
-                    [interaction.guild.id, feature, newExpirationDate, key]
-                );
             }
 
-            await client.query(
-                `INSERT INTO key_activation_history (key, grants_features, guild_id, guild_name, user_id, user_tag)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [key, keyData.grants_features, interaction.guild.id, interaction.guild.name, interaction.user.id, interaction.user.tag]
-            );
+            const newUsesLeft = keyData.uses_left - 1;
+            await client.query('UPDATE activation_keys SET uses_left = $1 WHERE key = $2', [newUsesLeft, key]);
+            await client.query('INSERT INTO activation_key_history (key, guild_id, user_id, features_granted) VALUES ($1, $2, $3, $4)', [key, interaction.guild.id, interaction.user.id, grants_features]);
 
-            if (keyData.uses_left - 1 <= 0) {
-                await client.query('DELETE FROM activation_keys WHERE key = $1', [key]);
-            } else {
-                await client.query('UPDATE activation_keys SET uses_left = uses_left - 1 WHERE key = $1', [key]);
-            }
-            
             await client.query('COMMIT');
 
+            if (process.env.PREMIUM_LOG_WEBHOOK_URL) {
+                try {
+                    const activationEmbed = new EmbedBuilder()
+                        .setColor('Gold')
+                        .setTitle('✨ Licença Premium Ativada!')
+                        .addFields(
+                            { name: 'Servidor', value: `**${interaction.guild.name}**\n\`${interaction.guild.id}\``, inline: true },
+                            { name: 'Ativada por', value: `${interaction.user.tag}\n\`${interaction.user.id}\``, inline: true },
+                            { name: 'Chave Utilizada', value: `\`${key}\`` },
+                            { name: 'Features Liberadas', value: `\`${featuresToGrant.join(', ')}\`` },
+                            { name: 'Duração', value: `\`${durationDays} dias\`` }
+                        )
+                        .setTimestamp();
+
+                    await fetch(process.env.PREMIUM_LOG_WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: 'BasicFlow Vendas',
+                            avatar_url: interaction.client.user.displayAvatarURL(),
+                            embeds: [activationEmbed]
+                        })
+                    });
+                } catch (webhookError) {
+                    console.error('[WEBHOOK] Falha ao enviar notificação de ativação de chave:', webhookError);
+                }
+            }
+
             await interaction.editReply({
-                content: `✅ Licença ativada! As funcionalidades **[${featuresToGrant.join(', ')}]** foram ativadas/estendidas.`
+                content: `✅ Licença ativada! As funcionalidades **[${featuresToGrant.join(', ')}]** foram ativadas/estendidas por ${duration_days} dias.`
             });
 
         } catch (error) {
             await client.query('ROLLBACK');
-            console.error('[ATIVAR KEY] Erro na transação:', error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro ao ativar sua chave.' });
+            console.error('Erro ao ativar chave:', error);
+            await interaction.editReply({ content: '❌ Ocorreu um erro interno ao tentar ativar a chave.' });
         } finally {
             client.release();
         }
