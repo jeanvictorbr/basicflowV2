@@ -1,12 +1,15 @@
 // Substitua o conteúdo em: handlers/modals/modal_ativar_key.js
 const db = require('../../database.js');
 const fetch = require('node-fetch');
-const { EmbedBuilder } = require('discord.js'); // CORREÇÃO: Importação adicionada
+const { EmbedBuilder } = require('discord.js');
+const V2_FLAG = 1 << 15;
+const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'modal_ativar_key',
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        // A resposta agora usa flags desde o início
+        await interaction.deferReply({ flags: EPHEMERAL_FLAG });
 
         const key = interaction.fields.getTextInputValue('input_key');
         const client = await db.getClient();
@@ -52,7 +55,11 @@ module.exports = {
 
             const newUsesLeft = keyData.uses_left - 1;
             await client.query('UPDATE activation_keys SET uses_left = $1 WHERE key = $2', [newUsesLeft, key]);
-            await client.query('INSERT INTO activation_key_history (key, guild_id, user_id, features_granted) VALUES ($1, $2, $3, $4)', [key, interaction.guild.id, interaction.user.id, grants_features]);
+            
+            // CORREÇÃO: A coluna chama-se 'grants_features' e não 'features_granted'.
+            await client.query('INSERT INTO activation_key_history (key, guild_id, user_id, grants_features, guild_name, user_tag) VALUES ($1, $2, $3, $4, $5, $6)', 
+                [key, interaction.guild.id, interaction.user.id, grants_features, interaction.guild.name, interaction.user.tag]
+            );
 
             await client.query('COMMIT');
 
