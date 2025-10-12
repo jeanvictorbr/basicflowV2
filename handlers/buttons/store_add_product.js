@@ -20,11 +20,9 @@ module.exports = {
             ),
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder().setCustomId('input_stock_type').setLabel("Tipo de Estoque ('REAL' ou 'GHOST')").setStyle(TextInputStyle.Short).setValue('GHOST').setRequired(true)
-            ),
-            // NOVA FILEIRA PARA CARGO E DURAÇÃO
-            new ActionRowBuilder().addComponents(
-                new TextInputBuilder().setCustomId('input_role_info').setLabel("ID do Cargo e Duração (opcional)").setStyle(TextInputStyle.Short).setPlaceholder("ID-DO-CARGO, 30 (para 30 dias)").setRequired(false)
             )
+            // Campos de Categoria e Cargo foram removidos para respeitar o limite de 5 componentes.
+            // A categoria agora é gerenciada no menu "Gerenciar Categorias".
         );
         
         await interaction.showModal(modal);

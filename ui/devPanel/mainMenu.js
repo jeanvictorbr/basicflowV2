@@ -2,8 +2,8 @@
 module.exports = function generateDevMainMenu(botStatus, stats) {
     const aiStatus = botStatus?.ai_services_enabled;
     const aiStatusButton = aiStatus
-        ? { label: 'Serviços de IA: Ativados', style: 3, emoji: '✅' } // Verde
-        : { label: 'Serviços de IA: Desativados', style: 4, emoji: '❌' }; // Vermelho
+        ? { label: 'Serviços de IA: Ativados', style: 3, emoji: '✅' }
+        : { label: 'Serviços de IA: Desativados', style: 4, emoji: '❌' };
 
     return [
         {
@@ -15,6 +15,7 @@ module.exports = function generateDevMainMenu(botStatus, stats) {
                 {
                     "type": 1, "components": [
                         { "type": 2, "style": 1, "label": "Gerenciar Chaves", "emoji": { "name": "🔑" }, "custom_id": "dev_manage_keys" },
+                        { "type": 2, "style": 1, "label": "Gerador em Massa", "emoji": { "name": "✨" }, "custom_id": "dev_open_bulk_keys" },
                         { "type": 2, "style": 1, "label": "Gerenciar Guildas", "emoji": { "name": "🏢" }, "custom_id": "dev_manage_guilds" }
                     ]
                 },
@@ -22,7 +23,6 @@ module.exports = function generateDevMainMenu(botStatus, stats) {
                 {
                     "type": 1, "components": [
                         { "type": 2, "style": aiStatusButton.style, "label": aiStatusButton.label, "emoji": { "name": aiStatusButton.emoji }, "custom_id": "dev_toggle_ai" },
-                        // NOVO BOTÃO ADICIONADO AQUI
                         { "type": 2, "style": 2, "label": "Definir Mensagem", "emoji": { "name": "📝" }, "custom_id": "dev_set_maintenance_message" }
                     ]
                 }

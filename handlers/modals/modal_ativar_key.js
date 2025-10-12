@@ -34,6 +34,36 @@ module.exports = {
         try {
             await client.query('BEGIN');
 
+            // --- INÍCIO DO CÓDIGO DO WEBHOOK ---
+        if (process.env.PREMIUM_LOG_WEBHOOK_URL) {
+            try {
+                const activationEmbed = new EmbedBuilder()
+                    .setColor('Gold')
+                    .setTitle('✨ Licença Premium Ativada!')
+                    .addFields(
+                        { name: 'Servidor', value: `**${interaction.guild.name}**\n\`${interaction.guild.id}\``, inline: true },
+                        { name: 'Ativada por', value: `${interaction.user.tag}\n\`${interaction.user.id}\``, inline: true },
+                        { name: 'Chave Utilizada', value: `\`${key}\`` },
+                        { name: 'Features Liberadas', value: `\`${featuresToGrant.join(', ')}\`` },
+                        { name: 'Duração', value: `\`${durationDays} dias\`` }
+                    )
+                    .setTimestamp();
+
+                await fetch(process.env.PREMIUM_LOG_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'BasicFlow Vendas',
+                        avatar_url: interaction.client.user.displayAvatarURL(),
+                        embeds: [activationEmbed]
+                    })
+                });
+            } catch (webhookError) {
+                console.error('[WEBHOOK] Falha ao enviar notificação de ativação de chave:', webhookError);
+            }
+        }
+        // --- FIM DO CÓDIGO DO WEBHOOK ---
+
             for (const feature of featuresToGrant) {
                 if (!feature) continue;
                 

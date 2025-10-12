@@ -1,12 +1,12 @@
 // Substitua o conteúdo em: ui/devPanel/devGuildManageMenu.js
-const FEATURES = require('../../config/features.js');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function generateDevGuildManageMenu(guild, settings) {
-    const expiresAt = settings?.premium_expires_at ? `<t:${Math.floor(new Date(settings.premium_expires_at).getTime() / 1000)}:f>` : '`Licença Inativa`';
+    // Transforma a string de features em um array para facilitar a manipulação
+    const activeFeatures = settings.enabled_features ? settings.enabled_features.split(',') : [];
 
     // Status do Bot na Guilda
-    const isBotEnabledInGuild = settings?.bot_enabled_in_guild !== false; // Padrão é true
+    const isBotEnabledInGuild = settings?.bot_enabled_in_guild !== false;
     const toggleBotStatusButton = isBotEnabledInGuild
         ? { label: "Bot na Guild: Ativado", style: ButtonStyle.Success, emoji: "✅" }
         : { label: "Bot na Guild: Desativado", style: ButtonStyle.Danger, emoji: "❌" };
@@ -23,12 +23,20 @@ module.exports = function generateDevGuildManageMenu(guild, settings) {
         new ButtonBuilder().setCustomId(`dev_guild_send_dm_${guild.id}`).setLabel("DM Dono").setStyle(ButtonStyle.Primary).setEmoji('✉️')
     );
     
+    // Constrói a lista de features ativas para exibição
+    const featuresListText = activeFeatures.length > 0 
+        ? activeFeatures.map(f => `> ✨ **${f}**`).join('\n') 
+        : '> `Nenhuma feature premium ativa.`';
+
     return [
         {
             "type": 17, "accent_color": 3447003,
             "components": [
                 { "type": 10, "content": `## ⚙️ Gerenciando: ${guild.name}` },
-                { "type": 10, "content": `> **ID:** \`${guild.id}\`\n> **Expira em:** ${expiresAt}` },
+                { "type": 10, "content": `> **ID:** \`${guild.id}\`` },
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 10, "content": "### Features Ativas:" },
+                { "type": 10, "content": featuresListText },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": "### Ações Rápidas:" },
                 { "type": 1, "components": quickActions.toJSON().components },
@@ -47,8 +55,7 @@ module.exports = function generateDevGuildManageMenu(guild, settings) {
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 1, "components": [
-                        { "type": 2, "style": 1, "label": "Editar Features", "emoji": { "name": "✨" }, "custom_id": `dev_guild_edit_features_${guild.id}` },
-                        { "type": 2, "style": 1, "label": "Editar Validade", "emoji": { "name": "📅" }, "custom_id": `dev_guild_edit_expiry_${guild.id}` }
+                        { "type": 2, "style": 1, "label": "Gerenciar Features", "emoji": { "name": "✨" }, "custom_id": `dev_guild_edit_features_${guild.id}` },
                     ]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },

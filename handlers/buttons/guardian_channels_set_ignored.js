@@ -16,7 +16,7 @@ module.exports = {
         const cancelButton = new ButtonBuilder().setCustomId('guardian_manage_channels').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
 
         await interaction.update({
-            components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowrowBuilder().addComponents(cancelButton)],
+            components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
             flags: V2_FLAG | EPHEMERAL_FLAG
         });
     }

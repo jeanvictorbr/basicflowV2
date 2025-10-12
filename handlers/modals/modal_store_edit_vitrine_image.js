@@ -1,6 +1,7 @@
 // Crie em: handlers/modals/modal_store_edit_vitrine_image.js
 const db = require('../../database.js');
 const generateCustomizeMenu = require('../../ui/store/customizeMenu.js');
+const updateStoreVitrine = require('../../utils/updateStoreVitrine.js'); // IMPORTADO
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -10,7 +11,6 @@ module.exports = {
         await interaction.deferUpdate();
         const newImage = interaction.fields.getTextInputValue('input_image_url');
 
-        // CORREÇÃO: Usando jsonb_set.
         await db.query(
             `UPDATE guild_settings 
              SET store_vitrine_config = jsonb_set(COALESCE(store_vitrine_config, '{}'::jsonb), '{image_url}', to_jsonb($1::text))
@@ -26,5 +26,8 @@ module.exports = {
         });
         
         await interaction.followUp({ content: '✅ Imagem da vitrine atualizada com sucesso!', ephemeral: true });
+        
+        // ATUALIZA A VITRINE
+        await updateStoreVitrine(interaction.client, interaction.guild.id);
     }
 };

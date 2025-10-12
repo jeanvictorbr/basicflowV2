@@ -15,18 +15,21 @@ module.exports = {
         }
 
         const products = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 AND is_enabled = true ORDER BY name ASC', [interaction.guild.id])).rows;
+        const categories = (await db.query('SELECT * FROM store_categories WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows;
+        
+        // Determina a primeira categoria a ser exibida, ou 'null' se não houver.
+        const initialCategoryId = settings.store_categories_enabled && categories.length > 0 ? categories[0].id.toString() : null;
 
         try {
-            const vitrinePayload = generateVitrineMenu(settings, products);
-            const sentMessage = await channel.send(vitrinePayload); // Captura a mensagem enviada
+            const vitrinePayload = generateVitrineMenu(settings, categories, products, initialCategoryId, 0);
+            const sentMessage = await channel.send(vitrinePayload);
 
-            // Salva o ID da mensagem no banco de dados para futuras atualizações
             await db.query(
                 'UPDATE guild_settings SET store_vitrine_message_id = $1 WHERE guild_id = $2',
                 [sentMessage.id, interaction.guild.id]
             );
 
-            await interaction.editReply(`✅ Vitrine publicada com sucesso em ${channel}! Ela será atualizada automaticamente a partir de agora.`);
+            await interaction.editReply(`✅ Vitrine publicada com sucesso em ${channel}!`);
         } catch (error) {
             console.error('[Store] Erro ao publicar vitrine:', error);
             await interaction.editReply('❌ Ocorreu um erro. Verifique se eu tenho permissão para enviar mensagens no canal da vitrine.');

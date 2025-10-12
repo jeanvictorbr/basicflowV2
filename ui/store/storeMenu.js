@@ -6,6 +6,10 @@ module.exports = async function generateStoreMenu(interaction, settings) {
     const statusText = isEnabled ? '✅ Ativada' : '❌ Desativada';
     const toggleButton = isEnabled ? { label: 'Desativar Loja', style: 4 } : { label: 'Ativar Loja', style: 3 };
 
+    const categoriesEnabled = settings.store_categories_enabled;
+    const categoriesStatusText = categoriesEnabled ? '✅ Ativado' : '❌ Desativado';
+    const toggleCategoriesButton = categoriesEnabled ? { label: 'Desativar Categorias', style: 4 } : { label: 'Ativar Categorias', style: 3 };
+
     const hasStorePremium = await hasFeature(interaction.guild.id, 'STORE_PREMIUM');
     const isConfigured = settings.store_category_id && settings.store_log_channel_id && settings.store_staff_role_id;
 
@@ -17,31 +21,39 @@ module.exports = async function generateStoreMenu(interaction, settings) {
                 { "type": 10, "content": `> Status da Loja: **${statusText}**` },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
+                    "type": 9, "accessory": { "type": 2, "style": toggleCategoriesButton.style, "label": toggleCategoriesButton.label, "custom_id": "store_toggle_categories" },
+                    "components": [{ "type": 10, "content": `**Sistema de Categorias**\n> Status: ${categoriesStatusText}` }]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar Produtos", "custom_id": "store_manage_products" },
-                    "components": [{ "type": 10, "content": `**Catálogo de Produtos**\n> Adicione e edite os itens da sua loja.` }]
+                    "components": [{ "type": 10, "content": `**Catálogo de Produtos**` }]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar Categorias", "custom_id": "store_manage_categories" },
+                    "components": [{ "type": 10, "content": `**Categorias da Loja**` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                  {
-                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar Cupons", "custom_id": "store_manage_coupons", "disabled": false },
-                    "components": [{ "type": 10, "content": `**Cupons de Desconto**\n> Crie cupons para suas promoções.` }]
+                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar Cupons", "custom_id": "store_manage_coupons" },
+                    "components": [{ "type": 10, "content": `**Cupons de Desconto**` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Configurar", "custom_id": "store_config_main" },
-                    "components": [{ "type": 10, "content": `**Configurações Essenciais**\n> Defina a vitrine, logs, categoria e cargos.` }]
+                    "components": [{ "type": 10, "content": `**Configurações Essenciais**` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Personalizar", "custom_id": "store_customize_vitrine", "disabled": !hasStorePremium, "emoji": { "name": "🎨" } },
-                    "components": [{ "type": 10, "content": `**Aparência da Vitrine (Premium)**\n> Altere cores, imagens e textos da vitrine.` }]
+                    "components": [{ "type": 10, "content": `**Aparência da Vitrine (Premium)**` }]
                 },
-                // --- NOVO BOTÃO DE ANALYTICS ADICIONADO ---
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Analisar", "custom_id": "store_open_analytics", "disabled": !hasStorePremium, "emoji": { "name": "📈" } },
-                    "components": [{ "type": 10, "content": `**Dashboard de Vendas (Premium)**\n> Acompanhe o desempenho da sua loja.` }]
+                    "components": [{ "type": 10, "content": `**Dashboard de Vendas (Premium)**` }]
                 },
-                // --- FIM DA ADIÇÃO ---
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 1, "components": [

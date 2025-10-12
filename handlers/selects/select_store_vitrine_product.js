@@ -8,8 +8,9 @@ module.exports = {
     async execute(interaction) {
         const productIds = interaction.values; 
 
-        if (productIds.length === 0) {
-            return interaction.reply({ content: 'Você não selecionou nenhum produto.', ephemeral: true });
+        if (productIds.length === 0 || productIds[0] === 'none') {
+            // Apenas fecha o menu de seleção sem fazer mais nada.
+            return interaction.deferUpdate();
         }
 
         const products = (await db.query(`SELECT id, name, price FROM store_products WHERE id = ANY($1::int[])`, [productIds])).rows;
@@ -24,7 +25,6 @@ module.exports = {
 
         const confirmationMessage = `### Confirme sua seleção\nVocê deseja comprar os seguintes itens?\n\n${productList}\n\n**Total:** \`R$ ${totalPrice.toFixed(2)}\`\n\n*Para cancelar, apenas ignore esta mensagem.*`;
 
-        // BOTÃO DE CUPOM REMOVIDO DAQUI
         const actionButtons = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`store_confirm_purchase_products_${idsString}_coupon_none`)
@@ -34,8 +34,11 @@ module.exports = {
         );
         
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
+        const categories = (await db.query('SELECT * FROM store_categories WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows; // CORREÇÃO: Busca as categorias
         const allProducts = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 AND is_enabled = true ORDER BY name ASC', [interaction.guild.id])).rows;
-        const originalVitrinePayload = generateVitrineMenu(settings, allProducts);
+        
+        // CORREÇÃO: Passa os argumentos na ordem correta para redesenhar a vitrine
+        const originalVitrinePayload = generateVitrineMenu(settings, categories, allProducts);
         await interaction.update(originalVitrinePayload);
 
         await interaction.followUp({

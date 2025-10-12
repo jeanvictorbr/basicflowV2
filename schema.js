@@ -26,6 +26,14 @@ const schema = {
         registros_status: { type: 'BOOLEAN', default: true },
         registros_canal_vitrine: { type: 'VARCHAR(255)' },
         registros_imagem_vitrine: { type: 'VARCHAR(1024)' },
+        welcome_enabled: { type: 'BOOLEAN', default: false },
+        welcome_channel_id: { type: 'VARCHAR(255)' },
+        welcome_message_config: { type: 'JSONB' }, // Armazenará { title, description, color, image, thumbnail, footer }
+        goodbye_enabled: { type: 'BOOLEAN', default: false },
+        store_categories_enabled: { type: 'BOOLEAN', default: false },
+        goodbye_channel_id: { type: 'VARCHAR(255)' },
+        goodbye_message_text: { type: 'TEXT', default: '👋 {user.tag} deixou o servidor.' },
+
         tickets_painel_channel: { type: 'VARCHAR(255)' },
         tickets_cargo_suporte: { type: 'VARCHAR(255)' },
         tickets_canal_logs: { type: 'VARCHAR(255)' },
@@ -107,7 +115,15 @@ const schema = {
         role_id_to_grant: { type: 'VARCHAR(255)' },
         role_duration_days: { type: 'INTEGER' },
         is_enabled: { type: 'BOOLEAN', default: true },
+        category_id: { type: 'INTEGER' }, // <-- NOVA COLUNA
         image_url: { type: 'VARCHAR(1024)' }
+    },
+        store_categories: { // <-- NOVA TABELA
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        description: { type: 'TEXT' },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] }
     },
     store_carts: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },

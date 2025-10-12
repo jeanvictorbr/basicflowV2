@@ -1,6 +1,7 @@
 // Crie em: handlers/modals/modal_store_edit_vitrine_color.js
 const db = require('../../database.js');
 const generateCustomizeMenu = require('../../ui/store/customizeMenu.js');
+const updateStoreVitrine = require('../../utils/updateStoreVitrine.js'); // IMPORTADO
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -14,7 +15,6 @@ module.exports = {
             return interaction.followUp({ content: '❌ Código de cor inválido. Use o formato Hex, por exemplo: `#FFFFFF`', ephemeral: true });
         }
 
-        // CORREÇÃO: Usando jsonb_set para uma atualização segura do JSONB.
         await db.query(
             `UPDATE guild_settings 
              SET store_vitrine_config = jsonb_set(COALESCE(store_vitrine_config, '{}'::jsonb), '{color}', to_jsonb($1::text))
@@ -30,5 +30,8 @@ module.exports = {
         });
 
         await interaction.followUp({ content: '✅ Cor da vitrine atualizada com sucesso!', ephemeral: true });
+        
+        // ATUALIZA A VITRINE
+        await updateStoreVitrine(interaction.client, interaction.guild.id);
     }
 };

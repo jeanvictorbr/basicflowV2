@@ -14,9 +14,12 @@ async function updateStoreVitrine(client, guildId) {
         const channel = await client.channels.fetch(settings.store_vitrine_channel_id);
         const message = await channel.messages.fetch(settings.store_vitrine_message_id);
         
+        // CORREÇÃO: Busca as categorias além dos produtos
+        const categories = (await db.query('SELECT * FROM store_categories WHERE guild_id = $1 ORDER BY name ASC', [guildId])).rows;
         const products = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 AND is_enabled = true ORDER BY name ASC', [guildId])).rows;
         
-        const updatedVitrine = generateVitrineMenu(settings, products);
+        // CORREÇÃO: Passa os argumentos na ordem correta, resetando para a visão inicial da vitrine
+        const updatedVitrine = generateVitrineMenu(settings, categories, products, null, 0);
         
         await message.edit(updatedVitrine);
         console.log(`[LOG] Vitrine da loja para a guild ${guildId} foi atualizada.`);

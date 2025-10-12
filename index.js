@@ -1,5 +1,6 @@
 // Substitua o conteúdo em: index.js
 const fs = require('node:fs');
+const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
@@ -22,6 +23,10 @@ client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 client.hangmanTimeouts = new Map();
+
+const commandUsage = new Map();
+const COMMAND_THRESHOLD = 15; // Ex: 15 usos
+const COMMAND_TIMEFRAME = 60 * 1000; // Em 1 minuto (60 segundos)
 
 // --- Evento de Entrada de Membro (Boas-Vindas) ---
 client.on(Events.GuildMemberAdd, async (member) => {
@@ -124,7 +129,46 @@ client.on(Events.GuildCreate, async guild => {
 // ===================================================================
 // ==                  FIM DO NOVO CÓDIGO                           ==
 // ===================================================================
+client.on(Events.GuildDelete, async guild => {
+    if (!process.env.GUILD_REMOVE_WEBHOOK_URL) {
+        console.log(`[GUILD LEAVE] Bot removido do servidor ${guild.name} (${guild.id}), mas o webhook de notificação não está configurado.`);
+        return;
+    }
 
+    try {
+        // Calcula há quanto tempo o bot estava no servidor
+        const joinedAtTimestamp = Math.floor(guild.joinedTimestamp / 1000);
+        const timeInGuild = `<t:${joinedAtTimestamp}:R>`;
+
+        const leaveEmbed = new EmbedBuilder()
+            .setColor('#E74C3C') // Vermelho
+            .setTitle('❌ Bot Removido de um Servidor!')
+            .setThumbnail(guild.iconURL({ dynamic: true }))
+            .addFields(
+                { name: 'Servidor', value: `**${guild.name}**\n\`${guild.id}\``, inline: true },
+                { name: 'Membros no momento da saída', value: `\`${guild.memberCount || 'N/A'}\``, inline: true },
+                { name: 'Estava no servidor desde', value: timeInGuild, inline: false }
+            )
+            .setTimestamp();
+
+        const payload = {
+            username: 'BasicFlow Alertas',
+            avatar_url: client.user.displayAvatarURL(),
+            embeds: [leaveEmbed]
+        };
+
+        await fetch(process.env.GUILD_REMOVE_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        console.log(`[GUILD LEAVE] Notificação de remoção enviada para o webhook sobre o servidor ${guild.name}.`);
+
+    } catch (error) {
+        console.error(`[GUILD LEAVE] Falha ao enviar notificação para o webhook:`, error);
+    }
+});
 
 // --- Carregamento de Comandos e Handlers ---
 client.commands = new Collection();
@@ -198,6 +242,7 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
     setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
     setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
+    setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000); // Executa uma vez a cada 24 horas
 });
 
 // --- Evento de Interações (COM VERIFICAÇÃO GLOBAL DE MANUTENÇÃO) ---
@@ -208,6 +253,41 @@ client.on(Events.InteractionCreate, async interaction => {
             const defaultMsg = "O bot está em manutenção. Por favor, tente novamente mais tarde.";
             return interaction.reply({ content: botStatus.maintenance_message_global || defaultMsg, ephemeral: true }).catch(() => {});
         }
+        // --- INÍCIO DO NOVO CÓDIGO DE MONITORIZAÇÃO DE SPAM ---
+        if (interaction.isChatInputCommand() && process.env.SPAM_ALERT_WEBHOOK_URL) {
+            const now = Date.now();
+            const key = `${interaction.guildId}-${interaction.user.id}`;
+
+            // Limpa registos antigos
+            const userUsage = (commandUsage.get(key) || []).filter(timestamp => now - timestamp < COMMAND_TIMEFRAME);
+            userUsage.push(now);
+            commandUsage.set(key, userUsage);
+
+            if (userUsage.length === COMMAND_THRESHOLD) { // Alerta exatamente ao atingir o limite
+                const spamEmbed = new EmbedBuilder()
+                    .setColor('Orange')
+                    .setTitle('🚨 Alerta de Alto Tráfego de Comandos')
+                    .setDescription(`O utilizador **${interaction.user.tag}** atingiu o limite de uso de comandos.`)
+                    .addFields(
+                        { name: 'Utilizador', value: `${interaction.user}\n\`${interaction.user.id}\``, inline: true },
+                        { name: 'Servidor', value: `**${interaction.guild.name}**\n\`${interaction.guild.id}\``, inline: true },
+                        { name: 'Comando', value: `\`/${interaction.commandName}\`` },
+                        { name: 'Alerta', value: `\`${COMMAND_THRESHOLD}\` comandos em menos de \`${COMMAND_TIMEFRAME / 1000}\` segundos.` }
+                    )
+                    .setTimestamp();
+
+                fetch(process.env.SPAM_ALERT_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: 'BasicFlow Monitor',
+                        avatar_url: client.user.displayAvatarURL(),
+                        embeds: [spamEmbed]
+                    }),
+                }).catch(err => console.error("[WEBHOOK] Falha ao enviar alerta de spam:", err));
+            }
+        }
+        // --- FIM DO NOVO CÓDIGO ---
 
         // --- VERIFICAÇÃO DE MANUTENÇÃO POR GUILDA ---
         if (interaction.guild) {
@@ -470,6 +550,41 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     if (!settings || !settings.roletags_enabled) return;
     if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
         await updateUserTag(newMember);
+    }
+});
+process.on('uncaughtException', async (error, origin) => {
+    console.error('CRITICAL ERROR:', error);
+
+    if (!process.env.ERROR_WEBHOOK_URL) return;
+
+    // Limita o stack para não estourar o limite de caracteres do Discord
+    const stack = error.stack ? (error.stack.length > 3800 ? `${error.stack.slice(0, 3800)}...` : error.stack) : 'N/A';
+
+    const errorEmbed = new EmbedBuilder()
+        .setColor('DarkRed')
+        .setTitle('🔥 ERRO CRÍTICO NO BOT 🔥')
+        .addFields(
+            { name: 'Origem do Erro', value: `\`${origin}\`` },
+            { name: 'Mensagem', value: `\`\`\`${error.message}\`\`\`` },
+            { name: 'Stack Trace', value: `\`\`\`js\n${stack}\`\`\`` }
+        )
+        .setTimestamp();
+
+    const payload = {
+        content: '<@SEU_USER_ID>', // Coloque seu ID de usuário aqui para ser mencionado!
+        username: 'BasicFlow Monitor de Erros',
+        avatar_url: client.user.displayAvatarURL(),
+        embeds: [errorEmbed]
+    };
+
+    try {
+        await fetch(process.env.ERROR_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+    } catch (webhookError) {
+        console.error('Falha ao enviar o webhook de erro:', webhookError);
     }
 });
 
