@@ -14,7 +14,7 @@ module.exports = {
             return interaction.editReply('❌ O canal da vitrine não foi encontrado. Verifique as configurações.');
         }
 
-        const products = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 AND is_enabled = true ORDER BY name ASC', [interaction.guild.id])).rows;
+        const products = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 AND is_enabled = true ORDER BY price ASC', [interaction.guild.id])).rows;
         const categories = (await db.query('SELECT * FROM store_categories WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows;
         
         // Determina a primeira categoria a ser exibida, ou 'null' se não houver.
