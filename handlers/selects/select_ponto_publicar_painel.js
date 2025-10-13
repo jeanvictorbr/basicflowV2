@@ -13,8 +13,11 @@ module.exports = {
         if (!channel) return interaction.followUp({ content: '❌ Canal não encontrado.', ephemeral: true });
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
+        
+        // Verifica se o sistema está ativo ANTES de tentar enviar
         if (!settings.ponto_status) {
-            await interaction.editReply({ components: generatePontoMenu(settings), flags: V2_FLAG | EPHEMERAL_FLAG });
+            const menu = await generatePontoMenu(interaction, settings);
+            await interaction.editReply({ components: menu, flags: V2_FLAG | EPHEMERAL_FLAG });
             return interaction.followUp({ content: '❌ Ative o sistema de bate-ponto antes de publicar o painel.', ephemeral: true });
         }
 
@@ -31,12 +34,22 @@ module.exports = {
                 components: [new ActionRowBuilder().addComponents(loadButton)]
             });
             
-            await interaction.editReply({ components: generatePontoMenu(settings), flags: V2_FLAG | EPHEMERAL_FLAG });
+            // Recarrega o menu principal e envia a mensagem de sucesso
+            const menu = await generatePontoMenu(interaction, settings);
+            await interaction.editReply({ components: menu, flags: V2_FLAG | EPHEMERAL_FLAG });
             await interaction.followUp({ content: `✅ **Botão de carregamento enviado para ${channel}!** Vá até o canal e clique no botão para publicar o painel.`, ephemeral: true });
 
         } catch (error) {
             console.error("Erro ao enviar botão de carregamento:", error);
-            await interaction.followUp({ content: `❌ **Erro ao enviar o botão para ${channel}.** Verifique minhas permissões.`, ephemeral: true });
+            
+            // CORREÇÃO: Passa 'interaction' para gerar o menu mesmo em caso de erro.
+            const menu = await generatePontoMenu(interaction, settings);
+            await interaction.editReply({
+                components: menu,
+                flags: V2_FLAG | EPHEMERAL_FLAG
+            });
+            // Mensagem de erro mais clara para o usuário final.
+            await interaction.followUp({ content: `❌ **Erro ao enviar o botão para ${channel}.** Verifique se o bot tem permissão para 'Ver Canal' e 'Enviar Mensagens' neste canal.`, ephemeral: true });
         }
     }
 };

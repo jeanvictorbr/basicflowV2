@@ -7,7 +7,7 @@ require('dotenv').config();
 // --- LÓGICA DE SEPARAÇÃO ADICIONADA ---
 const commands = [];
 const devCommands = [];
-const devOnlyCommandNames = ['devpanel', 'debugai', 'enviar']; // Lista de comandos de dev
+const devOnlyCommandNames = ['devpanel', 'debugai']; // Lista de comandos de dev
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));

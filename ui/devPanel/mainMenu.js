@@ -16,7 +16,16 @@ module.exports = function generateDevMainMenu(botStatus, stats) {
                     "type": 1, "components": [
                         { "type": 2, "style": 1, "label": "Gerenciar Chaves", "emoji": { "name": "🔑" }, "custom_id": "dev_manage_keys" },
                         { "type": 2, "style": 1, "label": "Gerador em Massa", "emoji": { "name": "✨" }, "custom_id": "dev_open_bulk_keys" },
-                        { "type": 2, "style": 1, "label": "Gerenciar Guildas", "emoji": { "name": "🏢" }, "custom_id": "dev_manage_guilds" }
+                        { "type": 2, "style": 1, "label": "Gerenciar Guildas", "emoji": { "name": "🏢" }, "custom_id": "dev_manage_guilds" },
+                        { "type": 2, "style": 3, "label": "Enviar Atualização", "emoji": "📣", "custom_id": "dev_send_update" }, 
+                        { "type": 2, "style": 2,  "label": "Ver Assinantes", "emoji": "📊", "custom_id": "dev_view_update_subscribers" }
+                    ]
+                },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 1, "components": [
+                        { "type": 2, "style": 1, "label": "Analytics", "emoji": { "name": "📊" }, "custom_id": "dev_open_analytics" },
+                        { "type": 2, "style": 1, "label": "Feature Flags", "emoji": { "name": "🚩" }, "custom_id": "dev_open_feature_flags" } // <-- NOVO BOTÃO
                     ]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },

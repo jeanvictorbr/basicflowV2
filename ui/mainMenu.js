@@ -139,6 +139,7 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         components: [
             { type: 2, style: 2, label: "Página Anterior", custom_id: `main_menu_page_${page - 1}`, disabled: page === 0 },
             { type: 2, style: 2, label: "Próxima Página", custom_id: `main_menu_page_${page + 1}`, disabled: page + 1 >= totalPages }
+        
         ]
     };
 
@@ -161,6 +162,7 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
                     "type": 1,
                     "components": [
                         { "type": 2, "style": 3, "label": "Ativar Key", "custom_id": "main_ativar_key" },
+                        { "type": 2, "style": 1, "label": "Atualizações", "emoji": { "name": "📢" }, "disabled": "false", "custom_id": "open_updates_menu" },
                         { "type": 2, "style": 1, "label": "Estatísticas", "emoji": { "name": "📊" }, "disabled": !hasStatsAccess, "custom_id": "main_show_stats" }
                     ]
                 },

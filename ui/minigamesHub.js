@@ -34,6 +34,8 @@ module.exports = function generateMinigamesHub() {
                     {
                         type: 1,
                         components: [
+                            // BOTÃO DE VOLTAR FOI MOVIDO E NOVO BOTÃO ADICIONADO
+                            { type: 2, style: 2, label: "Ranking Global", emoji: { name: "🌍" }, custom_id: "open_global_ranking" },
                             { type: 2, style: 2, label: "Voltar", emoji: { name: "↩️" }, custom_id: "main_menu_back" }
                         ]
                     }

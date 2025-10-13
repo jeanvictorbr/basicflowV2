@@ -1,4 +1,4 @@
-// Crie em: handlers/buttons/dev_guild_force_leave_confirm_.js
+// Substitua em: handlers/buttons/dev_guild_force_leave_confirm_.js
 const db = require('../../database.js');
 const generateDevMainMenu = require('../../ui/devPanel/mainMenu.js');
 const V2_FLAG = 1 << 15;
@@ -8,7 +8,11 @@ module.exports = {
     customId: 'dev_guild_force_leave_confirm_',
     async execute(interaction) {
         await interaction.deferUpdate();
-        const guildId = interaction.customId.split('_')[5];
+
+        // CORREÇÃO: Método mais seguro para extrair o ID da guilda
+        const prefix = 'dev_guild_force_leave_confirm_';
+        const guildId = interaction.customId.substring(prefix.length);
+
         const guild = await interaction.client.guilds.fetch(guildId).catch(() => null);
 
         if (guild) {

@@ -9,12 +9,30 @@ const schema = {
         maintenance_message_global: { type: 'TEXT' }
     },
 
-    // Tabela principal de configurações por servidor (guild)
+    // NOVA TABELA PARA FEATURE FLAGS
+    module_status: {
+        module_name: { type: 'VARCHAR(100)', primaryKey: true },
+        is_enabled: { type: 'BOOLEAN', default: true },
+        maintenance_message: { type: 'TEXT' }
+    },
+
+    // Tabela de logs de interação (do passo anterior)
+    interaction_logs: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        timestamp: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        type: { type: 'VARCHAR(50)', notNull: true },
+        name: { type: 'VARCHAR(255)', notNull: true },
+        module: { type: 'VARCHAR(100)' }
+    },
+
+    // ... (resto do schema.js continua igual) ...
     guild_settings: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
         ai_services_disabled_by_dev: { type: 'BOOLEAN', default: false },
         ausencias_canal_aprovacoes: { type: 'VARCHAR(255)' },
-        store_mp_token: { type: 'TEXT' }, 
+        store_mp_token: { type: 'TEXT' },
         ausencias_cargo_ausente: { type: 'VARCHAR(255)' },
         ausencias_canal_logs: { type: 'VARCHAR(255)' },
         ausencias_imagem_vitrine: { type: 'VARCHAR(1024)' },
@@ -182,15 +200,14 @@ const schema = {
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'feature_key'] }
     },
     activation_keys: {
-        id: { type: 'SERIAL', primaryKey: true }, // <-- ADICIONADO PARA ORDENAÇÃO
-        key: { type: 'VARCHAR(255)', unique: true, notNull: true }, // <-- Corrigido para ser único mas não chave primária
+        id: { type: 'SERIAL', primaryKey: true },
+        key: { type: 'VARCHAR(255)', unique: true, notNull: true },
         duration_days: { type: 'INTEGER', notNull: true },
         uses_left: { type: 'INTEGER', default: 1 },
         grants_features: { type: 'TEXT' },
         comment: { type: 'TEXT' },
-        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' } // <-- COLUNA ADICIONADA
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-    // CORREÇÃO: Nome da tabela alterado de 'key_activation_history' para 'activation_key_history'
     activation_key_history: {
         id: { type: 'SERIAL', primaryKey: true },
         key: { type: 'VARCHAR(255)', notNull: true },
@@ -352,7 +369,7 @@ const schema = {
         image_url: { type: 'VARCHAR(1024)' },
         preset_code: { type: 'TEXT', notNull: true }
     },
-    
+
     // --- Moderação ---
     moderation_logs: {
         case_id: { type: 'SERIAL', primaryKey: true },
@@ -381,7 +398,7 @@ const schema = {
         duration: { type: 'VARCHAR(50)' },
         auto_create_role: { type: 'BOOLEAN', default: false },
     },
-    
+
     // --- Guardian AI ---
     guardian_policies: {
         id: { type: 'SERIAL', primaryKey: true },
@@ -423,7 +440,7 @@ const schema = {
         action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
         action_punishment_duration_minutes: { type: 'INTEGER' }
     },
-    
+
     // --- Mini-Games ---
     hangman_games: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },

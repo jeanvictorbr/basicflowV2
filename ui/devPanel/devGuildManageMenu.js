@@ -2,19 +2,16 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function generateDevGuildManageMenu(guild, settings) {
-    // Transforma a string de features em um array para facilitar a manipulação
     const activeFeatures = settings.enabled_features ? settings.enabled_features.split(',') : [];
 
-    // Status do Bot na Guilda
     const isBotEnabledInGuild = settings?.bot_enabled_in_guild !== false;
     const toggleBotStatusButton = isBotEnabledInGuild
         ? { label: "Bot na Guild: Ativado", style: ButtonStyle.Success, emoji: "✅" }
         : { label: "Bot na Guild: Desativado", style: ButtonStyle.Danger, emoji: "❌" };
 
-    // Status da IA na Guilda
     const isAiDisabledByDev = settings?.ai_services_disabled_by_dev;
-    const toggleAiButton = isAiDisabledByDev 
-        ? { label: "IA na Guild: Desativada", style: ButtonStyle.Danger, emoji: "❌" } 
+    const toggleAiButton = isAiDisabledByDev
+        ? { label: "IA na Guild: Desativada", style: ButtonStyle.Danger, emoji: "❌" }
         : { label: "IA na Guild: Ativada", style: ButtonStyle.Success, emoji: "✅" };
 
     const quickActions = new ActionRowBuilder().addComponents(
@@ -23,9 +20,8 @@ module.exports = function generateDevGuildManageMenu(guild, settings) {
         new ButtonBuilder().setCustomId(`dev_guild_send_dm_${guild.id}`).setLabel("DM Dono").setStyle(ButtonStyle.Primary).setEmoji('✉️')
     );
     
-    // Constrói a lista de features ativas para exibição
-    const featuresListText = activeFeatures.length > 0 
-        ? activeFeatures.map(f => `> ✨ **${f}**`).join('\n') 
+    const featuresListText = activeFeatures.length > 0
+        ? activeFeatures.map(f => `> ✨ **${f}**`).join('\n')
         : '> `Nenhuma feature premium ativa.`';
 
     return [
@@ -55,7 +51,9 @@ module.exports = function generateDevGuildManageMenu(guild, settings) {
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 1, "components": [
+                        // BOTÕES DE GERENCIAMENTO
                         { "type": 2, "style": 1, "label": "Gerenciar Features", "emoji": { "name": "✨" }, "custom_id": `dev_guild_edit_features_${guild.id}` },
+                        { "type": 2, "style": 1, "label": "Inspecionar Atividade", "emoji": { "name": "🔍" }, "custom_id": `dev_guild_inspect_activity_${guild.id}` }
                     ]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
