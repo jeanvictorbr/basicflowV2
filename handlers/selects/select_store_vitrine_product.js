@@ -34,7 +34,7 @@ module.exports = {
         );
         
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
-        const categories = (await db.query('SELECT * FROM store_categories WHERE guild_id = $1 ORDER BY price ASC', [interaction.guild.id])).rows; // CORREÇÃO: Busca as categorias
+        const categories = (await db.query('SELECT * FROM store_categories WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows; // CORREÇÃO: Busca as categorias
         const allProducts = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 AND is_enabled = true ORDER BY name ASC', [interaction.guild.id])).rows;
         
         // CORREÇÃO: Passa os argumentos na ordem correta para redesenhar a vitrine
