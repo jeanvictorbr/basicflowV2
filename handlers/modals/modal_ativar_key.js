@@ -73,7 +73,7 @@ module.exports = {
                             { name: 'Ativada por', value: `${interaction.user.tag}\n\`${interaction.user.id}\``, inline: true },
                             { name: 'Chave Utilizada', value: `\`${key}\`` },
                             { name: 'Features Liberadas', value: `\`${featuresToGrant.join(', ')}\`` },
-                            { name: 'Duração', value: `\`${durationDays} dias\`` }
+                            { name: 'Duração', value: `\`${duration_days} dias\`` } 
                         )
                         .setTimestamp();
 
