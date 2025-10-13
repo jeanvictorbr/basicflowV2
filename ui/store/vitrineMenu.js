@@ -1,7 +1,11 @@
-// Substitua o conteúdo em: ui/store/vitrineMenu.js
+// ui/store/vitrineMenu.js
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 const PRODUCTS_PER_PAGE = 5;
+
+// ADICIONADO A IMAGEM PADRÃO AQUI
+const DEFAULT_IMAGE_URL = 'https://media.discordapp.net/attachments/1310610658844475404/1426843447217754172/E99EBFA9-97D6-422C-6AC4EEC1651A.png?ex=68ed5bc3&is=68ec0a43&hm=2641efe8640c0c67b23a3a829d4807c8cb595535df9d519838fcf65f5c747dac&=&format=webp&quality=lossless';
+
 
 module.exports = function generateVitrineMenu(settings, categories = [], products = [], selectedCategoryId = null, page = 0) {
     const config = settings.store_vitrine_config || {};
@@ -12,9 +16,9 @@ module.exports = function generateVitrineMenu(settings, categories = [], product
         .setTitle(config.title || '🏪 Vitrine de Produtos')
         .setDescription(selectedCategory?.description || config.description || 'Selecione uma categoria para ver os produtos ou veja os itens sem categoria abaixo.');
 
-    if (config.image_url) {
-        embed.setImage(config.image_url);
-    }
+    // LÓGICA ATUALIZADA: Usa a imagem configurada ou a padrão
+    embed.setImage(config.image_url || DEFAULT_IMAGE_URL);
+
 
     const categorySelectRow = new ActionRowBuilder();
     const productSelectRow = new ActionRowBuilder();
@@ -34,8 +38,7 @@ module.exports = function generateVitrineMenu(settings, categories = [], product
                 .addOptions(categoryOptions)
         );
     }
-
-    // CORREÇÃO APLICADA AQUI: Garante que 'products' seja um array antes de chamar 'filter'
+    
     const productList = Array.isArray(products) ? products : [];
     
     const productsToDisplay = settings.store_categories_enabled
