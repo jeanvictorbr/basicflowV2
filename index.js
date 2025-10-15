@@ -360,64 +360,69 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
 });
+// Substitua este bloco inteiro no seu arquivo index.js
+
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
-    await processMessageForGuardian(message);
 
-    const isMentioned = message.mentions.has(client.user);
-    if (!isMentioned) return;
-    
-    const guildSettings = await db.query('SELECT guardian_ai_mention_chat_enabled FROM guild_settings WHERE guild_id = $1', [message.guild.id]);
-    const mentionChatEnabled = guildSettings.rows[0]?.guardian_ai_mention_chat_enabled;
-
-    if (!mentionChatEnabled) return;
-
+    // 1. Chamada do Guardian AI para moderação (executa apenas uma vez)
     try {
-        await message.channel.sendTyping();
-
-        const recentMessages = await message.channel.messages.fetch({ limit: 10 });
-        const chatHistory = recentMessages
-            .filter(msg => !msg.author.bot || msg.author.id === client.user.id)
-            .map(msg => ({
-                role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                content: msg.content
-            }))
-            .reverse();
-
-        const aiResponse = await getAIResponse({
-            guild: message.guild,
-            user: message.author,
-            featureName: 'Guardian Mention Chat',
-            chatHistory: chatHistory,
-            useBaseKnowledge: true
-        });
-
-        if (aiResponse) {
-            // Usa a nova função para dividir a resposta em pedaços
-            const chunks = splitMessage(aiResponse, { maxLength: 2000 });
-            
-            // Envia o primeiro pedaço como uma resposta direta à mensagem do usuário
-            const firstChunk = chunks.shift();
-            if (firstChunk) {
-                await message.reply(firstChunk);
-            }
-
-            // Envia os pedaços restantes como mensagens normais no canal
-            for (const chunk of chunks) {
-                await message.channel.send(chunk);
-                // Pequeno delay para garantir que as mensagens cheguem na ordem correta
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-        }
-    } catch (error) {
-        console.error('[Mention Chat] Erro ao processar menção com IA:', error);
+        await processMessageForGuardian(message);
+    } catch (err) {
+        console.error('[Guardian AI] Erro não tratado:', err);
     }
 
-// --- FIM DA CORREÇÃO ---
+    const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
 
+    // 2. Bloco ÚNICO para chat por menção
+    const isMentioned = message.mentions.has(client.user);
+    if (isMentioned && settings.guardian_ai_mention_chat_enabled) {
+        try {
+            // Ignora se for apenas uma menção vazia
+            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
+            if (!userMessage) return;
 
+            await message.channel.sendTyping();
+
+            const recentMessages = await message.channel.messages.fetch({ limit: 10 });
+            const chatHistory = recentMessages
+                .filter(msg => !msg.author.bot || msg.author.id === client.user.id)
+                .map(msg => ({
+                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
+                    content: msg.content
+                }))
+                .reverse();
+
+            const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
+            const aiResponse = await getAIResponse({
+                guild: message.guild,
+                user: message.author,
+                featureName: "Chat por Menção",
+                chatHistory: chatHistory,
+                userMessage: userMessage,
+                customPrompt: systemPrompt,
+                useBaseKnowledge: true
+            });
+
+            if (aiResponse) {
+                const chunks = splitMessage(aiResponse, { maxLength: 2000 });
+                const firstChunk = chunks.shift();
+                if (firstChunk) {
+                    await message.reply(firstChunk);
+                }
+                for (const chunk of chunks) {
+                    await message.channel.send(chunk);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+            // Encerra o processamento aqui para não executar outras lógicas de mensagem
+            return; 
+        } catch (error) {
+            console.error('[Mention Chat] Erro ao processar menção com IA:', error);
+        }
+    }
  
- // --- Início do Bloco do Arquiteto & Consultor de Servidor ---
+    // --- Início do Bloco do Arquiteto & Consultor de Servidor ---
     if ((message.channel.name.startsWith('arquiteto-') || message.channel.name.startsWith('consultor-')) && message.channel.topic === message.author.id) {
         try {
             const sessionResult = await db.query('SELECT * FROM architect_sessions WHERE channel_id = $1 AND (status = $2 OR status = $3)', [message.channel.id, 'active', 'pending_confirmation']);
@@ -436,9 +441,7 @@ client.on(Events.MessageCreate, async (message) => {
             const isConsultantMode = message.channel.name.startsWith('consultor-');
 
             if (isConsultantMode) {
-                // --- NOVO PROMPT PARA O MODO CONSULTOR (MAIS DIRETO) ---
-                // --- PROMPT ATUALIZADO PARA O MODO CONSULTOR ---
-                                systemPrompt = `
+                systemPrompt = `
                     Você é um "Consultor de Servidor" para o Discord, um especialista em otimização. Seu objetivo é **propor ações concretas e com estilo**.
 
                     **REGRAS:**
@@ -450,12 +453,11 @@ client.on(Events.MessageCreate, async (message) => {
                     **Formato do JSON (Obrigatório):**
                     - "roles": array de objetos com "name" e "permissions".
                     - "categories": array de objetos com "name" e "channels".
-                    - Dentro de "channels", cada objeto DEVE ter: "name" (string), "type" ('text' ou 'voice'), e **"purpose"** ('chat', 'readonly', 'welcome').
+                    - Dentro de "channels", cada objeto DEVE ter: "name" (string), "type": ('text' ou 'voice'), e **"purpose"** ('chat', 'readonly', 'welcome').
                 `;
             } else {
-                // --- PROMPT DO ARQUITETO (DIRETO E COM ESTILO) ---
                 systemPrompt = `
-Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um plano de servidor completo, funcional e **visualmente impressionante**.
+                    Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um plano de servidor completo, funcional e **visualmente impressionante**.
 
                     **REGRAS:**
                     1.  **SEJA OBJETIVO:** Faça no máximo 2 perguntas para entender o tema do servidor.
@@ -516,7 +518,7 @@ Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um pla
                 const actionRow = {
                     type: 1,
                     components: [
-                        { type: 2, style: 3, label: isConsultantMode ? "Confirmar e Adicionar" : "Confirmar e Construir", emoji: { name: "✅" }, custom_id: isConsultantMode ? `architect_confirm_add_${message.channel.id}` : `architect_confirm_build_${message.channel.id}` },
+                        { type: 2, style: 3, label: isConsultantMode ? "Confirmar e Adicionar" : "Confirmar e Construir", emoji: { name: "🚀" }, custom_id: isConsultantMode ? `architect_confirm_add_${message.channel.id}` : `architect_confirm_build_${message.channel.id}` },
                         { type: 2, style: 1, label: "Editar/Pedir Alteração", emoji: { name: "📝" }, custom_id: `architect_edit_plan_${message.channel.id}` },
                         { type: 2, style: 4, label: "Cancelar", emoji: { name: "❌" }, custom_id: 'architect_cancel_build' }
                     ]
@@ -540,7 +542,6 @@ Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um pla
 
     // --- Início do Bloco de Relay (Loja e Tickets) ---
     try {
-        // Lógica de Relay da Loja (DM do Usuário -> Thread da Staff)
         if (message.channel.type === ChannelType.DM) {
             const activeCart = (await db.query("SELECT * FROM store_carts WHERE user_id = $1 AND (status = 'open' OR status = 'payment') AND thread_id IS NOT NULL", [message.author.id])).rows[0];
             if (activeCart) {
@@ -557,7 +558,6 @@ Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um pla
                 }
             }
         }
-        // Lógica de Relay da Loja (Thread da Staff -> DM do Usuário)
         else if (message.channel.isThread()) {
             const activeCart = (await db.query("SELECT * FROM store_carts WHERE thread_id = $1 AND claimed_by_staff_id = $2", [message.channel.id, message.author.id])).rows[0];
             if (activeCart) {
@@ -575,9 +575,7 @@ Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um pla
         console.error("[Store Relay] Erro ao retransmitir mensagem:", e);
     }
 
-    // --- Bloco do Ticket DM (CORRIGIDO E MELHORADO) ---
     try {
-        // Lógica de DM do Usuário -> Thread da Staff
         if (message.channel.type === ChannelType.DM) {
             const activeTicket = (await db.query("SELECT * FROM tickets WHERE user_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.author.id])).rows[0];
             if (activeTicket) {
@@ -595,21 +593,17 @@ Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um pla
                 }
             }
         } 
-        // Lógica da Thread da Staff -> DM do Usuário (COM MELHORIA)
         else if (message.channel.isThread()) {
             const activeTicket = (await db.query("SELECT * FROM tickets WHERE thread_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.channel.id])).rows[0];
             
-            // Verifica se a mensagem veio de um staff e não do cliente ou do próprio bot
             if (activeTicket && message.author.id !== activeTicket.user_id && !message.author.bot) {
-                const settings = (await db.query('SELECT tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
+                const ticketSettings = (await db.query('SELECT tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
                 const member = await message.guild.members.fetch(message.author.id).catch(() => null);
-                const isStaff = member && settings && member.roles.cache.has(settings.tickets_cargo_suporte);
+                const isStaff = member && ticketSettings && member.roles.cache.has(ticketSettings.tickets_cargo_suporte);
 
-                // Só retransmite se for um staff falando
                 if (isStaff) {
                      const customer = await client.users.fetch(activeTicket.user_id).catch(() => null);
                      if (customer) {
-                        // Adiciona um prefixo para identificar quem está respondendo
                         const content = message.content ? `**${message.author.username} diz:**\n${message.content}` : undefined;
                         const files = message.attachments.map(att => att.url);
                         
@@ -626,60 +620,14 @@ Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um pla
 
     if (!message.guild) return;
 
-    const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
-    
-    // Lógica do Guardian AI para Chat por Menção
-    if (message.content.includes(client.user.id) && settings.guardian_ai_mention_chat_enabled) {
-        try {
-            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
-            if (!userMessage) return;
-            await message.channel.sendTyping();
-            const channelMessages = await message.channel.messages.fetch({ limit: 3 });
-            const chatHistory = channelMessages.map(msg => {
-                const content = msg.content.replace(/<@!?\d+>/g, '').trim();
-                if (!content) return null;
-                return {
-                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                    content: content
-                };
-            }).filter(Boolean).reverse();
-           
-            const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
-            const aiResponse = await getAIResponse({
-                guild: message.guild,
-                user: message.author,
-                featureName: "Chat por Menção",
-                chatHistory: chatHistory,
-                userMessage: userMessage,
-                customPrompt: systemPrompt,
-                useBaseKnowledge: true
-            });
-            if (aiResponse) {
-                await message.reply(aiResponse);
-            }
-            return; // Encerra o processamento aqui para não executar outras lógicas
-        } catch(err) {
-            console.error('[Mention Chat AI] Erro ao responder menção:', err);
-        }
-    }
-
-    // Lógica do Guardian AI para Moderação
-    try {
-        await processMessageForGuardian(message);
-    } catch (err) {
-        console.error('[Guardian AI] Erro não tratado:', err);
-    }
-
     // Lógica para tickets de canal (Auto-fechamento e Assistente de IA)
     const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
     if (ticket) {
-        // Cancela o fechamento automático se houver nova mensagem
         if (ticket.warning_sent_at) {
             await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
         }
         await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
-        // Lógica do Assistente de IA para tickets
         if (!settings.tickets_ai_assistant_enabled) return;
         
         const history = await message.channel.messages.fetch({ limit: 6 });
@@ -717,5 +665,4 @@ Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um pla
         }
     }
 });
-
 client.login(process.env.DISCORD_TOKEN);
