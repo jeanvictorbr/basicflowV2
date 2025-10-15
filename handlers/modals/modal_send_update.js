@@ -1,5 +1,6 @@
 // handlers/modals/modal_send_update.js
 const db = require('../../database');
+const { splitMessage } = require('../../utils/messageSplitter'); // Importa a nova função
 
 const EPHEMERAL_FLAG = 1 << 6;
 
@@ -9,15 +10,33 @@ function createUpdateEmbed(update, client) {
         "author": { "name": "BasicFlow - Diário de Atualizações", "icon_url": client.user.displayAvatarURL() },
         "title": `🚀 Nova Atualização: ${update.title}`,
         "color": 0x3498DB,
-        "fields": [
-            { "name": '✨ Novidades', "value": update.news }
-        ],
+        "fields": [], // Começa com os campos vazios
         "timestamp": new Date(update.created_at || new Date()).toISOString(),
         "footer": { "text": `Versão ${update.version}` }
     };
-    if (update.fixes && update.fixes.trim() !== '') {
-        embed.fields.push({ "name": '🔧 Correções', "value": update.fixes });
+
+    // Adiciona o campo de Novidades, dividindo se necessário
+    if (update.news && update.news.trim() !== '') {
+        const newsChunks = splitMessage(update.news, { maxLength: 1024 });
+        newsChunks.forEach((chunk, index) => {
+            embed.fields.push({
+                name: index === 0 ? '✨ Novidades' : `✨ Novidades (Parte ${index + 1})`,
+                value: chunk
+            });
+        });
     }
+
+    // Adiciona o campo de Correções, dividindo se necessário
+    if (update.fixes && update.fixes.trim() !== '') {
+        const fixesChunks = splitMessage(update.fixes, { maxLength: 1024 });
+        fixesChunks.forEach((chunk, index) => {
+            embed.fields.push({
+                name: index === 0 ? '🔧 Correções' : `🔧 Correções (Parte ${index + 1})`,
+                value: chunk
+            });
+        });
+    }
+
     return embed;
 }
 
@@ -32,8 +51,6 @@ module.exports = {
         const news = interaction.fields.getTextInputValue('update_news');
         const fixes = interaction.fields.getTextInputValue('update_fixes');
 
-        // --- INÍCIO DA CORREÇÃO ---
-        // 1. Salva a nova atualização no banco de dados primeiro
         try {
             await db.query(
                 'INSERT INTO bot_updates (version, title, news, fixes) VALUES ($1, $2, $3, $4)',
@@ -43,7 +60,6 @@ module.exports = {
             console.error('[DB Update] Falha ao salvar a nova atualização no banco de dados:', error);
             return interaction.editReply({ content: '❌ Ocorreu um erro ao salvar a atualização no banco de dados. O envio foi cancelado.' });
         }
-        // --- FIM DA CORREÇÃO ---
 
         const updateEmbed = createUpdateEmbed({ version, title, news, fixes }, interaction.client);
 
