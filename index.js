@@ -362,7 +362,7 @@ server.listen(PORT, () => {
 });
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
-    await processGuardian(message);
+    await processMessageForGuardian(message);
 
     const isMentioned = message.mentions.has(client.user);
     if (!isMentioned) return;
