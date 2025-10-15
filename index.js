@@ -377,7 +377,7 @@ client.on(Events.MessageCreate, async (message) => {
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
 
     // 2. Bloco ÚNICO para chat por menção
-    const isMentioned = message.mentions.has(client.user);
+    const isMentioned = message.mentions.has(client.user) && !message.mentions.everyone;
     if (isMentioned && settings.guardian_ai_mention_chat_enabled) {
         try {
             // Ignora se for apenas uma menção vazia
@@ -386,7 +386,7 @@ client.on(Events.MessageCreate, async (message) => {
 
             await message.channel.sendTyping();
 
-            const recentMessages = await message.channel.messages.fetch({ limit: 10 });
+            const recentMessages = await message.channel.messages.fetch({ limit: 7 });
             const chatHistory = recentMessages
                 .filter(msg => !msg.author.bot || msg.author.id === client.user.id)
                 .map(msg => ({
