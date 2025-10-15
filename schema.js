@@ -521,15 +521,13 @@ const schema = {
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] }
     },
         // NOVA TABELA PARA O ARQUITETO
-    // NOVA TABELA PARA O ARQUITETO
     architect_sessions: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         user_id: { type: 'VARCHAR(255)', notNull: true },
         chat_history: { type: 'JSONB' },
-        blueprint: { type: 'JSONB' },
-        // --- CORREÇÃO APLICADA AQUI ---
-        status: { type: 'VARCHAR(50)', default: "'active'" },
+        blueprint: { type: 'JSONB' }, // <-- ADICIONE ESTA LINHA
+        status: { type: 'VARCHAR(50)', default: "'active'" }, // CORREÇÃO: 'active' precisa de aspas simples
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     }
 };
