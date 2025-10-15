@@ -527,7 +527,7 @@ const schema = {
         user_id: { type: 'VARCHAR(255)', notNull: true },
         chat_history: { type: 'JSONB' },
         blueprint: { type: 'JSONB' }, // <-- ADICIONE ESTA LINHA
-        status: { type: 'VARCHAR(50)', default: "'active'" }, // CORREÇÃO: 'active' precisa de aspas simples
+        status: { type: 'VARCHAR(50)', default: 'active' }, // CORREÇÃO: 'active' precisa de aspas simples
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     }
 };
