@@ -1,6 +1,7 @@
 // Substitua o conteúdo em: index.js
 const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
+const { checkTokenUsage } = require('./utils/tokenMonitor.js');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
@@ -212,6 +213,7 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000);
     setInterval(() => syncUsedKeys(client), 60 * 1000);
     setInterval(() => updateModuleStatusCache(client), 15 * 60 * 1000);
+    setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
 });
 
 client.on(Events.InteractionCreate, async interaction => {
