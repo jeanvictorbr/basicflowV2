@@ -1,45 +1,52 @@
-// schema.js
-
+// Substitua completamente o conteúdo do seu arquivo: schema.js
 const schema = {
-    // =====================================================================
-    // ==                      CONFIGURAÇÕES GLOBAIS                      ==
-    // =====================================================================
-    bot_status: {
+    // Tabela para configurações globais do bot (ex: status de manutenção)
+      bot_status: {
         status_key: { type: 'VARCHAR(255)', primaryKey: true, default: 'main' },
         ai_services_enabled: { type: 'BOOLEAN', default: true },
         maintenance_message: { type: 'TEXT' },
         bot_enabled: { type: 'BOOLEAN', default: true },
-        maintenance_message_global: { type: 'TEXT' }
+        maintenance_message_global: { type: 'TEXT' },
+        // --- NOVA COLUNA ADICIONADA AQUI ---
+        active_ai_provider: { type: 'VARCHAR(50)', default: 'openai' } // RemPode ser 'openai' ou 'gemini'
     },
-
+        // NOVA TABELA PARA ARMAZENAR ATUALIZAÇÕES
+    bot_updates: {
+        id: { type: 'SERIAL', primaryKey: true },
+        version: { type: 'VARCHAR(255)', notNull: true },
+        title: { type: 'TEXT', notNull: true },
+        news: { type: 'TEXT', notNull: true },
+        fixes: { type: 'TEXT' },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    // NOVA TABELA PARA FEATURE FLAGS
     module_status: {
         module_name: { type: 'VARCHAR(100)', primaryKey: true },
         is_enabled: { type: 'BOOLEAN', default: true },
         maintenance_message: { type: 'TEXT' }
     },
 
-    // =====================================================================
-    // ==                       CONFIGURAÇÕES DO SERVIDOR (GUILD)         ==
-    // =====================================================================
+    // Tabela de logs de interação (do passo anterior)
+    interaction_logs: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        timestamp: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        type: { type: 'VARCHAR(50)', notNull: true },
+        name: { type: 'VARCHAR(255)', notNull: true },
+        module: { type: 'VARCHAR(100)' }
+    },
+
+    // ... (resto do schema.js continua igual) ...
     guild_settings: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
-        
-        // --- Flag de Manutenção por Guild ---
-        bot_enabled_in_guild: { type: 'BOOLEAN', default: true },
-        maintenance_message_guild: { type: 'TEXT' },
         ai_services_disabled_by_dev: { type: 'BOOLEAN', default: false },
-
-        // --- Módulo de Atualizações ---
-        updates_channel_id: { type: 'VARCHAR(255)' },
-
-        // --- Módulo de Ausências ---
         ausencias_canal_aprovacoes: { type: 'VARCHAR(255)' },
+        store_mp_token: { type: 'TEXT' },
         ausencias_cargo_ausente: { type: 'VARCHAR(255)' },
         ausencias_canal_logs: { type: 'VARCHAR(255)' },
         ausencias_imagem_vitrine: { type: 'VARCHAR(1024)' },
         ausencias_canal_vitrine: { type: 'VARCHAR(255)' },
-
-        // --- Módulo de Registros (Whitelist) ---
         registros_canal_aprovacoes: { type: 'VARCHAR(255)' },
         registros_cargo_aprovado: { type: 'VARCHAR(255)' },
         registros_canal_logs: { type: 'VARCHAR(255)' },
@@ -47,18 +54,15 @@ const schema = {
         registros_status: { type: 'BOOLEAN', default: true },
         registros_canal_vitrine: { type: 'VARCHAR(255)' },
         registros_imagem_vitrine: { type: 'VARCHAR(1024)' },
-
-        // --- Módulo de Boas-Vindas & Despedidas ---
         welcome_enabled: { type: 'BOOLEAN', default: false },
         welcome_channel_id: { type: 'VARCHAR(255)' },
         welcome_message_config: { type: 'JSONB' },
-        autorole_id: { type: 'VARCHAR(255)' }, // Parte do Boas-Vindas
         goodbye_enabled: { type: 'BOOLEAN', default: false },
+        store_categories_enabled: { type: 'BOOLEAN', default: false },
         goodbye_channel_id: { type: 'VARCHAR(255)' },
         goodbye_message_text: { type: 'TEXT', default: '👋 {user.tag} deixou o servidor.' },
-
-        // --- Módulo de Tickets ---
         tickets_painel_channel: { type: 'VARCHAR(255)' },
+        
         tickets_cargo_suporte: { type: 'VARCHAR(255)' },
         tickets_canal_logs: { type: 'VARCHAR(255)' },
         tickets_category: { type: 'VARCHAR(255)' },
@@ -73,14 +77,20 @@ const schema = {
         tickets_ai_assistant_enabled: { type: 'BOOLEAN', default: false },
         tickets_ai_assistant_prompt: { type: 'TEXT' },
         tickets_ai_use_base_knowledge: { type: 'BOOLEAN', default: true },
+        // --- NOVAS COLUNAS PARA TICKET DM ---
+        tickets_dm_flow_enabled: { type: 'BOOLEAN', default: false },
+        tickets_dm_claim_channel_id: { type: 'VARCHAR(255)' }, // <<< ADICIONE ESTA LINHA
+        tickets_dm_category_id: { type: 'VARCHAR(255)' },
+        // --- FIM DAS NOVAS COLUNAS ---
 
-        // --- Módulo de Uniformes ---
+            // --- NOVAS COLUNAS PARA TICKET DM ---
+        tickets_dm_flow_enabled: { type: 'BOOLEAN', default: false },
+        tickets_dm_claim_channel_id: { type: 'VARCHAR(255)' },
+        // --- FIM DAS NOVAS COLUNAS ---
         uniformes_thumbnail_url: { type: 'VARCHAR(1024)' },
         uniformes_color: { type: 'VARCHAR(7)', default: '#FFFFFF' },
         uniformes_vitrine_channel_id: { type: 'VARCHAR(255)' },
         uniformes_vitrine_message_id: { type: 'VARCHAR(255)' },
-
-        // --- Módulo de Bate-Ponto ---
         ponto_canal_registros: { type: 'VARCHAR(255)' },
         ponto_cargo_em_servico: { type: 'VARCHAR(255)' },
         ponto_imagem_vitrine: { type: 'VARCHAR(1024)' },
@@ -90,8 +100,6 @@ const schema = {
         ponto_vitrine_footer: { type: 'TEXT' },
         ponto_vitrine_color: { type: 'VARCHAR(7)' },
         ponto_dashboard_v2_enabled: { type: 'BOOLEAN', default: false },
-
-        // --- Módulo de Sugestões ---
         suggestions_enabled: { type: 'BOOLEAN', default: false },
         suggestions_channel: { type: 'VARCHAR(255)' },
         suggestions_log_channel: { type: 'VARCHAR(255)' },
@@ -99,19 +107,15 @@ const schema = {
         suggestions_vitrine_image: { type: 'VARCHAR(1024)' },
         suggestions_cooldown_minutes: { type: 'INTEGER', default: 2 },
         suggestions_mention_everyone: { type: 'BOOLEAN', default: false },
-
-        // --- Módulo de Moderação ---
         mod_log_channel: { type: 'VARCHAR(255)' },
+        bot_enabled_in_guild: { type: 'BOOLEAN', default: true },
+        maintenance_message_guild: { type: 'TEXT' },
         mod_roles: { type: 'TEXT' },
         mod_temp_ban_enabled: { type: 'BOOLEAN', default: false },
         mod_monitor_enabled: { type: 'BOOLEAN', default: false },
         mod_monitor_channel: { type: 'VARCHAR(255)' },
-
-        // --- Módulo Guardian AI ---
         guardian_ai_enabled: { type: 'BOOLEAN', default: false },
         guardian_ai_mention_chat_enabled: { type: 'BOOLEAN', default: false },
-        guardian_ai_monitored_channels: { type: 'TEXT' },
-        guardian_ai_ignored_channels: { type: 'TEXT' },
         guardian_ai_alert_channel: { type: 'VARCHAR(255)' },
         guardian_ai_log_channel: { type: 'VARCHAR(255)' },
         guardian_ai_alert_enabled: { type: 'BOOLEAN', default: false },
@@ -120,33 +124,111 @@ const schema = {
         guardian_ai_alert_sarcasm_threshold: { type: 'INTEGER', default: 80 },
         guardian_ai_alert_attack_threshold: { type: 'INTEGER', default: 80 },
         guardian_use_mod_punishments: { type: 'BOOLEAN', default: false },
-
-        // --- Módulo de RoleTags ---
         roletags_enabled: { type: 'BOOLEAN', default: false },
-
-        // --- Módulo de Loja (StoreFlow) ---
         store_enabled: { type: 'BOOLEAN', default: false },
-        store_categories_enabled: { type: 'BOOLEAN', default: false },
         store_category_id: { type: 'VARCHAR(255)' },
         store_vitrine_channel_id: { type: 'VARCHAR(255)' },
         store_log_channel_id: { type: 'VARCHAR(255)' },
         store_vitrine_message_id: { type: 'VARCHAR(255)' },
         store_staff_role_id: { type: 'VARCHAR(255)' },
+        store_pix_key: { type: 'TEXT' },
         store_client_role_id: { type: 'VARCHAR(255)' },
         store_client_role_duration_days: { type: 'INTEGER' },
-        store_pix_key: { type: 'TEXT' },
-        store_mp_token: { type: 'TEXT' },
         store_vitrine_config: { type: 'JSONB' },
         store_inactivity_monitor_enabled: { type: 'BOOLEAN', default: false },
         store_auto_close_hours: { type: 'INTEGER', default: 24 },
         store_premium_dm_flow_enabled: { type: 'BOOLEAN', default: false }
     },
+    
+    // ... (O resto do seu schema.js continua aqui)
+    
+    tickets: {
+        channel_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        ticket_number: { type: 'SERIAL' },
+        claimed_by: { type: 'VARCHAR(255)' },
+        status: { type: 'VARCHAR(20)', default: 'open' },
+        action_log: { type: 'TEXT', default: '' },
+        closed_at: { type: 'TIMESTAMPTZ' },
+        last_message_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        warning_sent_at: { type: 'TIMESTAMPTZ' },
+        // --- NOVAS COLUNAS ADICIONADAS AQUI ---
+        thread_id: { type: 'VARCHAR(255)' },
+        is_dm_ticket: { type: 'BOOLEAN', default: false }
+        // --- FIM DAS NOVAS COLUNAS ---
+    },
 
-    // =====================================================================
-    // ==                        TABELAS DE DADOS                         ==
-    // =====================================================================
-
-    // --- Features e Licenciamento ---
+    // ... (Todas as suas outras tabelas permanecem aqui, sem nenhuma alteração)
+    store_products: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(255)', notNull: true },
+        description: { type: 'TEXT' },
+        price: { type: 'NUMERIC(10, 2)', notNull: true },
+        stock: { type: 'INTEGER', default: -1 },
+        stock_type: { type: 'VARCHAR(10)', default: 'GHOST' },
+        role_id_to_grant: { type: 'VARCHAR(255)' },
+        role_duration_days: { type: 'INTEGER' },
+        is_enabled: { type: 'BOOLEAN', default: true },
+        category_id: { type: 'INTEGER' },
+        image_url: { type: 'VARCHAR(1024)' }
+    },
+    store_categories: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        name: { type: 'VARCHAR(100)', notNull: true },
+        description: { type: 'TEXT' },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] }
+    },
+    store_carts: {
+        channel_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        products_json: { type: 'JSONB' },
+        status: { type: 'VARCHAR(20)', default: 'open' },
+        coupon_id: { type: 'INTEGER' },
+        total_price: { type: 'NUMERIC(10, 2)' },
+        payment_id: { type: 'VARCHAR(255)' },
+        claimed_by_staff_id: { type: 'VARCHAR(255)' },
+        last_activity_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        thread_id: { type: 'VARCHAR(255)' }
+    },
+    store_coupons: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        code: { type: 'VARCHAR(100)', notNull: true },
+        discount_percent: { type: 'INTEGER', notNull: true },
+        uses_left: { type: 'INTEGER', notNull: true, default: 1 },
+        is_active: { type: 'BOOLEAN', default: true },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'code'] }
+    },
+    store_stock: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        product_id: { type: 'INTEGER', notNull: true },
+        content: { type: 'TEXT', notNull: true },
+        is_claimed: { type: 'BOOLEAN', default: false },
+        claimed_by_user_id: { type: 'VARCHAR(255)' },
+        claimed_at: { type: 'TIMESTAMPTZ' }
+    },
+    store_user_roles_expiration: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        role_id: { type: 'VARCHAR(255)', notNull: true },
+        expires_at: { type: 'TIMESTAMPTZ', notNull: true },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'user_id', 'role_id'] }
+    },
+    store_sales_log: {
+        sale_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        total_amount: { type: 'NUMERIC(10, 2)', notNull: true },
+        product_details: { type: 'JSONB', notNull: true },
+        status: { type: 'VARCHAR(50)', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
     guild_features: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -164,7 +246,7 @@ const schema = {
         comment: { type: 'TEXT' },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-    key_activation_history: { // Corrigido nome da tabela
+    activation_key_history: {
         id: { type: 'SERIAL', primaryKey: true },
         key: { type: 'VARCHAR(255)', notNull: true },
         grants_features: { type: 'TEXT' },
@@ -174,8 +256,6 @@ const schema = {
         user_tag: { type: 'VARCHAR(255)' },
         activated_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-    
-    // --- Logs e Históricos ---
     ai_usage_logs: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -186,15 +266,6 @@ const schema = {
         total_tokens: { type: 'INTEGER', default: 0 },
         cost: { type: 'NUMERIC(10, 8)', default: 0 },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
-    },
-    interaction_logs: {
-        id: { type: 'SERIAL', primaryKey: true },
-        guild_id: { type: 'VARCHAR(255)', notNull: true },
-        user_id: { type: 'VARCHAR(255)', notNull: true },
-        timestamp: { type: 'TIMESTAMPTZ', default: 'NOW()' },
-        type: { type: 'VARCHAR(50)', notNull: true },
-        name: { type: 'VARCHAR(255)', notNull: true },
-        module: { type: 'VARCHAR(100)' }
     },
     ponto_history: {
         id: { type: 'SERIAL', primaryKey: true },
@@ -212,8 +283,6 @@ const schema = {
         status: { type: 'VARCHAR(20)', notNull: true },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
-
-    // --- Módulos Específicos (Tabelas de Dados) ---
     pending_absences: {
         message_id: { type: 'VARCHAR(255)', primaryKey: true },
         user_id: { type: 'VARCHAR(255)', notNull: true },
@@ -254,18 +323,6 @@ const schema = {
         role_id: { type: 'VARCHAR(255)', notNull: true },
         tag: { type: 'VARCHAR(255)', notNull: true },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'role_id'] }
-    },
-    tickets: {
-        channel_id: { type: 'VARCHAR(255)', primaryKey: true },
-        guild_id: { type: 'VARCHAR(255)', notNull: true },
-        user_id: { type: 'VARCHAR(255)', notNull: true },
-        ticket_number: { type: 'SERIAL' },
-        claimed_by: { type: 'VARCHAR(255)' },
-        status: { type: 'VARCHAR(20)', default: 'open' },
-        action_log: { type: 'TEXT', default: '' },
-        closed_at: { type: 'TIMESTAMPTZ' },
-        last_message_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
-        warning_sent_at: { type: 'TIMESTAMPTZ' }
     },
     ticket_departments: {
         id: { type: 'SERIAL', primaryKey: true },
@@ -334,8 +391,6 @@ const schema = {
         image_url: { type: 'VARCHAR(1024)' },
         preset_code: { type: 'TEXT', notNull: true }
     },
-
-    // --- Moderação ---
     moderation_logs: {
         case_id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -363,8 +418,6 @@ const schema = {
         duration: { type: 'VARCHAR(50)' },
         auto_create_role: { type: 'BOOLEAN', default: false },
     },
-
-    // --- Guardian AI ---
     guardian_policies: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -405,8 +458,6 @@ const schema = {
         action_punishment: { type: 'VARCHAR(50)', default: 'NONE' },
         action_punishment_duration_minutes: { type: 'INTEGER' }
     },
-
-    // --- Mini-Games ---
     hangman_games: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -468,6 +519,16 @@ const schema = {
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] }
+    },
+        // NOVA TABELA PARA O ARQUITETO
+    architect_sessions: {
+        channel_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        chat_history: { type: 'JSONB' },
+        blueprint: { type: 'JSONB' }, // <-- ADICIONE ESTA LINHA
+        status: { type: 'VARCHAR(50)', default: "'active'" }, // CORREÇÃO: 'active' precisa de aspas simples
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     }
 };
 

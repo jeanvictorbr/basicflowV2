@@ -22,7 +22,6 @@ const MODULES = [
     },
     {
         name: 'Sugestões',
-        // --- CORREÇÃO APLICADA AQUI ---
         check: (id) => id.startsWith('suggestion_') || id.startsWith('suggestions_') || id.startsWith('modal_suggestion_') || id.startsWith('select_suggestion_') || id === 'open_suggestions_menu'
     },
     {
@@ -52,6 +51,11 @@ const MODULES = [
     {
         name: 'Boas-Vindas',
         check: (id) => id.startsWith('welcome_') || id.startsWith('goodbye_') || id.startsWith('modal_welcome_') || id.startsWith('select_welcome_') || id === 'open_welcome_menu'
+    },
+    // <-- NOVO MÓDULO ADICIONADO AQUI -->
+    {
+        name: 'Arquiteto',
+        check: (id) => id.startsWith('architect_') || id.startsWith('modal_architect_') || id === 'arquiteto' || id === 'open_architect_menu'
     }
 ];
 

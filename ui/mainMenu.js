@@ -60,8 +60,14 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
     
     const hasGuardianAccess = await hasFeature(interaction.guild.id, 'GUARDIAN_AI');
     const hasStatsAccess = await hasFeature(interaction.guild.id, 'STATS');
-    
+    const hasArchitectAccess = await hasFeature(interaction.guild.id, 'ARQUITETO'); // <-- VERIFICAÇÃO DA NOVA FEATURE
+
     const allModules = [
+        {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "🏗️" }, custom_id: "open_architect_menu", disabled: !hasArchitectAccess },
+            components: [{ type: 10, content: "🏗️ Arquiteto de Servidor (IA)" }, { type: 10, content: "Deixe a IA construir e organizar o seu servidor." }]
+        },
+        { type: 14, divider: true, spacing: 2 },
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_ausencias_menu" },
             components: [{ type: 10, content: "🏖️ Ausências" }, { type: 10, content: "Configure todo o sistema de **ausências**." }]
@@ -97,13 +103,11 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             components: [{ type: 10, content: "⏰ Bate-Ponto" }, { type: 10, content: "Configure todo o sistema de **bate-ponto**." }]
         },
         { type: 14, divider: true, spacing: 2 },
-        // --- NOVO MÓDULO DE LOJA ADICIONADO AQUI ---
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_store_menu" },
             components: [{ type: 10, content: "🏪 Loja (StoreFlow)" }, { type: 10, content: "Gerencie os produtos e vendas da sua loja." }]
         },
         { type: 14, divider: true, spacing: 2 },
-        // --- FIM DA ADIÇÃO ---
         {
             type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_suggestions_menu" },
             components: [{ type: 10, content: "💡 Sugestões" }, { type: 10, content: "Gerencie as **sugestões da comunidade**." }]

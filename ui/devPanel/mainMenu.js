@@ -4,13 +4,16 @@ module.exports = function generateDevMainMenu(botStatus, stats) {
     const aiStatusButton = aiStatus
         ? { label: 'Serviços de IA: Ativados', style: 3, emoji: '✅' }
         : { label: 'Serviços de IA: Desativados', style: 4, emoji: '❌' };
+    
+    // NOVO: Exibe o provedor ativo
+    const activeProvider = botStatus?.active_ai_provider || 'openai';
 
     return [
         {
             "type": 17, "accent_color": 15844367,
             "components": [
                 { "type": 10, "content": "## 🛠️ Painel do Desenvolvedor" },
-                { "type": 10, "content": `> Gerenciando **${stats.totalMembers}** membros em **${stats.totalGuilds}** servidores.` },
+                { "type": 10, "content": `> Gerenciando **${stats.totalMembers}** membros em **${stats.totalGuilds}** servidores. IA Ativa: **${activeProvider.toUpperCase()}**` },
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 1, "components": [
@@ -25,7 +28,9 @@ module.exports = function generateDevMainMenu(botStatus, stats) {
                 {
                     "type": 1, "components": [
                         { "type": 2, "style": 1, "label": "Analytics", "emoji": { "name": "📊" }, "custom_id": "dev_open_analytics" },
-                        { "type": 2, "style": 1, "label": "Feature Flags", "emoji": { "name": "🚩" }, "custom_id": "dev_open_feature_flags" } // <-- NOVO BOTÃO
+                        { "type": 2, "style": 1, "label": "Feature Flags", "emoji": { "name": "🚩" }, "custom_id": "dev_open_feature_flags" },
+                        // --- NOVO BOTÃO ADICIONADO AQUI ---
+                        { "type": 2, "style": 1, "label": "Provedor de IA", "emoji": { "name": "🤖" }, "custom_id": "dev_open_ai_provider_menu" }
                     ]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
