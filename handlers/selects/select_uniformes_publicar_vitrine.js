@@ -9,7 +9,7 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferUpdate();
         const channel = await interaction.guild.channels.fetch(interaction.values[0]).catch(() => null);
-        if (!channel) return interaction.followUp({ content: '❌ Canal não encontrado.', ephemeral: true });
+        if (!channel) return interaction.followUp({ content: '❌ Canal não encontrado.', flags: EPHEMERAL_FLAG });
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         const uniforms = (await db.query('SELECT * FROM uniforms WHERE guild_id = $1 ORDER BY name ASC', [interaction.guild.id])).rows;
@@ -24,11 +24,18 @@ module.exports = {
                 [channel.id, sentMessage.id, interaction.guild.id]
             );
             
-            await interaction.editReply({ components: generateUniformesMenu(settings), flags: V2_FLAG | EPHEMERAL_FLAG });
-            await interaction.followUp({ content: `✅ **Vitrine de uniformes publicada com sucesso em ${channel}!**`, ephemeral: true });
+            const menu = await generateUniformesMenu(interaction, settings);
+            await interaction.editReply({ components: menu, flags: V2_FLAG | EPHEMERAL_FLAG });
+            await interaction.followUp({ content: `✅ **Vitrine de uniformes publicada com sucesso em ${channel}!**`, flags: EPHEMERAL_FLAG });
+
         } catch (error) {
             console.error("Erro ao publicar vitrine:", error);
-            await interaction.followUp({ content: `❌ **Erro ao publicar.** Verifique minhas permissões.`, ephemeral: true });
+            const menu = await generateUniformesMenu(interaction, settings);
+            await interaction.editReply({
+                components: menu,
+                flags: V2_FLAG | EPHEMERAL_FLAG
+            });
+            await interaction.followUp({ content: `❌ **Erro ao publicar.** Verifique minhas permissões.`, flags: EPHEMERAL_FLAG });
         }
     }
 };
