@@ -17,27 +17,30 @@ module.exports = {
         if (items.length === 0) {
             return interaction.followUp({ content: '❌ Nenhum item válido foi fornecido.', ephemeral: true });
         }
-
-        const client = await db.getClient();
+        
         try {
-            await client.query('BEGIN');
+            // CORREÇÃO: Usa withClient para gerenciar a transação
+            await db.withClient(async (client) => {
+                await client.query('BEGIN');
 
-            for (const item of items) {
+                for (const item of items) {
+                    await client.query(
+                        'INSERT INTO store_stock (guild_id, product_id, content) VALUES ($1, $2, $3)',
+                        [interaction.guild.id, productId, item]
+                    );
+                }
+
                 await client.query(
-                    'INSERT INTO store_stock (guild_id, product_id, content) VALUES ($1, $2, $3)',
-                    [interaction.guild.id, productId, item]
+                    `UPDATE store_products 
+                     SET stock = (SELECT COUNT(*) FROM store_stock WHERE product_id = $1 AND is_claimed = false) 
+                     WHERE id = $1`,
+                    [productId]
                 );
-            }
 
-            await client.query(
-                `UPDATE store_products 
-                 SET stock = (SELECT COUNT(*) FROM store_stock WHERE product_id = $1 AND is_claimed = false) 
-                 WHERE id = $1`,
-                [productId]
-            );
-
-            await client.query('COMMIT');
-
+                await client.query('COMMIT');
+            });
+            
+            // A lógica de sucesso continua fora do bloco
             const product = (await db.query('SELECT * FROM store_products WHERE id = $1', [productId])).rows[0];
             const stockItems = (await db.query('SELECT COUNT(*) as count FROM store_stock WHERE product_id = $1 AND is_claimed = false', [productId])).rows[0];
 
@@ -48,15 +51,11 @@ module.exports = {
 
             await interaction.followUp({ content: `✅ ${items.length} item(ns) adicionado(s) ao estoque com sucesso!`, ephemeral: true });
             
-            // CHAMA A FUNÇÃO PARA ATUALIZAR A VITRINE
             await updateStoreVitrine(interaction.client, interaction.guild.id);
 
         } catch (error) {
-            await client.query('ROLLBACK');
             console.error('[Store] Erro ao adicionar estoque real:', error);
             await interaction.followUp({ content: '❌ Ocorreu um erro ao adicionar os itens ao estoque.', ephemeral: true });
-        } finally {
-            client.release();
         }
     }
 };
