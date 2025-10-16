@@ -6,6 +6,9 @@ const MODULES = require('./config/modules.js');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    // Configurações para maior resiliência do pool
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
 });
 
 async function synchronizeDatabase() {
@@ -87,8 +90,24 @@ async function synchronizeDatabase() {
     }
 }
 
+
+/**
+ * Executa uma função com um cliente de banco de dados e garante que ele seja liberado.
+ * @param {Function} callback A função a ser executada. O cliente do banco de dados será passado como primeiro argumento.
+ */
+async function withClient(callback) {
+    const client = await pool.connect();
+    try {
+        await callback(client);
+    } finally {
+        client.release();
+    }
+}
+
+
 module.exports = {
     query: (text, params) => pool.query(text, params),
     synchronizeDatabase,
-    getClient: () => pool.connect(), // ADICIONA ESTA LINHA
+    getClient: () => pool.connect(),
+    withClient // <-- NOVA FUNÇÃO EXPORTADA
 };
