@@ -6,16 +6,17 @@ module.exports = {
     customId: 'suggestion_upvote',
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
-        
+
         try {
-            // CORREÇÃO: Usa withClient para a transação
             await db.withClient(async (client) => {
                 await client.query('BEGIN');
 
                 const suggestionResult = await client.query('SELECT * FROM suggestions WHERE message_id = $1 FOR UPDATE', [interaction.message.id]);
-                if (suggestionResult.rows.length === 0) throw new Error('Esta sugestão não foi encontrada no banco de dados.');
-                
+                if (suggestionResult.rows.length === 0) {
+                    throw new Error('Esta sugestão não foi encontrada no banco de dados.');
+                }
                 const suggestion = suggestionResult.rows[0];
+
                 const voteResult = await client.query('SELECT * FROM suggestion_votes WHERE suggestion_id = $1 AND user_id = $2', [suggestion.id, interaction.user.id]);
                 const existingVote = voteResult.rows[0];
 
@@ -42,7 +43,7 @@ module.exports = {
 
         } catch (error) {
             console.error('[Suggestion Upvote] Erro:', error);
-            await interaction.editReply({ content: `❌ ${error.message || 'Ocorreu um erro ao processar seu voto.'}` });
+            await interaction.editReply({ content: `❌ ${error.message || 'Ocorreu um erro ao processar seu voto.'}` }).catch(()=>{});
         }
     }
 };
