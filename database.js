@@ -12,7 +12,7 @@ const pool = new Pool({
     connectionTimeoutMillis: 5000, // Retorna um erro se não conseguir conectar em 5 segundos
 });
 
-// Adiciona um listener para erros inesperados no pool
+// Adiciona um listener paaara erros inesperados no pool
 pool.on('error', (err, client) => {
   console.error('Erro inesperado em um cliente inativo do banco de dados', err);
 });
