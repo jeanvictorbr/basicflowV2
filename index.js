@@ -100,7 +100,7 @@ client.on(Events.GuildCreate, async guild => {
             avatar_url: client.user.displayAvatarURL(),
             embeds: [joinEmbed]
         };
-        await fetch(process.env.GUILD_ADD_WEBHOOK_URL, {
+        const response = await fetch(process.env.GUILD_ADD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -134,7 +134,7 @@ client.on(Events.GuildDelete, async guild => {
             avatar_url: client.user.displayAvatarURL(),
             embeds: [leaveEmbed]
         };
-        await fetch(process.env.GUILD_REMOVE_WEBHOOK_URL, {
+        const response = await fetch(process.env.GUILD_REMOVE_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -146,50 +146,80 @@ client.on(Events.GuildDelete, async guild => {
     }
 });
 
+// ***************************************************************** //
+// ******************* INÍCIO DA CORREÇÃO DO ERRO ****************** //
+// ***************************************************************** //
+
 client.commands = new Collection();
-const commandsToDeploy = [];
-const devCommandsToDeploy = [];
-const devOnlyCommands = ['devpanel', 'debugai'];
-const commandFoldersPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandFoldersPath).filter(file => file.endsWith('.js'));
-for (const file of commandFiles) {
-    const command = require(path.join(commandFoldersPath, file));
-    if (command.data) {
-        client.commands.set(command.data.name, command);
-        if (devOnlyCommands.includes(command.data.name)) {
-            devCommandsToDeploy.push(command.data.toJSON());
-        } else {
-            commandsToDeploy.push(command.data.toJSON());
-        }
-    }
-}
-console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
-const handlersPath = path.join(__dirname, 'handlers');
-const handlerTypes = ['buttons', 'modals', 'selects', 'commands'];
-handlerTypes.forEach(handlerType => {
-    const handlerDir = path.join(handlersPath, handlerType);
-    if (fs.existsSync(handlerDir)) {
-        const handlerFiles = fs.readdirSync(handlerDir).filter(file => file.endsWith('.js'));
-        for (const file of handlerFiles) {
+
+// Função recursiva para carregar todos os arquivos de handlers
+function loadHandlers(dir) {
+    const files = fs.readdirSync(dir, { withFileTypes: true });
+    for (const file of files) {
+        const fullPath = path.join(dir, file.name);
+        if (file.isDirectory()) {
+            loadHandlers(fullPath);
+        } else if (file.name.endsWith('.js')) {
             try {
-                const handler = require(path.join(handlerDir, file));
+                const handler = require(fullPath);
                 if (handler.customId && handler.execute) {
                     client.handlers.set(handler.customId, handler.execute);
                 }
             } catch (error) {
-                console.error(`[HANDLER] ❌ Erro ao carregar ${file}:`, error);
+                console.error(`[HANDLER] ❌ Erro ao carregar ${file.name}:`, error);
             }
         }
     }
-});
+}
+
+function loadCommands() {
+    const commandsPath = path.join(__dirname, 'commands');
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+    for (const file of commandFiles) {
+        const command = require(path.join(commandsPath, file));
+        if (command.data) {
+            client.commands.set(command.data.name, command);
+        }
+    }
+}
+
+console.log('--- Carregando Handlers ---');
+loadHandlers(path.join(__dirname, 'handlers'));
 console.log('--- Handlers Carregados ---');
+
+console.log('--- Carregando Comandos ---');
+loadCommands();
+console.log('--- Comandos Carregados ---');
+
+
+// ***************************************************************** //
+// ******************** FIM DA CORREÇÃO DO ERRO ******************** //
+// ***************************************************************** //
+
 
 client.once(Events.ClientReady, async () => {
     await db.synchronizeDatabase();
     await updateModuleStatusCache(client);
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
+        const commandsToDeploy = [];
+        const devCommandsToDeploy = [];
+        const devOnlyCommands = ['devpanel', 'debugai'];
+        
+        const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
+        for (const file of commandFiles) {
+            const command = require(path.join(__dirname, 'commands', file));
+            if (command.data) {
+                if (devOnlyCommands.includes(command.data.name)) {
+                    devCommandsToDeploy.push(command.data.toJSON());
+                } else {
+                    commandsToDeploy.push(command.data.toJSON());
+                }
+            }
+        }
+
         if (process.env.DEV_GUILD_ID) {
             const allDevGuildCommands = [...commandsToDeploy, ...devCommandsToDeploy];
             console.log(`[CMD] Iniciando registo de ${allDevGuildCommands.length} comando(s) na guild de desenvolvimento.`);
