@@ -5,7 +5,7 @@ const updateStoreVitrine = require('./updateStoreVitrine.js');
 async function syncUsedKeys(client) {
     console.log('[Key Stock Monitor] Verificando chaves de ativação esgotadas...');
 
-    const dbClient = await db.getClient();
+    const dbClient = await db.getClient(); // Pega um cliente do pool
     try {
         await dbClient.query('BEGIN');
 
@@ -70,7 +70,7 @@ async function syncUsedKeys(client) {
         await dbClient.query('ROLLBACK');
         console.error('[Key Stock Monitor] Erro ao sincronizar chaves de estoque:', error);
     } finally {
-        dbClient.release();
+        dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
     }
 }
 

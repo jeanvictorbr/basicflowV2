@@ -5,8 +5,9 @@ const ms = require('ms');
 
 async function checkExpiredPunishments(client) {
     console.log('[MOD MONITOR] Verificando punições expiradas...');
+    const dbClient = await db.getClient(); // Pega um cliente do pool
     try {
-        const guildsWithMonitor = (await db.query('SELECT guild_id, mod_monitor_channel FROM guild_settings WHERE mod_monitor_enabled = true AND mod_monitor_channel IS NOT NULL')).rows;
+        const guildsWithMonitor = (await dbClient.query('SELECT guild_id, mod_monitor_channel FROM guild_settings WHERE mod_monitor_enabled = true AND mod_monitor_channel IS NOT NULL')).rows;
 
         for (const settings of guildsWithMonitor) {
             const guild = await client.guilds.fetch(settings.guild_id).catch(() => null);
@@ -30,7 +31,7 @@ async function checkExpiredPunishments(client) {
             });
 
             // Verifica Bans Temporários (usando o nosso banco de dados)
-            const tempBans = (await db.query("SELECT * FROM moderation_logs WHERE guild_id = $1 AND action = 'BAN' AND duration IS NOT NULL", [guild.id])).rows;
+            const tempBans = (await dbClient.query("SELECT * FROM moderation_logs WHERE guild_id = $1 AND action = 'BAN' AND duration IS NOT NULL", [guild.id])).rows;
             for (const ban of tempBans) {
                 const createdAt = new Date(ban.created_at).getTime();
                 const duration = ms(ban.duration);
@@ -46,13 +47,15 @@ async function checkExpiredPunishments(client) {
                         }
                     } finally {
                         // Remove o registo do DB para não verificar novamente
-                        await db.query('DELETE FROM moderation_logs WHERE case_id = $1', [ban.case_id]);
+                        await dbClient.query('DELETE FROM moderation_logs WHERE case_id = $1', [ban.case_id]);
                     }
                 }
             }
         }
     } catch (error) {
         console.error('[MOD MONITOR] Erro durante a verificação de punições:', error);
+    } finally {
+        dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
     }
 }
 
