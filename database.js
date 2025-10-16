@@ -4,17 +4,8 @@ require('dotenv').config();
 const schema = require('./schema.js');
 const MODULES = require('./config/modules.js');
 
-// Pool com configurações mais robustas
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    max: 20, // Número máximo de clientes no pool
-    idleTimeoutMillis: 30000, // Fecha clientes inativos após 30 segundos
-    connectionTimeoutMillis: 5000, // Retorna um erro se não conseguir conectar em 5 segundos
-});
-
-// Adiciona um listener paaara erros inesperados no pool
-pool.on('error', (err, client) => {
-  console.error('Erro inesperado em um cliente inativo do banco de dados', err);
 });
 
 async function synchronizeDatabase() {
@@ -87,6 +78,7 @@ async function synchronizeDatabase() {
             );
         }
         console.log('[DB] Sincronização dos módulos concluída.');
+
         console.log('[DB] Sincronização do schema concluída com sucesso.');
     } catch (err) {
         console.error('[DB] Erro durante a sincronização do schema:', err);
@@ -98,5 +90,5 @@ async function synchronizeDatabase() {
 module.exports = {
     query: (text, params) => pool.query(text, params),
     synchronizeDatabase,
-    getClient: () => pool.connect(),
+    getClient: () => pool.connect(), // ADICIONA ESTA LINHA
 };

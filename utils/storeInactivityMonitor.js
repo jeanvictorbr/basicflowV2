@@ -1,18 +1,19 @@
-// Crie em: utils/storeInactivityMonitor.js
+// Substitua o conteúdo em: utils/storeInactivityMonitor.js
 const db = require('../database.js');
 const { EmbedBuilder } = require('discord.js');
 
 async function checkInactiveCarts(client) {
     console.log('[Store Monitor] A verificar carrinhos inativos...');
+    const dbClient = await db.getClient(); // Pega um cliente do pool
     try {
-        const guildsWithMonitor = await db.query('SELECT guild_id, store_log_channel_id, store_auto_close_hours FROM guild_settings WHERE store_inactivity_monitor_enabled = true');
+        const guildsWithMonitor = await dbClient.query('SELECT guild_id, store_log_channel_id, store_auto_close_hours FROM guild_settings WHERE store_inactivity_monitor_enabled = true');
 
         for (const settings of guildsWithMonitor.rows) {
             const guild = await client.guilds.fetch(settings.guild_id).catch(() => null);
             if (!guild) continue;
 
             const autoCloseHours = settings.store_auto_close_hours || 24;
-            const inactiveCarts = await db.query(
+            const inactiveCarts = await dbClient.query(
                 `SELECT * FROM store_carts WHERE guild_id = $1 AND (status = 'open' OR status = 'payment') AND last_activity_at < NOW() - INTERVAL '${autoCloseHours} hours'`,
                 [settings.guild_id]
             );
@@ -20,8 +21,6 @@ async function checkInactiveCarts(client) {
             for (const cart of inactiveCarts.rows) {
                 const channel = await guild.channels.fetch(cart.channel_id).catch(() => null);
                 if (channel) {
-                    console.log(`[Store Monitor] A fechar carrinho inativo #${channel.name} no servidor ${guild.name}.`);
-                    
                     const closingEmbed = new EmbedBuilder()
                         .setColor('#E74C3C')
                         .setTitle('🛒 Carrinho Fechado por Inatividade')
@@ -33,11 +32,13 @@ async function checkInactiveCarts(client) {
                         await channel.delete('Carrinho fechado por inatividade.').catch(err => console.error(`[Store Monitor] Falha ao eliminar o canal ${channel.id}:`, err));
                     }, 30000);
                 }
-                await db.query('DELETE FROM store_carts WHERE channel_id = $1', [cart.channel_id]);
+                await dbClient.query('DELETE FROM store_carts WHERE channel_id = $1', [cart.channel_id]);
             }
         }
     } catch (error) {
         console.error('[Store Monitor] Erro durante a verificação de carrinhos inativos:', error);
+    } finally {
+        dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
     }
 }
 
