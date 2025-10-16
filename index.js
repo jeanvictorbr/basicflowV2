@@ -19,6 +19,7 @@ const { splitMessage } = require('./utils/messageSplitter'); //
 require('dotenv').config();
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
+const fetch = require('node-fetch');
 const http = require('http');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { approvePurchase } = require('./utils/approvePurchase.js');
@@ -104,6 +105,7 @@ client.on(Events.GuildCreate, async guild => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
+        await response.text(); // Consome a resposta
         console.log(`[GUILD JOIN] Notificação enviada para o webhook sobre o servidor ${guild.name}.`);
     } catch (error) {
         console.error(`[GUILD JOIN] Falha ao enviar notificação para o webhook:`, error);
@@ -137,11 +139,13 @@ client.on(Events.GuildDelete, async guild => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
+        await response.text(); // Consome a resposta
         console.log(`[GUILD LEAVE] Notificação de remoção enviada para o webhook sobre o servidor ${guild.name}.`);
     } catch (error) {
         console.error(`[GUILD LEAVE] Falha ao enviar notificação para o webhook:`, error);
     }
 });
+
 client.commands = new Collection();
 const commandsToDeploy = [];
 const devCommandsToDeploy = [];
