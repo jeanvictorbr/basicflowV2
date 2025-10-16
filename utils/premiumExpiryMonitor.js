@@ -1,4 +1,4 @@
-// Crie em: utils/premiumExpiryMonitor.js
+// Substitua o conteúdo em: utils/premiumExpiryMonitor.js
 const db = require('../database.js');
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
@@ -7,9 +7,10 @@ async function checkExpiringFeatures(client) {
     if (!process.env.EXPIRY_ALERT_WEBHOOK_URL) return;
 
     console.log('[Expiry Monitor] A verificar licenças a expirar...');
+    const dbClient = await db.getClient(); // Pega um cliente do pool
     try {
         // Procura por licenças que expiram nos próximos 3 dias
-        const expiringSoon = await db.query(
+        const expiringSoon = await dbClient.query(
             `SELECT guild_id, STRING_AGG(DISTINCT feature_key, ', ') as features, MAX(expires_at) as expiry_date
              FROM guild_features
              WHERE expires_at BETWEEN NOW() AND NOW() + INTERVAL '3 days'
@@ -52,6 +53,8 @@ async function checkExpiringFeatures(client) {
 
     } catch (error) {
         console.error('[Expiry Monitor] Erro ao verificar licenças:', error);
+    } finally {
+        dbClient.release(); // ESSENCIAL: Libera a conexão
     }
 }
 
