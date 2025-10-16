@@ -4,22 +4,18 @@ const updateStoreVitrine = require('./updateStoreVitrine.js');
 
 async function syncUsedKeys(client) {
     console.log('[Key Stock Monitor] Verificando chaves de ativação esgotadas...');
-
     const dbClient = await db.getClient(); // Pega um cliente do pool
     try {
         await dbClient.query('BEGIN');
 
-        // Encontra todas as chaves com 0 usos restantes
         const exhaustedKeysResult = await dbClient.query(`SELECT key FROM activation_keys WHERE uses_left <= 0`);
         const exhaustedKeys = exhaustedKeysResult.rows;
 
         if (exhaustedKeys.length === 0) {
             console.log('[Key Stock Monitor] Nenhuma chave esgotada encontrada.');
             await dbClient.query('COMMIT');
-            return; // Retorna aqui para liberar o client no finally
+            return; // Sai da função, o finally será executado
         }
-
-        console.log(`[Key Stock Monitor] Encontradas ${exhaustedKeys.length} chaves esgotadas para remover do estoque.`);
 
         const keyValues = exhaustedKeys.map(k => k.key);
         
@@ -29,26 +25,19 @@ async function syncUsedKeys(client) {
         );
         const affectedProductIds = affectedProductsResult.rows.map(r => r.product_id);
 
-        const deleteStockResult = await dbClient.query(
-            `DELETE FROM store_stock WHERE content = ANY($1::text[])`,
-            [keyValues]
-        );
-
-        if (deleteStockResult.rowCount > 0) {
-            console.log(`[Key Stock Monitor] ${deleteStockResult.rowCount} chaves removidas do estoque real.`);
-
-            for (const productId of affectedProductIds) {
-                await dbClient.query(`
-                    UPDATE store_products
-                    SET stock = (SELECT COUNT(*) FROM store_stock WHERE product_id = $1 AND is_claimed = false)
-                    WHERE id = $1
-                `, [productId]);
-            }
-            console.log(`[Key Stock Monitor] Contagem de estoque atualizada para ${affectedProductIds.length} produto(s).`);
-        }
-
+        await dbClient.query(`DELETE FROM store_stock WHERE content = ANY($1::text[])`, [keyValues]);
         await dbClient.query(`DELETE FROM activation_keys WHERE uses_left <= 0`);
+
         await dbClient.query('COMMIT');
+
+        // Atualiza a contagem de estoque e as vitrines fora da transação principal
+        for (const productId of affectedProductIds) {
+            await db.query(`
+                UPDATE store_products
+                SET stock = (SELECT COUNT(*) FROM store_stock WHERE product_id = $1 AND is_claimed = false)
+                WHERE id = $1
+            `, [productId]);
+        }
 
         if (affectedProductIds.length > 0) {
             const guildsToUpdate = await db.query(
@@ -61,10 +50,10 @@ async function syncUsedKeys(client) {
         }
 
     } catch (error) {
-        await dbClient.query('ROLLBACK');
+        if (dbClient) await dbClient.query('ROLLBACK').catch(err => console.error('Rollback failed', err));
         console.error('[Key Stock Monitor] Erro ao sincronizar chaves de estoque:', error);
     } finally {
-        dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
+        if (dbClient) dbClient.release(); // ESSENCIAL: Libera a conexão
     }
 }
 

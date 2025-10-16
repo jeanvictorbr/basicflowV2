@@ -41,12 +41,10 @@ async function checkExpiredPunishments(client) {
                         const embed = new EmbedBuilder().setColor('Green').setTitle('🚫 Banimento Expirado').setDescription(`O banimento de <@${ban.user_id}> (\`${ban.user_id}\`) expirou e foi removido.`).setTimestamp();
                         await logChannel.send({ embeds: [embed] });
                     } catch (err) {
-                        // Ignora erros de "Unknown Ban", que acontecem se o ban já foi removido manualmente
-                        if (err.code !== 10026) {
+                        if (err.code !== 10026) { // Ignora erros de "Unknown Ban"
                            console.error(`[MOD MONITOR] Falha ao remover ban do user ${ban.user_id}:`, err.message);
                         }
                     } finally {
-                        // Remove o registo do DB para não verificar novamente
                         await dbClient.query('DELETE FROM moderation_logs WHERE case_id = $1', [ban.case_id]);
                     }
                 }
@@ -55,7 +53,7 @@ async function checkExpiredPunishments(client) {
     } catch (error) {
         console.error('[MOD MONITOR] Erro durante a verificação de punições:', error);
     } finally {
-        dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
+        if (dbClient) dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
     }
 }
 
