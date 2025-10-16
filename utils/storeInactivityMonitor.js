@@ -19,26 +19,22 @@ async function checkInactiveCarts(client) {
             );
 
             for (const cart of inactiveCarts.rows) {
+                await dbClient.query('DELETE FROM store_carts WHERE channel_id = $1', [cart.channel_id]);
                 const channel = await guild.channels.fetch(cart.channel_id).catch(() => null);
                 if (channel) {
                     const closingEmbed = new EmbedBuilder()
                         .setColor('#E74C3C')
                         .setTitle('🛒 Carrinho Fechado por Inatividade')
                         .setDescription(`Este carrinho de compras foi fechado automaticamente por inatividade superior a ${autoCloseHours} horas. Este canal será eliminado em 30 segundos.`);
-                        
                     await channel.send({ embeds: [closingEmbed] });
-
-                    setTimeout(async () => {
-                        await channel.delete('Carrinho fechado por inatividade.').catch(err => console.error(`[Store Monitor] Falha ao eliminar o canal ${channel.id}:`, err));
-                    }, 30000);
+                    setTimeout(() => channel.delete('Carrinho fechado por inatividade.').catch(() => {}), 30000);
                 }
-                await dbClient.query('DELETE FROM store_carts WHERE channel_id = $1', [cart.channel_id]);
             }
         }
     } catch (error) {
         console.error('[Store Monitor] Erro durante a verificação de carrinhos inativos:', error);
     } finally {
-        dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
+        if (dbClient) dbClient.release(); // DEVOLVE A CONEXÃO PARA O POOL
     }
 }
 

@@ -16,21 +16,19 @@ async function checkExpiredPunishments(client) {
             const logChannel = await guild.channels.fetch(settings.mod_monitor_channel).catch(() => null);
             if (!logChannel) continue;
 
-            // Verifica Timeouts diretamente pela API do Discord
             const expiredTimeouts = await guild.members.list({ limit: 1000 });
             expiredTimeouts.forEach(async member => {
                 if (member.communicationDisabledUntilTimestamp && member.communicationDisabledUntilTimestamp > 0 && member.communicationDisabledUntilTimestamp < Date.now()) {
                     try {
                         await member.timeout(null, 'Punição expirada automaticamente.');
                         const embed = new EmbedBuilder().setColor('Green').setTitle('🔇 Silenciamento Expirado').setDescription(`${member} não está mais silenciado.`).setTimestamp();
-                        await logChannel.send({ embeds: [embed] });
+                        if (logChannel) await logChannel.send({ embeds: [embed] });
                     } catch (err) {
                         console.error(`[MOD MONITOR] Falha ao remover timeout do membro ${member.id}:`, err.message);
                     }
                 }
             });
 
-            // Verifica Bans Temporários (usando o nosso banco de dados)
             const tempBans = (await dbClient.query("SELECT * FROM moderation_logs WHERE guild_id = $1 AND action = 'BAN' AND duration IS NOT NULL", [guild.id])).rows;
             for (const ban of tempBans) {
                 const createdAt = new Date(ban.created_at).getTime();
@@ -39,13 +37,14 @@ async function checkExpiredPunishments(client) {
                     try {
                         await guild.members.unban(ban.user_id, 'Banimento temporário expirado.');
                         const embed = new EmbedBuilder().setColor('Green').setTitle('🚫 Banimento Expirado').setDescription(`O banimento de <@${ban.user_id}> (\`${ban.user_id}\`) expirou e foi removido.`).setTimestamp();
-                        await logChannel.send({ embeds: [embed] });
-                    } catch (err) {
-                        if (err.code !== 10026) { // Ignora erros de "Unknown Ban"
-                           console.error(`[MOD MONITOR] Falha ao remover ban do user ${ban.user_id}:`, err.message);
-                        }
-                    } finally {
+                        if (logChannel) await logChannel.send({ embeds: [embed] });
                         await dbClient.query('DELETE FROM moderation_logs WHERE case_id = $1', [ban.case_id]);
+                    } catch (err) {
+                        if (err.code !== 10026) {
+                           console.error(`[MOD MONITOR] Falha ao remover ban do user ${ban.user_id}:`, err.message);
+                        } else {
+                            await dbClient.query('DELETE FROM moderation_logs WHERE case_id = $1', [ban.case_id]);
+                        }
                     }
                 }
             }
@@ -53,7 +52,7 @@ async function checkExpiredPunishments(client) {
     } catch (error) {
         console.error('[MOD MONITOR] Erro durante a verificação de punições:', error);
     } finally {
-        if (dbClient) dbClient.release(); // ESSENCIAL: Libera a conexão de volta para o pool
+        if (dbClient) dbClient.release(); // DEVOLVE A CONEXÃO PARA O POOL
     }
 }
 
