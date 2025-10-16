@@ -2,17 +2,25 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 const schema = require('./schema.js');
-const MODULES = require('./config/modules.js'); // <-- NOVA IMPORTAÇÃO
+const MODULES = require('./config/modules.js');
 
+// Pool com configurações mais robustas
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
+    max: 20, // Número máximo de clientes no pool
+    idleTimeoutMillis: 30000, // Fecha clientes inativos após 30 segundos
+    connectionTimeoutMillis: 5000, // Retorna um erro se não conseguir conectar em 5 segundos
+});
+
+// Adiciona um listener paaara erros inesperados no pool
+pool.on('error', (err, client) => {
+  console.error('Erro inesperado em um cliente inativo do banco de dados', err);
 });
 
 async function synchronizeDatabase() {
     console.log('[DB] Iniciando sincronização do schema...');
     const client = await pool.connect();
     try {
-        // ... (toda a lógica de criação de tabelas e colunas continua igual)
         for (const tableName in schema) {
             const tableExistsResult = await client.query(
                 "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
@@ -70,7 +78,6 @@ async function synchronizeDatabase() {
             }
         }
 
-        // --- NOVA LÓGICA DE SINCRONIZAÇÃO DE MÓDULOS ---
         console.log('[DB] Sincronizando tabela de status dos módulos...');
         const moduleNames = MODULES.map(m => m.name);
         for (const moduleName of moduleNames) {
@@ -80,8 +87,6 @@ async function synchronizeDatabase() {
             );
         }
         console.log('[DB] Sincronização dos módulos concluída.');
-        // --- FIM DA NOVA LÓGICA ---
-
         console.log('[DB] Sincronização do schema concluída com sucesso.');
     } catch (err) {
         console.error('[DB] Erro durante a sincronização do schema:', err);

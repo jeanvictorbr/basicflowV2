@@ -1,7 +1,7 @@
 // Substitua o conteúdo em: utils/webhookLogger.js
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
-const db = require('../database.js'); // Importa o banco de dados
+const db = require('../database.js');
 
 async function logAiUsage(logData) {
     const { guild, user, featureName, usage, cost } = logData;
@@ -34,11 +34,19 @@ async function logAiUsage(logData) {
         );
 
     try {
-        await fetch(process.env.DEV_LOG_WEBHOOK_URL, {
+        const response = await fetch(process.env.DEV_LOG_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ embeds: [embed.toJSON()] }),
         });
+
+        // CORREÇÃO APLICADA AQUI:
+        // Consome a resposta para liberar a conexão.
+        if (!response.ok) {
+            console.error(`[Webhook Logger] Erro ao enviar log: ${response.statusText}`);
+        }
+        await response.text(); // Ou response.json() se esperasse uma resposta JSON
+
     } catch (error) {
         console.error('[Webhook Logger] Falha ao enviar log de uso da IA para o webhook:', error);
     }
