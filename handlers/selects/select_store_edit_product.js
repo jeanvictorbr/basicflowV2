@@ -14,14 +14,14 @@ module.exports = {
 
         const modal = new ModalBuilder()
             .setCustomId(`modal_store_edit_product_${productId}`)
-            .setTitle(`Editando: ${product.name}`);
+            // --- CORREÇÃO APLICADA AQUI ---
+            .setTitle(`Editando: ${product.name.substring(0, 35)}`); // Trunca o nome do produto para evitar exceder o limite
 
         modal.addComponents(
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('input_name').setLabel("Nome do Produto").setStyle(TextInputStyle.Short).setValue(product.name).setRequired(true)),
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('input_price').setLabel("Preço").setStyle(TextInputStyle.Short).setValue(String(product.price)).setRequired(true)),
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('input_desc').setLabel("Descrição").setStyle(TextInputStyle.Paragraph).setValue(product.description || '').setRequired(false)),
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('input_stock').setLabel("Estoque (-1 para infinito)").setStyle(TextInputStyle.Short).setValue(String(product.stock)).setRequired(true))
-            // Campos de Categoria e Cargo removidos para respeitar o limite de 5 componentes.
         );
 
         await interaction.showModal(modal);

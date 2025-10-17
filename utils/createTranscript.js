@@ -1,15 +1,9 @@
-// Substitua COMPLETAMENTE o conteúdo do arquivo: utils/createTranscript.js
-
+// Substitua completamente o conteúdo em: utils/createTranscript.js
 const fs = require('fs');
-const axios = require('axios'); // Necessário para baixar as imagens
+const axios = require('axios');
 
-/**
- * Baixa uma imagem de uma URL e a converte para o formato Base64.
- * Isso permite embutir a imagem diretamente no arquivo HTML.
- * @param {string} url A URL da imagem.
- * @returns {Promise<string>} Uma string no formato Data URI (ex: data:image/png;base64,...).
- */
 async function imageToBase64(url) {
+    if (!url) return '';
     try {
         const response = await axios.get(url, { responseType: 'arraybuffer' });
         const buffer = Buffer.from(response.data, 'binary').toString('base64');
@@ -17,49 +11,63 @@ async function imageToBase64(url) {
         return `data:${mimeType};base64,${buffer}`;
     } catch (error) {
         console.error(`[Transcript] Falha ao converter imagem para Base64: ${url}`, error);
-        // Retorna uma string vazia ou um placeholder se a imagem não puder ser carregada.
-        return ''; 
+        return '';
     }
 }
 
-
-async function generateTranscript(channel) {
+async function createTranscript(channel) {
     const messages = await channel.messages.fetch({ limit: 100 });
     const reversedMessages = Array.from(messages.values()).reverse();
-
-    const logoUrl = 'https://media.discordapp.net/attachments/1310610658844475404/1426758912224264344/Logotipo_Banda_de_Rock_Vermelho_e_Preto__1_-removebg-preview.png?ex=68edb5c8&is=68ec6448&hm=afb5a704942f5f9e106afc4a167c38dad72f94d16ceb63f7dba742c1ec629067&=&format=webp&quality=lossless';
     
-    // Converte a logo para Base64
+    // Sua logo
+    const logoUrl = 'https://media.discordapp.net/attachments/1310610658844475404/1426758912224264344/Logotipo_Banda_de_Rock_Vermelho_e_Preto__1_-removebg-preview.png?ex=68ee5e88&is=68ed0d08&hm=0ea8b2cd632e2c5e581a723905b1da970a8176111356b2e72564d843418ba30a&=&format=webp&quality=lossless';
     const logoBase64 = await imageToBase64(logoUrl);
 
-    // Mapeia e processa todas as mensagens de forma assíncrona
     const messagePromises = reversedMessages.map(async msg => {
-        // Converte anexos de imagem para Base64
+        let author = msg.author;
+        let avatarUrl = author.displayAvatarURL({ extension: 'png', size: 64 });
+        let content = msg.content;
+        let isRelayed = false;
+
+        if (author.bot && msg.embeds.length > 0 && msg.embeds[0]?.author) {
+            const embedAuthor = msg.embeds[0].author;
+            author = { username: embedAuthor.name, tag: embedAuthor.name };
+            avatarUrl = embedAuthor.iconURL;
+            content = msg.embeds[0].description;
+            isRelayed = true;
+        }
+
         const attachmentsHtml = (await Promise.all(Array.from(msg.attachments.values()).map(async att => {
             if (att.contentType?.startsWith('image/')) {
                 const imageBase64 = await imageToBase64(att.url);
-                return `<a href="${att.url}" target="_blank"><img class="attachment-image" src="${imageBase64}" alt="Anexo de Imagem" loading="lazy"></a>`;
-            } else {
-                return `<div class="attachment-file"><a href="${att.url}" target="_blank" download>${att.name}</a></div>`;
+                return `<a href="${att.url}" target="_blank"><img class="attachment-image" src="${imageBase64}" alt="Anexo"></a>`;
             }
-        }))).join('<br>');
+            return `<div class="attachment-file"><a href="${att.url}" target="_blank" download>${att.name}</a></div>`;
+        }))).join('');
 
-        const embedsHtml = msg.embeds.map(embed => `
+        const embedsHtml = msg.embeds.map(embed => {
+            if (isRelayed) return '';
+            const fieldsHtml = (embed.fields || []).map(field => `<div class="embed-field"><strong>${field.name}</strong><div>${field.value.replace(/\n/g, '<br>')}</div></div>`).join('');
+            return `
             <div class="embed" ${embed.hexColor ? `style="border-left-color: ${embed.hexColor}"` : ''}>
+                ${embed.author ? `<div class="embed-author"><img src="${embed.author.iconURL}" class="embed-author-icon">${embed.author.name}</div>` : ''}
                 ${embed.title ? `<div class="embed-title">${embed.title}</div>` : ''}
-                ${embed.description ? `<div>${embed.description}</div>` : ''}
-            </div>
-        `).join('');
+                ${embed.description ? `<div>${embed.description.replace(/\n/g, '<br>')}</div>` : ''}
+                ${fieldsHtml ? `<div class="embed-fields">${fieldsHtml}</div>` : ''}
+            </div>`;
+        }).join('');
+
+        const avatarBase64 = await imageToBase64(avatarUrl);
 
         return `
             <div class="message-group">
-                <img class="avatar" src="${await imageToBase64(msg.author.displayAvatarURL({ extension: 'png', size: 64 }))}" alt="${msg.author.tag}">
+                <img class="avatar" src="${avatarBase64}" alt="${author.tag}">
                 <div class="message-content">
                     <div class="author-info">
-                        <span class="username">${msg.author.username}</span>
-                        <span class="timestamp">${new Date(msg.createdTimestamp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                        <span class="username">${author.username}</span>
+                        <span class="timestamp">${new Date(msg.createdTimestamp).toLocaleString('pt-BR')}</span>
                     </div>
-                    ${msg.content ? `<div class="message-text">${msg.content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>` : ''}
+                    ${content ? `<div class="message-text">${content.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, '<br>')}</div>` : ''}
                     ${attachmentsHtml ? `<div class="attachments">${attachmentsHtml}</div>` : ''}
                     ${embedsHtml}
                 </div>
@@ -67,165 +75,60 @@ async function generateTranscript(channel) {
         `;
     });
 
-    // Espera todas as mensagens serem processadas
     const messageElements = await Promise.all(messagePromises);
 
     const html = `
-        <!DOCTYPE html>
-        <html lang="pt-br">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap" rel="stylesheet">
-            <title>Transcrição do Ticket #${channel.name}</title>
-            <style>
-                :root {
-                    --bg-color: #1e1e2e;
-                    --primary-color: #27293d;
-                    --secondary-color: #3b3e5e;
-                    --text-color: #cad3f5;
-                    --accent-color: #e78284;
-                    --mention-bg: #414569;
-                }
-                body {
-                    font-family: 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                    background-color: var(--bg-color);
-                    color: var(--text-color);
-                    margin: 0;
-                    padding: 20px;
-                }
-                .container {
-                    max-width: 900px;
-                    margin: 0 auto;
-                    background-color: var(--primary-color);
-                    border-radius: 15px;
-                    padding: 30px;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-                    border: 1px solid var(--secondary-color);
-                }
-                .header {
-                    display: flex;
-                    align-items: center;
-                    gap: 20px;
-                    border-bottom: 2px solid var(--secondary-color);
-                    padding-bottom: 20px;
-                    margin-bottom: 30px;
-                }
-                .logo {
-                    width: 80px;
-                    height: 80px;
-                    border-radius: 50%;
-                    object-fit: cover;
-                }
-                .header-info h1 {
-                    margin: 0;
-                    font-size: 28px;
-                    color: #fff;
-                }
-                .header-info p {
-                    margin: 5px 0 0;
-                    font-size: 14px;
-                    color: #89b4fa;
-                }
-                .message-group {
-                    display: flex;
-                    margin-bottom: 20px;
-                }
-                .avatar {
-                    width: 45px;
-                    height: 45px;
-                    border-radius: 50%;
-                    margin-right: 15px;
-                    margin-top: 5px;
-                }
-                .message-content {
-                    flex-grow: 1;
-                }
-                .author-info {
-                    display: flex;
-                    align-items: baseline;
-                    margin-bottom: 8px;
-                }
-                .username {
-                    font-weight: 700;
-                    color: var(--accent-color);
-                    font-size: 17px;
-                }
-                .timestamp {
-                    font-size: 12px;
-                    color: #a6adc8;
-                    margin-left: 10px;
-                }
-                .message-text {
-                    font-size: 15px;
-                    line-height: 1.6;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                }
-                img.emoji {
-                    width: 1.2em;
-                    height: 1.2em;
-                    vertical-align: middle;
-                }
-                .attachments {
-                    margin-top: 10px;
-                }
-                .attachment-image {
-                    max-width: 450px;
-                    max-height: 400px;
-                    border-radius: 8px;
-                    margin-top: 8px;
-                }
-                .attachment-file a {
-                    color: #89b4fa;
-                    text-decoration: none;
-                    background-color: var(--secondary-color);
-                    padding: 8px 12px;
-                    border-radius: 5px;
-                    font-size: 14px;
-                }
-                .embed {
-                    background-color: #181825;
-                    border-left: 4px solid var(--secondary-color);
-                    padding: 15px;
-                    margin-top: 10px;
-                    border-radius: 5px;
-                }
-                .embed-title {
-                    font-weight: bold;
-                    margin-bottom: 5px;
-                }
-                .footer {
-                    text-align: center;
-                    margin-top: 30px;
-                    padding-top: 20px;
-                    border-top: 1px solid var(--secondary-color);
-                    font-size: 12px;
-                    color: #a6adc8;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <img class="logo" src="${logoBase64}" alt="Logo do Servidor">
-                    <div class="header-info">
-                        <h1>Transcrição de Ticket</h1>
-                        <p>Servidor: ${channel.guild.name} | Canal: #${channel.name}</p>
-                    </div>
-                </div>
-                ${messageElements.join('')}
-                <div class="footer">
-                    <p>Transcrição gerada por ${channel.client.user.username}</p>
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8"><title>Transcrição: #${channel.name}</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+            body { font-family: 'Roboto', sans-serif; background-color: #23272A; color: #DCDDDE; margin: 0; padding: 24px; }
+            .container { max-width: 900px; margin: auto; background-color: #2C2F33; border-radius: 12px; padding: 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+            .header { display: flex; align-items: center; gap: 20px; border-bottom: 2px solid #40444B; padding-bottom: 20px; margin-bottom: 24px; }
+            .logo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid #7289DA; }
+            .header-info h1 { margin: 0; font-size: 26px; color: #FFFFFF; font-weight: 700; }
+            .header-info p { margin: 4px 0 0; font-size: 14px; color: #99AAB5; }
+            .message-group { display: flex; padding: 16px 0; border-bottom: 1px solid #3a3e43; }
+            .message-group:last-child { border-bottom: none; }
+            .avatar { width: 48px; height: 48px; border-radius: 50%; margin-right: 16px; transition: transform 0.2s ease; }
+            .avatar:hover { transform: scale(1.1); }
+            .message-content { flex-grow: 1; }
+            .author-info { display: flex; align-items: baseline; margin-bottom: 6px; }
+            .username { font-weight: 500; color: #FFFFFF; font-size: 17px; }
+            .timestamp { font-size: 12px; color: #72767D; margin-left: 10px; }
+            .message-text { font-size: 16px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
+            .attachments { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
+            .attachment-image { max-width: 450px; height: auto; border-radius: 8px; transition: opacity 0.3s; }
+            .attachment-image:hover { opacity: 0.8; }
+            .attachment-file a { color: #7289DA; text-decoration: none; background-color: #40444B; padding: 8px 12px; border-radius: 5px; font-size: 14px; }
+            .embed { background-color: #292B2F; border-left: 4px solid #4F545C; padding: 12px; border-radius: 5px; margin-top: 8px; }
+            .embed-title { font-weight: 700; color: #FFFFFF; margin-bottom: 4px; }
+            .embed-author { display: flex; align-items: center; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+            .embed-author-icon { width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; }
+            .embed-fields { margin-top: 10px; display: grid; gap: 8px; }
+            .embed-field strong { color: #FFFFFF; }
+            .footer { text-align: center; margin-top: 32px; padding-top: 20px; border-top: 1px solid #40444B; font-size: 12px; color: #99AAB5; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                ${logoBase64 ? `<img class="logo" src="${logoBase64}" alt="Logo">` : ''}
+                <div class="header-info">
+                    <h1>Transcrição de Atendimento</h1>
+                    <p>Servidor: ${channel.guild.name} | Canal: #${channel.name}</p>
                 </div>
             </div>
-        </body>
-        </html>
+            ${messageElements.join('')}
+            <div class="footer"><p>Transcrição gerada por ${channel.client.user.username}</p></div>
+        </div>
+    </body>
+    </html>
     `;
 
-    const filePath = `./transcript-${channel.id}.html`;
-    fs.writeFileSync(filePath, html);
-    return filePath;
+    return Buffer.from(html, 'utf-8');
 }
 
-module.exports = { generateTranscript };
+module.exports = createTranscript;

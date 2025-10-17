@@ -1,5 +1,55 @@
-// handlers/commands/enviar.js
+// Substitua completamente o conteúdo em: handlers/commands/enviar.js
 const { getAIResponse } = require('../../utils/aiAssistant.js');
+
+/**
+ * Divide uma string em pedaços menores que um tamanho máximo,
+ * tentando quebrar em novas linhas ou espaços para manter a formatação.
+ * @param {string} text O texto a ser dividido.
+ * @param {number} maxLength O comprimento máximo de cada pedaço.
+ * @returns {string[]} Um array de pedaços de texto.
+ */
+function splitMessage(text, maxLength = 2000) {
+    if (text.length <= maxLength) {
+        return [text];
+    }
+
+    const chunks = [];
+    let currentChunk = '';
+
+    const lines = text.split('\n');
+    for (const line of lines) {
+        if (currentChunk.length + line.length + 1 > maxLength) {
+            chunks.push(currentChunk);
+            currentChunk = '';
+        }
+
+        // Se uma única linha for maior que o limite, quebramos ela à força
+        if (line.length > maxLength) {
+            let tempLine = line;
+            while (tempLine.length > 0) {
+                if (currentChunk.length > 0) {
+                    chunks.push(currentChunk);
+                    currentChunk = '';
+                }
+                const slice = tempLine.substring(0, maxLength);
+                chunks.push(slice);
+                tempLine = tempLine.substring(maxLength);
+            }
+        } else {
+            if (currentChunk.length > 0) {
+                currentChunk += '\n';
+            }
+            currentChunk += line;
+        }
+    }
+
+    if (currentChunk.length > 0) {
+        chunks.push(currentChunk);
+    }
+
+    return chunks;
+}
+
 
 module.exports = {
     customId: 'enviar',
@@ -10,25 +60,42 @@ module.exports = {
         const prompt = interaction.options.getString('prompt');
         const userToMention = interaction.options.getUser('mencionar_usuario');
 
-        // --- PROMPT CORRIGIDO ---
-        // Agora, a instrução para a IA é direta e exige que ela não adicione texto extra.
         const systemPrompt = `Aja como um redator. Sua única tarefa é escrever um texto para ser enviado em um canal do Discord, seguindo estritamente a instrução de um administrador. Não adicione nenhuma introdução, saudação ou qualquer texto seu. Responda apenas com o conteúdo solicitado. A instrução é: "${prompt}"`;
 
         try {
-            const aiGeneratedMessage = await getAIResponse(interaction.guild.id, [], prompt, systemPrompt, false);
+            const aiGeneratedMessage = await getAIResponse({
+                guild: interaction.guild,
+                user: interaction.user,
+                featureName: 'enviar',
+                userMessage: prompt,
+                customPrompt: systemPrompt,
+                useBaseKnowledge: false,
+                chatHistory: []
+            });
 
             if (!aiGeneratedMessage) {
                 return interaction.editReply({ content: '❌ A IA não conseguiu gerar uma mensagem. Tente ser mais específico no seu pedido.' });
             }
 
-            let finalMessage = aiGeneratedMessage;
+            let initialMessage = aiGeneratedMessage.replace(/^"|"$/g, '');
+            let mentionPrefix = '';
             if (userToMention) {
-                // Remove aspas da mensagem gerada pela IA, caso existam
-                const cleanMessage = aiGeneratedMessage.replace(/^"|"$/g, '');
-                finalMessage = `<@${userToMention.id}>, ${cleanMessage}`;
+                mentionPrefix = `<@${userToMention.id}>, `;
             }
 
-            await targetChannel.send(finalMessage);
+            // --- INÍCIO DA LÓGICA DE DIVISÃO ---
+            const messageChunks = splitMessage(initialMessage, 1990); // 1990 para dar margem de segurança
+
+            // Envia o primeiro pedaço com a menção (se houver)
+            await targetChannel.send(mentionPrefix + messageChunks[0]);
+
+            // Envia os pedaços restantes em sequência
+            for (let i = 1; i < messageChunks.length; i++) {
+                // Adiciona um pequeno delay para garantir a ordem das mensagens
+                await new Promise(resolve => setTimeout(resolve, 500));
+                await targetChannel.send(messageChunks[i]);
+            }
+            // --- FIM DA LÓGICA DE DIVISÃO ---
 
             await interaction.editReply({ content: `✅ Mensagem da IA enviada com sucesso no canal ${targetChannel}!` });
 
