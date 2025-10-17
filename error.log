@@ -1,0 +1,49 @@
+[2025-10-15T10:30:33.846Z] Erro na interação "dev_toggle_ai"
+Usuário: zepiqueno_boss (1070658145740926987)
+Servidor: SERVIDOR TESTES (1401067172045918229)
+TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at generateDevMainMenu (/home/node/ui/devPanel/mainMenu.js:19:100)
+    at execute (/home/node/handlers/buttons/dev_toggle_ai.js:28:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Client.<anonymous> (/home/node/index.js:307:9)
+
+[2025-10-15T10:30:36.350Z] Erro na interação "dev_toggle_bot_status"
+Usuário: zepiqueno_boss (1070658145740926987)
+Servidor: SERVIDOR TESTES (1401067172045918229)
+TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at generateDevMainMenu (/home/node/ui/devPanel/mainMenu.js:19:100)
+    at execute (/home/node/handlers/buttons/dev_toggle_bot_status.js:19:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Client.<anonymous> (/home/node/index.js:307:9)
+
+[2025-10-15T10:31:25.936Z] Erro na interação "dev_toggle_bot_status"
+Usuário: zepiqueno_boss (1070658145740926987)
+Servidor: SERVIDOR TESTES (1401067172045918229)
+TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at generateDevMainMenu (/home/node/ui/devPanel/mainMenu.js:19:100)
+    at execute (/home/node/handlers/buttons/dev_toggle_bot_status.js:19:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Client.<anonymous> (/home/node/index.js:307:9)
+
+[2025-10-15T10:31:31.675Z] Erro na interação "dev_toggle_ai"
+Usuário: zepiqueno_boss (1070658145740926987)
+Servidor: SERVIDOR TESTES (1401067172045918229)
+TypeError: Cannot read properties of undefined (reading 'toLocaleString')
+    at generateDevMainMenu (/home/node/ui/devPanel/mainMenu.js:19:100)
+    at execute (/home/node/handlers/buttons/dev_toggle_ai.js:28:25)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Client.<anonymous> (/home/node/index.js:307:9)
+
+[2025-10-15T11:18:46.915Z] Erro na interação "ticket_dm_claim_1427978025949200386"
+Usuário: zepiqueno_boss (1070658145740926987)
+Servidor: SERVIDOR TESTES (1401067172045918229)
+DiscordAPIError[10003]: Unknown Channel
+    at handleErrors (/home/node/node_modules/@discordjs/rest/dist/index.js:762:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async SequentialHandler.runRequest (/home/node/node_modules/@discordjs/rest/dist/index.js:1163:23)
+    at async SequentialHandler.queueRequest (/home/node/node_modules/@discordjs/rest/dist/index.js:994:14)
+    at async _REST.request (/home/node/node_modules/@discordjs/rest/dist/index.js:1307:22)
+    at async GuildChannelManager.fetch (/home/node/node_modules/discord.js/src/managers/GuildChannelManager.js:399:20)
+    at async execute (/home/node/handlers/buttons/ticket_dm_claim.js:20:24)
+    at async Client.<anonymous> (/home/node/index.js:307:9)
+
