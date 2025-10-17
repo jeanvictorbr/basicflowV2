@@ -9,8 +9,7 @@ const FEATURES = [
     { label: "Funcionalidades Premium de Tickets", value: "TICKETS_PREMIUM" },
     { label: "Funcionalidades Premium de Ponto", value: "PONTO_PREMIUM" },
     { label: "Análise de Dossiê com IA", value: "DOSSIE_AI_ANALYSIS" },
-    { label: "Automação da Loja (Mercado Pago)", value: "STORE_AUTOMATION" },
-    { label: "Arquiteto de Servidor (IA)", value: "ARQUITETO" } // <-- NOVA FEATURE ADICIONADA AQUI
+    { label: "Automação da Loja (Mercado Pago)", value: "STORE_AUTOMATION" }
 ];
 
 module.exports = FEATURES;

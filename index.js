@@ -1,7 +1,6 @@
 // Substitua o conteúdo em: index.js
 const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
-const { checkTokenUsage } = require('./utils/tokenMonitor.js');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
@@ -15,11 +14,9 @@ const { syncUsedKeys } = require('./utils/keyStockMonitor.js');
 const { logInteraction } = require('./utils/analyticsUtils.js');
 const MODULES = require('./config/modules.js');
 const { updateModuleStatusCache } = require('./utils/moduleStatusCache.js');
-const { splitMessage } = require('./utils/messageSplitter'); //
 require('dotenv').config();
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
-const fetch = require('node-fetch');
 const http = require('http');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { approvePurchase } = require('./utils/approvePurchase.js');
@@ -100,12 +97,11 @@ client.on(Events.GuildCreate, async guild => {
             avatar_url: client.user.displayAvatarURL(),
             embeds: [joinEmbed]
         };
-        const response = await fetch(process.env.GUILD_ADD_WEBHOOK_URL, {
+        await fetch(process.env.GUILD_ADD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-        await response.text(); // Consome a resposta
         console.log(`[GUILD JOIN] Notificação enviada para o webhook sobre o servidor ${guild.name}.`);
     } catch (error) {
         console.error(`[GUILD JOIN] Falha ao enviar notificação para o webhook:`, error);
@@ -134,92 +130,60 @@ client.on(Events.GuildDelete, async guild => {
             avatar_url: client.user.displayAvatarURL(),
             embeds: [leaveEmbed]
         };
-        const response = await fetch(process.env.GUILD_REMOVE_WEBHOOK_URL, {
+        await fetch(process.env.GUILD_REMOVE_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
         });
-        await response.text(); // Consome a resposta
         console.log(`[GUILD LEAVE] Notificação de remoção enviada para o webhook sobre o servidor ${guild.name}.`);
     } catch (error) {
         console.error(`[GUILD LEAVE] Falha ao enviar notificação para o webhook:`, error);
     }
 });
-
-// ***************************************************************** //
-// ******************* INÍCIO DA CORREÇÃO DO ERRO ****************** //
-// ***************************************************************** //
-
 client.commands = new Collection();
+const commandsToDeploy = [];
+const devCommandsToDeploy = [];
+const devOnlyCommands = ['devpanel', 'debugai', 'enviar'];
+const commandFoldersPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandFoldersPath).filter(file => file.endsWith('.js'));
+for (const file of commandFiles) {
+    const command = require(path.join(commandFoldersPath, file));
+    if (command.data) {
+        client.commands.set(command.data.name, command);
+        if (devOnlyCommands.includes(command.data.name)) {
+            devCommandsToDeploy.push(command.data.toJSON());
+        } else {
+            commandsToDeploy.push(command.data.toJSON());
+        }
+    }
+}
+console.log('--- Carregando Handlers ---');
 client.handlers = new Collection();
-
-// Função recursiva para carregar todos os arquivos de handlers
-function loadHandlers(dir) {
-    const files = fs.readdirSync(dir, { withFileTypes: true });
-    for (const file of files) {
-        const fullPath = path.join(dir, file.name);
-        if (file.isDirectory()) {
-            loadHandlers(fullPath);
-        } else if (file.name.endsWith('.js')) {
+const handlersPath = path.join(__dirname, 'handlers');
+const handlerTypes = ['buttons', 'modals', 'selects', 'commands'];
+handlerTypes.forEach(handlerType => {
+    const handlerDir = path.join(handlersPath, handlerType);
+    if (fs.existsSync(handlerDir)) {
+        const handlerFiles = fs.readdirSync(handlerDir).filter(file => file.endsWith('.js'));
+        for (const file of handlerFiles) {
             try {
-                const handler = require(fullPath);
+                const handler = require(path.join(handlerDir, file));
                 if (handler.customId && handler.execute) {
                     client.handlers.set(handler.customId, handler.execute);
                 }
             } catch (error) {
-                console.error(`[HANDLER] ❌ Erro ao carregar ${file.name}:`, error);
+                console.error(`[HANDLER] ❌ Erro ao carregar ${file}:`, error);
             }
         }
     }
-}
-
-function loadCommands() {
-    const commandsPath = path.join(__dirname, 'commands');
-    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
-    for (const file of commandFiles) {
-        const command = require(path.join(commandsPath, file));
-        if (command.data) {
-            client.commands.set(command.data.name, command);
-        }
-    }
-}
-
-console.log('--- Carregando Handlers ---');
-loadHandlers(path.join(__dirname, 'handlers'));
+});
 console.log('--- Handlers Carregados ---');
-
-console.log('--- Carregando Comandos ---');
-loadCommands();
-console.log('--- Comandos Carregados ---');
-
-
-// ***************************************************************** //
-// ******************** FIM DA CORREÇÃO DO ERRO ******************** //
-// ***************************************************************** //
-
 
 client.once(Events.ClientReady, async () => {
     await db.synchronizeDatabase();
     await updateModuleStatusCache(client);
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
-        const commandsToDeploy = [];
-        const devCommandsToDeploy = [];
-        const devOnlyCommands = ['devpanel', 'debugai'];
-        
-        const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
-        for (const file of commandFiles) {
-            const command = require(path.join(__dirname, 'commands', file));
-            if (command.data) {
-                if (devOnlyCommands.includes(command.data.name)) {
-                    devCommandsToDeploy.push(command.data.toJSON());
-                } else {
-                    commandsToDeploy.push(command.data.toJSON());
-                }
-            }
-        }
-
         if (process.env.DEV_GUILD_ID) {
             const allDevGuildCommands = [...commandsToDeploy, ...devCommandsToDeploy];
             console.log(`[CMD] Iniciando registo de ${allDevGuildCommands.length} comando(s) na guild de desenvolvimento.`);
@@ -247,7 +211,6 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000);
     setInterval(() => syncUsedKeys(client), 60 * 1000);
     setInterval(() => updateModuleStatusCache(client), 15 * 60 * 1000);
-    setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
 });
 
 client.on(Events.InteractionCreate, async interaction => {
@@ -396,187 +359,8 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
 });
-// Substitua este bloco inteiro no seu arquivo index.js
-
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
-
-    // 1. Chamada do Guardian AI para moderação (executa apenas uma vez)
-    try {
-        await processMessageForGuardian(message);
-    } catch (err) {
-        console.error('[Guardian AI] Erro não tratado:', err);
-    }
-
-    const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
-
-    // 2. Bloco ÚNICO para chat por menção
-    const isMentioned = message.mentions.has(client.user) && !message.mentions.everyone;
-    if (isMentioned && settings.guardian_ai_mention_chat_enabled) {
-        try {
-            // Ignora se for apenas uma menção vazia
-            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
-            if (!userMessage) return;
-
-            await message.channel.sendTyping();
-
-            const recentMessages = await message.channel.messages.fetch({ limit: 7 });
-            const chatHistory = recentMessages
-                .filter(msg => !msg.author.bot || msg.author.id === client.user.id)
-                .map(msg => ({
-                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                    content: msg.content
-                }))
-                .reverse();
-
-            const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
-            const aiResponse = await getAIResponse({
-                guild: message.guild,
-                user: message.author,
-                featureName: "Chat por Menção",
-                chatHistory: chatHistory,
-                userMessage: userMessage,
-                customPrompt: systemPrompt,
-                useBaseKnowledge: true
-            });
-
-            if (aiResponse) {
-                const chunks = splitMessage(aiResponse, { maxLength: 2000 });
-                const firstChunk = chunks.shift();
-                if (firstChunk) {
-                    await message.reply(firstChunk);
-                }
-                for (const chunk of chunks) {
-                    await message.channel.send(chunk);
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-            // Encerra o processamento aqui para não executar outras lógicas de mensagem
-            return; 
-        } catch (error) {
-            console.error('[Mention Chat] Erro ao processar menção com IA:', error);
-        }
-    }
- 
-    // --- Início do Bloco do Arquiteto & Consultor de Servidor ---
-    if ((message.channel.name.startsWith('arquiteto-') || message.channel.name.startsWith('consultor-')) && message.channel.topic === message.author.id) {
-        try {
-            const sessionResult = await db.query('SELECT * FROM architect_sessions WHERE channel_id = $1 AND (status = $2 OR status = $3)', [message.channel.id, 'active', 'pending_confirmation']);
-            if (sessionResult.rows.length === 0) return;
-            
-            if(sessionResult.rows[0].status === 'pending_confirmation') {
-                return message.reply("Por favor, use os botões da mensagem acima para Confirmar, Editar ou Cancelar o plano. Se desejar continuar a conversa, clique em 'Editar Plano'.");
-            }
-
-            await message.channel.sendTyping();
-
-            const session = sessionResult.rows[0];
-            const chatHistory = session.chat_history || [];
-            let systemPrompt;
-            
-            const isConsultantMode = message.channel.name.startsWith('consultor-');
-
-            if (isConsultantMode) {
-                systemPrompt = `
-                    Você é um "Consultor de Servidor" para o Discord, um especialista em otimização. Seu objetivo é **propor ações concretas e com estilo**.
-
-                    **REGRAS:**
-                    1.  **SEJA OBJETIVO:** Vá direto ao ponto.
-                    2.  **FOCO NA AÇÃO:** O usuário descreverá uma necessidade (ex: "quero um sistema de tickets"). Sua resposta DEVE ser um plano de **ADIÇÃO** em um bloco de código JSON. Não converse, apenas forneça o JSON.
-                    3.  **ESTÉTICA:** Ao criar os nomes, use **emojis temáticos e símbolos criativos** para um visual agradável (ex: "🎫 --- TICKETS --- 🎫").
-                    4.  **PLANO PARCIAL:** O JSON deve conter APENAS os novos itens a serem criados.
-
-                    **Formato do JSON (Obrigatório):**
-                    - "roles": array de objetos com "name" e "permissions".
-                    - "categories": array de objetos com "name" e "channels".
-                    - Dentro de "channels", cada objeto DEVE ter: "name" (string), "type": ('text' ou 'voice'), e **"purpose"** ('chat', 'readonly', 'welcome').
-                `;
-            } else {
-                systemPrompt = `
-                    Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um plano de servidor completo, funcional e **visualmente impressionante**.
-
-                    **REGRAS:**
-                    1.  **SEJA OBJETIVO:** Faça no máximo 2 perguntas para entender o tema do servidor.
-                    2.  **AÇÃO IMEDIATA:** Após a resposta do usuário, sua próxima mensagem DEVE ser o plano completo do servidor em um bloco de código JSON. **Não continue a conversa. Proponha o plano imediatamente.**
-                    3.  **ESTÉTICA HIERÁRQUICA:**
-                        - **Nomes de CATEGORIA:** DEVEM ser decorados com estilo (ex: "--- --→ 「🎮 JOGOS」 ←-- ---").
-                        - **Nomes de CANAL:** DEVEM ser simples, usando apenas um emoji temático no início (ex: "💬 bate-papo").
-                    4.  **PERMISSÕES SEGURAS:** O plano DEVE ter uma categoria de "Boas-Vindas" pública ('welcome') e as demais privadas. O cargo "Membro" pode ver, mas só pode ESCREVER em canais com 'purpose: chat'. Nos canais 'readonly', eles só podem ler.
-
-                    **FORMATO JSON OBRIGATÓRIO (Exemplo):**
-                    \`\`\`json
-                    {
-                      "roles": [{ "name": "Membro", "permissions": "Básicas" }, { "name": "Staff", "permissions": "Moderação" }],
-                      "categories": [{
-                        "name": "--- --→ 「👋 BEM-VINDO」 ←-- ---",
-                        "channels": [
-                          { "name": "✅ verificar", "type": "text", "purpose": "welcome" },
-                          { "name": "📜 regras", "type": "text", "purpose": "readonly" }
-                        ]
-                      },{
-                        "name": "--- --→ 「💬 GERAL」 ←-- ---",
-                        "channels": [
-                          { "name": "💬 bate-papo", "type": "text", "purpose": "chat" },
-                          { "name": "📢 avisos", "type": "text", "purpose": "readonly" }
-                        ]
-                      }]
-                    }
-                    \`\`\`
-                `;
-            }
-
-            const aiResponse = await getAIResponse({
-                guild: message.guild, user: message.author, featureName: "Arquiteto de Servidor",
-                chatHistory: chatHistory, userMessage: message.content, customPrompt: systemPrompt, useBaseKnowledge: false,
-            });
-
-            if (!aiResponse) return await message.channel.send("❌ A IA não conseguiu processar a sua mensagem. Tente novamente.");
-
-            const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
-            if (jsonMatch && jsonMatch[1]) {
-                const jsonBlueprint = JSON.parse(jsonMatch[1]);
-                
-                await db.query("UPDATE architect_sessions SET blueprint = $1, status = 'pending_confirmation' WHERE channel_id = $2", [jsonBlueprint, message.channel.id]);
-
-                const rolesText = (jsonBlueprint.roles && jsonBlueprint.roles.length > 0) ? jsonBlueprint.roles.map(r => `• ${r.name} (${r.permissions})`).join('\n') : 'Nenhum cargo novo.';
-                const categoriesText = (jsonBlueprint.categories && jsonBlueprint.categories.length > 0) ? jsonBlueprint.categories.map(c => `📂 **${c.name}**\n   └─ Canais: ${c.channels.map(ch => `\`#${ch.name}\``).join(', ')}`).join('\n\n') : 'Nenhuma categoria nova.';
-                
-                const embed = {
-                    title: isConsultantMode ? '📋 Plano de Adição Proposto' : '📋 Plano de Construção Proposto',
-                    description: isConsultantMode ? 'Analisei seu pedido e sugiro **adicionar** o seguinte ao seu servidor. Nada será removido.' : 'Analisei seu pedido e preparei um plano completo para o seu novo servidor. O que acha?',
-                    color: 3447003,
-                    fields: [
-                        { name: '👑 Cargos a Serem Criados', value: rolesText },
-                        { name: '📂 Categorias e Canais a Serem Criados', value: categoriesText }
-                    ]
-                };
-
-                const actionRow = {
-                    type: 1,
-                    components: [
-                        { type: 2, style: 3, label: isConsultantMode ? "Confirmar e Adicionar" : "Confirmar e Construir", emoji: { name: "🚀" }, custom_id: isConsultantMode ? `architect_confirm_add_${message.channel.id}` : `architect_confirm_build_${message.channel.id}` },
-                        { type: 2, style: 1, label: "Editar/Pedir Alteração", emoji: { name: "📝" }, custom_id: `architect_edit_plan_${message.channel.id}` },
-                        { type: 2, style: 4, label: "Cancelar", emoji: { name: "❌" }, custom_id: 'architect_cancel_build' }
-                    ]
-                };
-
-                await message.channel.send({ embeds: [embed], components: [actionRow] });
-
-            } else {
-                await message.channel.send(aiResponse);
-                const newHistory = [...chatHistory, { role: 'user', content: message.content }, { role: 'assistant', content: aiResponse }];
-                await db.query('UPDATE architect_sessions SET chat_history = $1 WHERE channel_id = $2', [JSON.stringify(newHistory), message.channel.id]);
-            }
-
-        } catch (error) {
-            console.error("[Arquiteto/Consultor Conversa] Erro:", error);
-            await message.channel.send("❌ Ocorreu um erro crítico. A IA pode estar indisponível ou o plano gerado é inválido.");
-        }
-        return;
-    }
-    // --- Fim do Bloco ---
-
-    // --- Início do Bloco de Relay (Loja e Tickets) ---
     try {
         if (message.channel.type === ChannelType.DM) {
             const activeCart = (await db.query("SELECT * FROM store_carts WHERE user_id = $1 AND (status = 'open' OR status = 'payment') AND thread_id IS NOT NULL", [message.author.id])).rows[0];
@@ -610,62 +394,52 @@ client.on(Events.MessageCreate, async (message) => {
     } catch(e) {
         console.error("[Store Relay] Erro ao retransmitir mensagem:", e);
     }
-
-    try {
-        if (message.channel.type === ChannelType.DM) {
-            const activeTicket = (await db.query("SELECT * FROM tickets WHERE user_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.author.id])).rows[0];
-            if (activeTicket) {
-                const guild = await client.guilds.fetch(activeTicket.guild_id);
-                const thread = await guild.channels.fetch(activeTicket.thread_id).catch(() => null);
-                if (thread) {
-                    const relayEmbed = new EmbedBuilder()
-                        .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
-                        .setColor('#7289DA')
-                        .setDescription(message.content || '*Nenhuma mensagem, possível anexo abaixo.*');
-                    
-                    const files = message.attachments.map(att => att.url);
-                    await thread.send({ embeds: [relayEmbed], files });
-                    await message.react('✅').catch(() => {});
-                }
-            }
-        } 
-        else if (message.channel.isThread()) {
-            const activeTicket = (await db.query("SELECT * FROM tickets WHERE thread_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.channel.id])).rows[0];
-            
-            if (activeTicket && message.author.id !== activeTicket.user_id && !message.author.bot) {
-                const ticketSettings = (await db.query('SELECT tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
-                const member = await message.guild.members.fetch(message.author.id).catch(() => null);
-                const isStaff = member && ticketSettings && member.roles.cache.has(ticketSettings.tickets_cargo_suporte);
-
-                if (isStaff) {
-                     const customer = await client.users.fetch(activeTicket.user_id).catch(() => null);
-                     if (customer) {
-                        const content = message.content ? `**${message.author.username} diz:**\n${message.content}` : undefined;
-                        const files = message.attachments.map(att => att.url);
-                        
-                        await customer.send({ content, files });
-                        await message.react('✅').catch(() => {});
-                     }
-                }
-            }
-        }
-    } catch (error) {
-        console.error("[Ticket Relay] Erro ao retransmitir mensagem:", error);
-    }
-    // --- Fim do Bloco de Relay ---
-
     if (!message.guild) return;
-
-    // Lógica para tickets de canal (Auto-fechamento e Assistente de IA)
+    const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
+    if (message.content.includes(client.user.id) && settings.guardian_ai_mention_chat_enabled) {
+        try {
+            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
+            if (!userMessage) return;
+            await message.channel.sendTyping();
+            const channelMessages = await message.channel.messages.fetch({ limit: 3 });
+            const chatHistory = channelMessages.map(msg => {
+                const content = msg.content.replace(/<@!?\d+>/g, '').trim();
+                if (!content) return null;
+                return {
+                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
+                    content: content
+                };
+            }).filter(Boolean).reverse();
+            const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
+            const aiResponse = await getAIResponse({
+                guild: message.guild,
+                user: message.author,
+                featureName: "Chat por Menção",
+                chatHistory: chatHistory,
+                userMessage: userMessage,
+                customPrompt: systemPrompt,
+                useBaseKnowledge: true
+            });
+            if (aiResponse) {
+                await message.reply(aiResponse);
+            }
+            return;
+        } catch(err) {
+            console.error('[Mention Chat AI] Erro ao responder menção:', err);
+        }
+    }
+    try {
+        await processMessageForGuardian(message);
+    } catch (err) {
+        console.error('[Guardian AI] Erro não tratado:', err);
+    }
     const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id])).rows[0];
     if (ticket) {
         if (ticket.warning_sent_at) {
             await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
         }
         await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
-
         if (!settings.tickets_ai_assistant_enabled) return;
-        
         const history = await message.channel.messages.fetch({ limit: 6 });
         let humanSupportHasReplied = false;
         for (const msg of history.values()) {
@@ -676,14 +450,11 @@ client.on(Events.MessageCreate, async (message) => {
                 break;
             }
         }
-
         if (humanSupportHasReplied) return;
-
         const chatHistory = history.map(msg => ({
             role: msg.author.id === client.user.id ? 'assistant' : 'user',
             content: msg.content,
         })).filter(msg => msg.content).reverse();
-
         await message.channel.sendTyping();
         const useBaseKnowledge = settings.tickets_ai_use_base_knowledge !== false;
         const aiResponse = await getAIResponse({
@@ -695,10 +466,46 @@ client.on(Events.MessageCreate, async (message) => {
             customPrompt: settings.tickets_ai_assistant_prompt,
             useBaseKnowledge: useBaseKnowledge
         });
-
         if (aiResponse) {
             await message.channel.send(aiResponse);
         }
     }
 });
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    const settings = (await db.query('SELECT roletags_enabled FROM guild_settings WHERE guild_id = $1', [newMember.guild.id])).rows[0];
+    if (!settings || !settings.roletags_enabled) return;
+    if (oldMember.roles.cache.size !== newMember.roles.cache.size) {
+        await updateUserTag(newMember);
+    }
+});
+process.on('uncaughtException', async (error, origin) => {
+    console.error('CRITICAL ERROR:', error);
+    if (!process.env.ERROR_WEBHOOK_URL) return;
+    const stack = error.stack ? (error.stack.length > 3800 ? `${error.stack.slice(0, 3800)}...` : error.stack) : 'N/A';
+    const errorEmbed = new EmbedBuilder()
+        .setColor('DarkRed')
+        .setTitle('🔥 ERRO CRÍTICO NO BOT 🔥')
+        .addFields(
+            { name: 'Origem do Erro', value: `\`${origin}\`` },
+            { name: 'Mensagem', value: `\`\`\`${error.message}\`\`\`` },
+            { name: 'Stack Trace', value: `\`\`\`js\n${stack}\`\`\`` }
+        )
+        .setTimestamp();
+    const payload = {
+        content: '<@SEU_USER_ID>',
+        username: 'BasicFlow Monitor de Erros',
+        avatar_url: client.user.displayAvatarURL(),
+        embeds: [errorEmbed]
+    };
+    try {
+        await fetch(process.env.ERROR_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+    } catch (webhookError) {
+        console.error('Falha ao enviar o webhook de erro:', webhookError);
+    }
+});
+
 client.login(process.env.DISCORD_TOKEN);

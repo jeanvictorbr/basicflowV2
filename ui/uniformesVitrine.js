@@ -28,8 +28,8 @@ module.exports = function generateUniformesVitrine(interaction, settings, allUni
     }
 
     if (selectedUniform) {
-        // CORREÇÃO: A imagem só é adicionada se a URL for válida (não nula, vazia e começa com http)
-        if (selectedUniform.image_url && selectedUniform.image_url.startsWith('http')) {
+        // CORREÇÃO: A imagem só é adicionada se a URL for válida (não nula ou vazia)
+        if (selectedUniform.image_url) {
             embed.setImage(selectedUniform.image_url);
         }
         embed.addFields({
