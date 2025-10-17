@@ -1,45 +1,16 @@
 // ui/ticketsPremiumMenu.js
-module.exports = function generateTicketsPremiumMenu(settings = {}) { // Adicionado um valor padrão
+module.exports = function generateTicketsPremiumMenu(settings) {
     const departmentsStatus = settings.tickets_use_departments ? '✅ Ativado' : '❌ Desativado';
     const greetingStatus = settings.tickets_greeting_enabled ? '✅ Ativado' : '❌ Desativado';
     const feedbackStatus = settings.tickets_feedback_enabled ? '✅ Ativado' : '❌ Desativado';
     const autoCloseStatus = settings.tickets_autoclose_enabled ? `✅ Ativado (${settings.tickets_autoclose_hours || 48}h)` : '❌ Desativado';
     const aiStatus = settings.tickets_ai_assistant_enabled ? '✅ Ativado' : '❌ Desativado';
 
-    // Lógica para o fluxo de DM
-    const dmFlowStatus = settings.tickets_dm_flow_enabled ? '✅ Ativado (Via DM)' : '❌ Desativado (Padrão via Canal)';
-    const toggleDmFlowButton = settings.tickets_dm_flow_enabled 
-        ? { label: 'Usar Canais', style: 4 } // Vermelho
-        : { label: 'Usar DMs', style: 3 }; // Verde
-        
-    const claimChannel = settings.tickets_dm_claim_channel_id ? `<#${settings.tickets_dm_claim_channel_id}>` : '`❌ Não definido`';
-
     return [
         {
             "type": 17, "accent_color": 5752042,
             "components": [
                 { "type": 10, "content": "## ✨ Hub Premium de Tickets" },
-                { "type": 14, "divider": true, "spacing": 1 },
-                // --- SEÇÃO DE FLUXO DE ATENDIMENTO ---
-                {
-                    "type": 9, 
-                    "accessory": { "type": 2, "style": toggleDmFlowButton.style, "label": toggleDmFlowButton.label, "custom_id": "tickets_toggle_dm_flow" },
-                    "components": [{ "type": 10, "content": `**Fluxo de Atendimento**\n> Status: \`${dmFlowStatus}\`` }]
-                },
-                { "type": 14, "divider": true, "spacing": 1 },
-                // --- BOTÃO PARA DEFINIR O CANAL ---
-                {
-                    "type": 9, 
-                    "accessory": { 
-                        "type": 2, 
-                        "style": 1, 
-                        "label": "Definir Canal", 
-                        "custom_id": "tickets_set_dm_claim_channel", 
-                        "disabled": !settings.tickets_dm_flow_enabled // Desabilitado se o fluxo de DM estiver inativo
-                    },
-                    "components": [{ "type": 10, "content": `**Canal para Assumir Atendimentos (DM)**\n> ${claimChannel}` }]
-                },
-                // --- FIM DA SEÇÃO NOVA ---
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar", "custom_id": "tickets_config_departments" },

@@ -1,93 +1,68 @@
-// handlers/buttons/mod_dossie_analyze.js
+// Substitua o conteúdo em: handlers/buttons/mod_dossie_analyze.js
+const db = require('../../database.js');
 const { EmbedBuilder } = require('discord.js');
-const db = require('../../database');
-const { getAIResponse } = require('../../utils/aiAssistant');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+const { getAIResponse } = require('../../utils/aiAssistant.js');
 
 module.exports = {
-    customId: 'mod_dossie_analyze',
+    customId: 'mod_dossie_analyze_',
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
 
-        const embed = interaction.message.embeds[0];
-        if (!embed) {
-            return interaction.editReply({ content: 'Não foi possível encontrar o embed original do dossiê.' });
-        }
-
-        const userId = embed.footer.text.replace('ID do Usuário: ', '');
-        const guildId = interaction.guild.id;
-
         try {
-            const logsResult = await db.query('SELECT * FROM moderation_logs WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at DESC', [guildId, userId]);
-            const notesResult = await db.query('SELECT * FROM moderation_notes WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at DESC', [guildId, userId]);
+            const targetUserId = interaction.customId.split('_')[3];
+            const targetUser = await interaction.client.users.fetch(targetUserId);
 
-            const logs = logsResult.rows;
-            const notes = notesResult.rows;
-
-            if (logs.length === 0 && notes.length === 0) {
-                return interaction.editReply({ content: 'Este usuário não possui registros para analisar.' });
+            const logsResult = await db.query('SELECT * FROM moderation_logs WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at ASC', [interaction.guild.id, targetUserId]);
+            const notesResult = await db.query('SELECT * FROM moderation_notes WHERE guild_id = $1 AND user_id = $2 ORDER BY created_at ASC', [interaction.guild.id, targetUserId]);
+            
+            if (logsResult.rows.length === 0 && notesResult.rows.length === 0) {
+                return interaction.editReply({ content: 'ℹ️ Este usuário não possui histórico para analisar.' });
             }
 
-            const historyText = logs.map(l => `- Ação: ${l.action}, Motivo: ${l.reason}, Data: ${l.created_at.toISOString()}`).join('\n');
-            const notesText = notes.map(n => `- Nota: ${n.content}, Data: ${n.created_at.toISOString()}`).join('\n');
-            const fullHistory = `Histórico de Punições:\n${historyText}\n\nNotas Internas:\n${notesText}`;
+            let historyText = "Histórico de Punições:\n" + logsResult.rows.map(log => `- Ação: ${log.action}, Data: ${new Date(log.created_at).toLocaleDateString('pt-BR')}, Motivo: ${log.reason}`).join('\n');
+            if (notesResult.rows.length > 0) {
+                historyText += "\n\nNotas Internas da Staff:\n" + notesResult.rows.map(note => `- Nota: ${note.content}, Data: ${new Date(note.created_at).toLocaleDateString('pt-BR')}`).join('\n');
+            }
 
-            const prompt = `
-                Você é um especialista em moderação do Discord. Analise o seguinte histórico de um usuário e forneça uma análise concisa em formato JSON.
-                **Histórico:**
-                ${fullHistory}
-                
-                **Formato de Resposta JSON OBRIGATÓRIO:**
-                \`\`\`json
-                {
-                  "behavior_pattern": "Descreva o padrão de comportamento do usuário (ex: 'reincidente em spam', 'conflitos recorrentes', 'infrações leves e esporádicas').",
-                  "severity_level": "Classifique a severidade geral do histórico (ex: 'Baixa', 'Moderada', 'Alta', 'Crítica').",
-                  "recommendation": "Sugira uma ação ou postura para os moderadores (ex: 'Monitoramento padrão', 'Atenção redobrada em canais de voz', 'Próxima infração deve resultar em banimento temporário')."
-                }
-                \`\`\`
+            const systemPrompt = `
+                Você é um assistente de moderação especialista chamado Guardian AI. Sua tarefa é analisar o histórico de um usuário e fornecer um relatório estruturado em JSON com as chaves: "pattern", "risk_level", "suggestion".
             `;
 
-            const aiResponse = await getAIResponse({
+            const analysisJson = await getAIResponse({
                 guild: interaction.guild,
                 user: interaction.user,
-                featureName: 'Análise de Dossiê (IA)',
-                userMessage: prompt,
-                customPrompt: '',
+                featureName: "Análise de Dossiê",
+                chatHistory: [],
+                userMessage: historyText,
+                customPrompt: systemPrompt,
                 useBaseKnowledge: false
             });
 
-            // --- INÍCIO DA CORREÇÃO ---
-            let analysisEmbed = new EmbedBuilder()
-                .setColor(0x5865F2)
-                .setTitle(`🤖 Análise de IA do Dossiê`)
-                .setFooter({ text: `Análise para o usuário ${userId}`});
-
-            const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
-
-            if (jsonMatch && jsonMatch[1]) {
-                try {
-                    const analysis = JSON.parse(jsonMatch[1]);
-                    analysisEmbed.addFields(
-                        { name: 'Padrão de Comportamento', value: analysis.behavior_pattern || 'Não identificado' },
-                        { name: 'Nível de Severidade', value: analysis.severity_level || 'Não classificado' },
-                        { name: 'Recomendação', value: analysis.recommendation || 'Nenhuma sugestão' }
-                    );
-                } catch (e) {
-                    // Se o JSON dentro do bloco for inválido, mostra a resposta bruta.
-                    analysisEmbed.setDescription(`A IA retornou um JSON mal formatado. Resposta recebida:\n\`\`\`${aiResponse}\`\`\``);
-                }
-            } else {
-                // Se não houver bloco JSON, trata como texto simples.
-                analysisEmbed.setDescription(aiResponse || 'A IA não forneceu uma análise.');
+            if (!analysisJson) {
+                return interaction.editReply({ content: '❌ A IA não conseguiu gerar uma análise para este histórico.' });
             }
-            // --- FIM DA CORREÇÃO ---
 
-            await interaction.editReply({ embeds: [analysisEmbed], ephemeral: true });
+            const result = JSON.parse(analysisJson);
+            const { pattern, risk_level, suggestion } = result;
+
+            const riskColors = { "Baixo": "Green", "Moderado": "Yellow", "Alto": "Orange", "Crítico": "Red" };
+
+            const analysisEmbed = new EmbedBuilder()
+                .setColor(riskColors[risk_level] || 'Default')
+                .setAuthor({ name: `Análise de Comportamento: ${targetUser.tag}`, iconURL: targetUser.displayAvatarURL() })
+                .addFields(
+                    { name: '🚨 Nível de Risco Avaliado', value: `**${risk_level || 'Indeterminado'}**` },
+                    { name: '📈 Padrão de Comportamento Identificado', value: pattern || 'Não foi possível determinar um padrão.' },
+                    { name: '💡 Ação Recomendada pela IA', value: suggestion || 'Nenhuma ação específica sugerida.' }
+                )
+                .setFooter({ text: 'Análise gerada por IA. A decisão final é sempre do moderador.' })
+                .setTimestamp();
+
+            await interaction.editReply({ embeds: [analysisEmbed] });
 
         } catch (error) {
             console.error('[AI Dossier Analysis] Erro:', error);
-            await interaction.editReply({ content: 'Ocorreu um erro ao tentar analisar o dossiê com a IA.', ephemeral: true });
+            await interaction.editReply({ content: '❌ Ocorreu um erro ao processar a análise. A IA pode ter retornado um formato inesperado.' });
         }
     }
 };

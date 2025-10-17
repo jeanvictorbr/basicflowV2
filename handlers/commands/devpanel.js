@@ -23,17 +23,8 @@ module.exports = {
         const totalGuilds = interaction.client.guilds.cache.size;
         const totalMembers = interaction.client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
 
-        // --- NOVA LÓGICA ADICIONADA AQUI ---
-        // Busca o total de tokens usados hoje (desde a meia-noite)
-        const dailyTokenResult = await db.query(
-            "SELECT SUM(total_tokens) as total FROM ai_usage_logs WHERE created_at >= NOW()::date"
-        );
-        const dailyTokenUsage = parseInt(dailyTokenResult.rows[0]?.total || '0', 10);
-        // --- FIM DA NOVA LÓGICA ---
-
         const payload = {
-            // Passa o total de tokens para a função que gera o menu
-            components: generateDevMainMenu(botStatus, { totalGuilds, totalMembers }, dailyTokenUsage),
+            components: generateDevMainMenu(botStatus, { totalGuilds, totalMembers }),
             flags: V2_FLAG | EPHEMERAL_FLAG,
         };
 

@@ -1,8 +1,8 @@
-// commands/ranking.js
+// Crie este arquivo em: commands/ranking.js
 const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('ranking')
-        .setDescription('Abre a central de rankings Glogal e Local.'),
+        .setDescription('Mostra o ranking de pontos do Jogo da Forca.'),
 };
