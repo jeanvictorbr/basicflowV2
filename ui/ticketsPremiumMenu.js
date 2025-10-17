@@ -23,7 +23,7 @@ module.exports = function generateTicketsPremiumMenu(settings = {}) { // Adicion
                 // --- SEÇÃO DE FLUXO DE ATENDIMENTO ---
                 {
                     "type": 9, 
-                    "accessory": { "type": 2, "style": toggleDmFlowButton.style, "label": toggleDmFlowButton.label, "custom_id": "tickets_toggle_dm_flow" },
+                    "accessory": { "type": 2, "style": toggleDmFlowButton.style, "label": toggleDmFlowButton.label, "custom_id": "tickets_toggle_dm_flow", disabled: "true"},
                     "components": [{ "type": 10, "content": `**Fluxo de Atendimento**\n> Status: \`${dmFlowStatus}\`` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
