@@ -145,7 +145,7 @@ client.on(Events.GuildDelete, async guild => {
 client.commands = new Collection();
 const commandsToDeploy = [];
 const devCommandsToDeploy = [];
-const devOnlyCommands = ['devpanel', 'debugai'];
+const devOnlyCommands = ['devpanel', 'debugai', 'enviar'];
 const commandFoldersPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandFoldersPath).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
