@@ -1,4 +1,4 @@
-// Substitua o conteúdo em: database.js
+// Caminho: database.js
 const { Pool } = require('pg');
 require('dotenv').config();
 const schema = require('./schema.js');
@@ -6,7 +6,6 @@ const MODULES = require('./config/modules.js');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    // Configurações para maior resiliência do pool
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
 });
@@ -15,6 +14,7 @@ async function synchronizeDatabase() {
     console.log('[DB] Iniciando sincronização do schema...');
     const client = await pool.connect();
     try {
+        // A sua lógica de sincronização existente permanece aqui...
         for (const tableName in schema) {
             const tableExistsResult = await client.query(
                 "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)",
@@ -81,7 +81,6 @@ async function synchronizeDatabase() {
             );
         }
         console.log('[DB] Sincronização dos módulos concluída.');
-
         console.log('[DB] Sincronização do schema concluída com sucesso.');
     } catch (err) {
         console.error('[DB] Erro durante a sincronização do schema:', err);
@@ -90,24 +89,46 @@ async function synchronizeDatabase() {
     }
 }
 
-
 /**
- * Executa uma função com um cliente de banco de dados e garante que ele seja liberado.
- * @param {Function} callback A função a ser executada. O cliente do banco de dados será passado como primeiro argumento.
+ * Executa um callback com um cliente de banco de dados, gerenciando automaticamente sua liberação.
+ * @param {Function} callback A função async a ser executada, que recebe o cliente como argumento.
  */
 async function withClient(callback) {
     const client = await pool.connect();
     try {
-        await callback(client);
+        return await callback(client);
     } finally {
         client.release();
     }
 }
 
+/**
+ * Executa um callback dentro de uma transação, gerenciando automaticamente BEGIN, COMMIT, ROLLBACK e a liberação do cliente.
+ * @param {Function} callback A função async a ser executada, que recebe o cliente transacional como argumento.
+ */
+async function withTransaction(callback) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const result = await callback(client);
+        await client.query('COMMIT');
+        return result;
+    } catch (error) {
+        // Tenta reverter a transação em caso de erro
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackError) {
+            console.error('[DB] Falha crítica no ROLLBACK:', rollbackError);
+        }
+        throw error; // Re-lança o erro original para que o handler possa tratá-lo
+    } finally {
+        client.release(); // Garante que o cliente seja devolvido ao pool
+    }
+}
 
 module.exports = {
     query: (text, params) => pool.query(text, params),
     synchronizeDatabase,
-    getClient: () => pool.connect(),
-    withClient // <-- NOVA FUNÇÃO EXPORTADA
+    withClient,
+    withTransaction
 };
