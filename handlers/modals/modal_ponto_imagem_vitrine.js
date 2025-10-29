@@ -7,6 +7,13 @@ module.exports = {
         const imageUrl = interaction.fields.getTextInputValue('input_url');
         await db.query(`UPDATE guild_settings SET ponto_imagem_vitrine = $1 WHERE guild_id = $2`, [imageUrl, interaction.guild.id]);
         const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
-        await interaction.update({ components: generatePontoMenu(settingsResult.rows[0]), flags: V2_FLAG | EPHEMERAL_FLAG });
+        
+        // --- CORREÇÃO APLICADA AQUI ---
+        // 1. Adicionado 'await' porque generatePontoMenu é uma função async.
+        // 2. Adicionado 'interaction' como o primeiro argumento, que era o que faltava.
+        const menu = await generatePontoMenu(interaction, settingsResult.rows[0] || {});
+        
+        // 3. O 'menu' agora é uma variável resolvida e é passada corretamente.
+        await interaction.update({ components: menu, flags: V2_FLAG | EPHEMERAL_FLAG });
     }
 };
