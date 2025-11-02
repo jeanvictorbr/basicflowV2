@@ -26,6 +26,7 @@ const schema = {
         maintenance_message: { type: 'TEXT' }
     },
 // --- SUBSTITUA O SEU BLOCO 'premium_keys' POR ESTE ---
+// COLE/SUBSTITUA ESTE BLOCO INTEIRO
     premium_keys: {
         id: 'SERIAL PRIMARY KEY',
         key_value: 'VARCHAR(255) UNIQUE NOT NULL',
