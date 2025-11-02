@@ -25,6 +25,7 @@ const schema = {
         is_enabled: { type: 'BOOLEAN', default: true },
         maintenance_message: { type: 'TEXT' }
     },
+// --- SUBSTITUA O SEU BLOCO 'premium_keys' POR ESTE ---
     premium_keys: {
         id: 'SERIAL PRIMARY KEY',
         key_value: 'VARCHAR(255) UNIQUE NOT NULL',
