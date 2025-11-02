@@ -25,7 +25,6 @@ const schema = {
         is_enabled: { type: 'BOOLEAN', default: true },
         maintenance_message: { type: 'TEXT' }
     },
-    // --- ADICIONE ESTE BLOCO ABAIXO ---
     premium_keys: {
         id: 'SERIAL PRIMARY KEY',
         key_value: 'VARCHAR(255) UNIQUE NOT NULL',
@@ -38,7 +37,6 @@ const schema = {
         created_at: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
         created_by: 'VARCHAR(255)'
     },
-
     // Tabela de logs de interação (do passo anterior)
     interaction_logs: {
         id: { type: 'SERIAL', primaryKey: true },
