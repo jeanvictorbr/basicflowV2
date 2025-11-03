@@ -1,25 +1,45 @@
-// Crie em: handlers/modals/modal_ticket_greeting_edit.js
 const db = require('../../database.js');
-const generateGreetingMenu = require('../../ui/ticketsGreetingMenu.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants.js');
+const getTicketsMenu = require('../../ui/ticketsMenu.js');
 
 module.exports = {
-    customId: 'modal_ticket_greeting_edit_', // Handler dinâmico
+    customId: 'modal_tickets_thumbnail', // Este é o customId CORRETO
     async execute(interaction) {
-        await interaction.deferUpdate();
+        try {
+            await interaction.deferUpdate({ flags: V2_FLAG });
 
-        const messageId = interaction.customId.split('_')[4];
-        const updatedMessage = interaction.fields.getTextInputValue('input_greeting_message');
+            const guildId = interaction.guildId;
+            const newThumbnail = interaction.fields.getTextInputValue('tickets_thumbnail_input');
 
-        await db.query('UPDATE ticket_greeting_messages SET message = $1 WHERE id = $2 AND guild_id = $3', [updatedMessage, messageId, interaction.guild.id]);
+            // Regex simples para validar se é um link de imagem HTTPS
+            const urlRegex = /^https?:\/\/.+\.(png|jpg|jpeg|gif|webp)$/i;
 
-        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
-        const messages = (await db.query('SELECT * FROM ticket_greeting_messages WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+            if (newThumbnail && !urlRegex.test(newThumbnail)) {
+                return interaction.followUp({
+                    content: 'A URL fornecida não é um link de imagem válido (deve ser https e terminar com .png, .jpg, .jpeg, .gif ou .webp).',
+                    flags: EPHEMERAL_FLAG | V2_FLAG
+                });
+            }
 
-        await interaction.editReply({
-            components: generateGreetingMenu(settings, messages),
-            flags: V2_FLAG | EPHEMERAL_FLAG,
-        });
+            // Atualiza o banco de dados (permite salvar NULL se o campo for vazio)
+            await db.query(
+                'UPDATE ticket_configs SET thumbnail_url = $1 WHERE guild_id = $2',
+                [newThumbnail || null, guildId]
+            );
+
+            // Recarrega o menu de tickets com a informação atualizada
+            const settings = await db.query('SELECT * FROM ticket_configs WHERE guild_id = $1', [guildId]);
+            const config = settings.rows[0] || {};
+
+            const menu = getTicketsMenu(config, guildId);
+            await interaction.editReply(menu);
+
+        } catch (error) {
+            console.error('[modal_tickets_thumbnail] Erro ao processar modal:', error);
+            await interaction.followUp({
+                content: 'Ocorreu um erro ao tentar salvar a thumbnail.',
+                flags: EPHEMERAL_FLAG | V2_FLAG
+            }).catch(() => {});
+        }
     }
 };
