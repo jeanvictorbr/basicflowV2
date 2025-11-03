@@ -9,7 +9,10 @@ module.exports = {
             await interaction.deferUpdate({ flags: V2_FLAG });
 
             const guildId = interaction.guildId;
-            const newThumbnail = interaction.fields.getTextInputValue('tickets_thumbnail_input');
+            
+            // A LINHA CORRIGIDA ESTÁ AQUI:
+            // Estava 'tickets_thumbnail_input', mudei para 'input_thumbnail' para bater com o botão.
+            const newThumbnail = interaction.fields.getTextInputValue('input_thumbnail');
 
             // Regex simples para validar se é um link de imagem HTTPS
             const urlRegex = /^https?:\/\/.+\.(png|jpg|jpeg|gif|webp)$/i;
