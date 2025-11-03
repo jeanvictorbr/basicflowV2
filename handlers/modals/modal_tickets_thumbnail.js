@@ -14,6 +14,7 @@ module.exports = {
             // Regex simples para validar se é um link de imagem HTTPS
             const urlRegex = /^https?:\/\/.+\.(png|jpg|jpeg|gif|webp)$/i;
 
+            // Permite salvar um valor nulo se o campo for limpo
             if (newThumbnail && !urlRegex.test(newThumbnail)) {
                 return interaction.followUp({
                     content: 'A URL fornecida não é um link de imagem válido (deve ser https e terminar com .png, .jpg, .jpeg, .gif ou .webp).',
@@ -21,7 +22,7 @@ module.exports = {
                 });
             }
 
-            // Atualiza o banco de dados (permite salvar NULL se o campo for vazio)
+            // Atualiza o banco de dados
             await db.query(
                 'UPDATE ticket_configs SET thumbnail_url = $1 WHERE guild_id = $2',
                 [newThumbnail || null, guildId]
