@@ -1,5 +1,5 @@
 const db = require('../../database.js');
-const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants.js');
+const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/analyticsUtils.js'); // CORREÇÃO: Importado de analyticsUtils.js
 const getTicketsMenu = require('../../ui/ticketsMenu.js');
 
 module.exports = {
