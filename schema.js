@@ -28,16 +28,16 @@ const schema = {
 // --- SUBSTITUA O SEU BLOCO 'premium_keys' POR ESTE ---
 // COLE/SUBSTITUA ESTE BLOCO INTEIRO
     premium_keys: {
-        id: 'SERIAL PRIMARY KEY',
-        key_value: 'VARCHAR(255) UNIQUE NOT NULL',
-        duration_days: 'INT NOT NULL',
-        features: 'TEXT[] NOT NULL',
-        is_used: 'BOOLEAN DEFAULT false',
-        used_by_guild_id: 'VARCHAR(255)',
-        used_by_user_id: 'VARCHAR(255)',
-        used_at: 'TIMESTAMP',
-        created_at: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
-        created_by: 'VARCHAR(255)'
+        id: { type: 'SERIAL', primaryKey: true }, // CORRIGIDO: de string para objeto
+        key_value: { type: 'VARCHAR(255)', unique: true, notNull: true }, // CORRIGIDO
+        duration_days: { type: 'INTEGER', notNull: true }, // CORRIGIDO: de INT para INTEGER
+        features: { type: 'TEXT[]', notNull: true }, // CORRIGIDO
+        is_used: { type: 'BOOLEAN', default: false },
+        used_by_guild_id: { type: 'VARCHAR(255)' },
+        used_by_user_id: { type: 'VARCHAR(255)' },
+        used_at: { type: 'TIMESTAMPTZ' }, // CORRIGIDO: de TIMESTAMP para TIMESTAMPTZ
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }, // CORRIGIDO: de TIMESTAMP DEFAULT CURRENT_TIMESTAMP para TIMESTAMPTZ, default: 'NOW()'
+        created_by: { type: 'VARCHAR(255)' }
     },
     // Tabela de logs de interação (do passo anterior)
     interaction_logs: {
