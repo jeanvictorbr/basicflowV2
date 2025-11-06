@@ -1,13 +1,38 @@
 // Substitua o conteúdo em: utils/webhookLogger.js
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
-const db = require('../database.js'); // Importa o banco de dados
+const db = require('../database.js'); // Importa o banco de dados DIRETAMENTE
+
+/**
+ * Loga um evento genérico no banco de dados.
+ * @param {string} guildId ID da Guild
+ * @param {string} eventName Nome do Evento (ex: "Anúncio Publicado")
+ * @param {string} details Detalhes do evento
+ * @param {object} payload Objeto contendo dados extras (user, module, type)
+ */
+async function logEvent(guildId, eventName, details, payload = {}) {
+    try {
+        // Usa o 'db' importado no topo do arquivo
+        await db.query(
+            `INSERT INTO interaction_logs (guild_id, user_id, type, name, module, timestamp)
+             VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [
+                guildId,
+                payload.user || 'BOT_SYSTEM',
+                payload.type || 'SYSTEM',
+                eventName,
+                payload.module || 'UNKNOWN',
+            ]
+        );
+    } catch (dbError) {
+        console.error(`[Webhook Logger] Falha ao salvar log de evento (${eventName}) no banco de dados:`, dbError);
+    }
+}
 
 async function logAiUsage(logData) {
-    // MODIFICAÇÃO AQUI: Extraímos os novos dados
     const { guild, user, featureName, usage, cost, promptText, responseText } = logData;
 
-    // 1. Salva no banco de dados
+    // 1. Salva no banco de dados (usando o db importado)
     try {
         await db.query(
             `INSERT INTO ai_usage_logs (guild_id, user_id, feature_name, prompt_tokens, completion_tokens, total_tokens, cost, prompt_text, response_text)
@@ -45,4 +70,5 @@ async function logAiUsage(logData) {
     }
 }
 
-module.exports = { logAiUsage };
+// EXPORTAÇÃO CORRIGIDA
+module.exports = { logAiUsage, logEvent };

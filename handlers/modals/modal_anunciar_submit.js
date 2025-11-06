@@ -1,4 +1,4 @@
-const webhookLogger = require('../../utils/webhookLogger'); // CORRE
+const { logEvent } = require('../../utils/webhookLogger');
 const { EPHEMERAL_FLAG } = require('../../utils/constants');
 const { getAnnouncementPreview } = require('../../ui/announcementPreview');
 

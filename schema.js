@@ -25,7 +25,6 @@ const schema = {
         is_enabled: { type: 'BOOLEAN', default: true },
         maintenance_message: { type: 'TEXT' }
     },
-// --- SUBSTITUA O SEU BLOCO 'premium_keys' POR ESTE ---
 // COLE/SUBSTITUA ESTE BLOCO INTEIRO
     premium_keys: {
         id: { type: 'SERIAL', primaryKey: true }, // CORRIGIDO: de string para objeto

@@ -1,4 +1,4 @@
-const webhookLogger = require('../../utils/webhookLogger');
+const { logEvent } = require('../../utils/webhookLogger');
 const { EPHEMERAL_FLAG } = require('../../utils/constants');
 const { EmbedBuilder, ButtonStyle, ActionRowBuilder, ButtonBuilder } = require('discord.js'); // <-- Importações verificadas
 
