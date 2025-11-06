@@ -36,9 +36,15 @@ module.exports = {
 
         // Recarregar e exibir o menu atualizado
         const updatedSettings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
-        const menu = await generateWelcomeMenu(interaction, updatedSettings);
         
-        await interaction.editReply({ components: menu, flags: V2_FLAG | EPHEMERAL_FLAG });
+        // --- INÍCIO DA CORREÇÃO ---
+        // Geramos o payload V2 completo
+        const menuPayload = await generateWelcomeMenu(interaction, updatedSettings);
+        
+        // Passamos o payload V2 diretamente para o editReply, adicionando as flags
+        await interaction.editReply({ ...menuPayload, flags: V2_FLAG | EPHEMERAL_FLAG });
+        // --- FIM DA CORREÇÃO ---
+
         await interaction.followUp({ content: '✅ Mensagem de boas-vindas atualizada!', ephemeral: true });
     }
 };

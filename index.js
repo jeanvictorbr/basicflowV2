@@ -76,6 +76,37 @@ client.on(Events.GuildMemberAdd, async (member) => {
         console.error(`[Welcome] Falha ao enviar mensagem de boas-vindas no servidor ${member.guild.name}:`, error);
     }
 });
+
+// --- INÍCIO DA NOVA LÓGICA DE DESPEDIDA ---
+client.on(Events.GuildMemberRemove, async (member) => {
+    const settingsResult = await db.query('SELECT goodbye_enabled, goodbye_channel_id, goodbye_message_text FROM guild_settings WHERE guild_id = $1', [member.guild.id]);
+    const settings = settingsResult.rows[0];
+
+    // Verifica se o sistema está ativado e se o canal está configurado
+    if (!settings || !settings.goodbye_enabled || !settings.goodbye_channel_id) return;
+
+    const goodbyeChannel = await member.guild.channels.fetch(settings.goodbye_channel_id).catch(() => null);
+    if (!goodbyeChannel) {
+        console.error(`[Goodbye] Canal de despedida ${settings.goodbye_channel_id} não encontrado no servidor ${member.guild.name}.`);
+        return;
+    }
+
+    // Substitui os placeholders
+    const messageText = (settings.goodbye_message_text || '👋 {user.tag} deixou o servidor.')
+        .replace(/{user.mention}/g, `<@${member.id}>`)
+        .replace(/{user.tag}/g, member.user.tag)
+        .replace(/{user.name}/g, member.user.username) // Adicionado {user.name} como opção
+        .replace(/{server.name}/g, member.guild.name)
+        .replace(/{member.count}/g, member.guild.memberCount.toString());
+
+    try {
+        await goodbyeChannel.send(messageText);
+    } catch (error) {
+        console.error(`[Goodbye] Falha ao enviar mensagem de despedida no servidor ${member.guild.name}:`, error);
+    }
+});
+// --- FIM DA NOVA LÓGICA DE DESPEDIDA ---
+
 client.on(Events.GuildCreate, async guild => {
     if (!process.env.GUILD_ADD_WEBHOOK_URL) {
         console.log(`[GUILD JOIN] Bot adicionado ao servidor ${guild.name} (${guild.id}), mas o webhook de notificação não está configurado.`);
@@ -477,7 +508,7 @@ client.on(Events.MessageCreate, async (message) => {
                     **REGRAS:**
                     1.  **SEJA OBJETIVO:** Faça no máximo 2 perguntas para entender o tema do servidor.
                     2.  **AÇÃO IMEDIATA:** Após a resposta do usuário, sua próxima mensagem DEVE ser o plano completo do servidor em um bloco de código JSON. **Não continue a conversa. Proponha o plano imediatamente.**
-                    3.  **ESTÉTICA HIERÁRQUICA:**
+                    3.  **ESTÉTICA HIERÁQUICA:**
                         - **Nomes de CATEGORIA:** DEVEM ser decorados com estilo (ex: "--- --→ 「🎮 JOGOS」 ←-- ---").
                         - **Nomes de CANAL:** DEVEM ser simples, usando apenas um emoji temático no início (ex: "💬 bate-papo").
                     4.  **PERMISSÕES SEGURAS:** O plano DEVE ter uma categoria de "Boas-Vindas" pública ('welcome') e as demais privadas. O cargo "Membro" pode ver, mas só pode ESCREVER em canais com 'purpose: chat'. Nos canais 'readonly', eles só podem ler.

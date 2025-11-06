@@ -74,7 +74,7 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_welcome_menu",disabled: "true" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_welcome_menu",disabled: "false" },
             components: [{ type: 10, content: "👋 Boas-Vindas" }, { type: 10, content: "Configure as mensagens de entrada e saída." }]
         },
         { type: 14, divider: true, spacing: 2 },

@@ -1,36 +1,40 @@
-// Em: ui/devPanel/devKeysMenu.js
+// ui/devPanel/devKeysMenu.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const db = require('../../database'); // Ajuste o caminho se necessário
+// REMOVIDO: const db = require('../../database'); // NÃO FAÇA QUERIES NA UI
 
-async function generateDevKeysMenu(page = 1) {
-    const itemsPerPage = 10;
-    const offset = (page - 1) * itemsPerPage;
-
-    const keysResult = await db.query('SELECT * FROM premium_keys WHERE is_used = false LIMIT $1 OFFSET $2', [itemsPerPage, offset]);
-    const keys = keysResult.rows;
-
-    const totalKeysResult = await db.query('SELECT COUNT(*) FROM premium_keys WHERE is_used = false');
-    const totalKeys = parseInt(totalKeysResult.rows[0].count, 10);
-    const totalPages = Math.ceil(totalKeys / itemsPerPage) || 1;
-
+/**
+ * Gera o menu de chaves (Versão Legacy, usando Builders)
+ * @param {Array} keys - As chaves (rows do db) a serem exibidas.
+ * @param {number} page - A página atual (0-indexada).
+ * @param {number} totalKeys - O número total de chaves.
+ * @param {number} totalPages - O número total de páginas.
+ */
+function generateDevKeysMenu(keys, page, totalKeys, totalPages) {
+    
+    // CORREÇÃO: Os dados agora vêm do handler.
+    // 'page' agora é 0-indexada, então somamos 1 para exibição.
     const embed = new EmbedBuilder()
-        .setColor(0x0099FF)
+        .setColor(0x0099FF) // Azul
         .setTitle('Painel de Gestão de Keys')
-        .setDescription(`Aqui você pode gerar, revogar e consultar chaves de ativação.\n\n**Chaves Ativas (${totalKeys}):**`)
-        .setFooter({ text: `Página ${page} de ${totalPages}` });
+        .setFooter({ text: `Página ${page + 1} de ${totalPages}` });
 
     if (keys.length > 0) {
-        embed.setDescription(keys.map(key => `\`${key.key_value}\` - ${key.features.join(', ')} (${key.duration_days}d)`).join('\n'));
+        // CORREÇÃO: Usando os nomes corretos das colunas do schema 'activation_keys'
+        // O schema original estava errado ('premium_keys', 'key_value', etc.)
+        const keyList = keys.map(key => {
+            const features = key.grants_features ? (Array.isArray(key.grants_features) ? key.grants_features.join(', ') : key.grants_features) : 'N/A';
+            return `\`${key.key}\` - ${features} (${key.duration_days}d) | Usos: ${key.uses_left}`;
+        }).join('\n');
+        embed.setDescription(`**Chaves Ativas (${totalKeys}):**\n${keyList}`);
     } else {
         embed.setDescription('Nenhuma chave ativa encontrada.');
     }
 
+    // Botões
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder().setCustomId('dev_key_create').setLabel('Gerar Key Única').setStyle(ButtonStyle.Success).setEmoji('🔑'),
-            // --- CORREÇÃO APLICADA AQUI ---
             new ButtonBuilder().setCustomId('dev_open_bulk_keys').setLabel('Gerar Keys em Massa').setStyle(ButtonStyle.Primary).setEmoji('📦'),
-            // --- FIM DA CORREÇÃO ---
             new ButtonBuilder().setCustomId('dev_key_revoke').setLabel('Revogar Keys').setStyle(ButtonStyle.Danger).setEmoji('✖️')
         );
 
@@ -40,18 +44,15 @@ async function generateDevKeysMenu(page = 1) {
             new ButtonBuilder().setCustomId('dev_open_key_history').setLabel('Histórico de Ativação').setStyle(ButtonStyle.Secondary).setEmoji('📜')
         );
 
+    // Navegação (CORREÇÃO: 'page' é 0-indexada)
     const row3 = new ActionRowBuilder()
         .addComponents(
-            new ButtonBuilder().setCustomId('dev_keys_page_prev').setLabel('Anterior').setStyle(ButtonStyle.Primary).setDisabled(page === 1),
-            new ButtonBuilder().setCustomId('dev_keys_page_next').setLabel('Próxima').setStyle(ButtonStyle.Primary).setDisabled(page >= totalPages),
+            new ButtonBuilder().setCustomId(`dev_keys_page_${page - 1}`).setLabel('Anterior').setStyle(ButtonStyle.Primary).setDisabled(page === 0),
+            new ButtonBuilder().setCustomId(`dev_keys_page_${page + 1}`).setLabel('Próxima').setStyle(ButtonStyle.Primary).setDisabled(page + 1 >= totalPages),
             new ButtonBuilder().setCustomId('dev_main_menu_back').setLabel('Voltar ao Menu Principal').setStyle(ButtonStyle.Secondary).setEmoji('⬅️')
         );
-    
-    // Passa o total de páginas para os botões de navegação
-    row3.components[0].setCustomId(`dev_keys_page_${page - 1}`);
-    row3.components[1].setCustomId(`dev_keys_page_${page + 1}`);
 
-
+    // Retorna o objeto legacy (sem 'data' ou 'type: 17')
     return { embeds: [embed], components: [row, row2, row3] };
 }
 
