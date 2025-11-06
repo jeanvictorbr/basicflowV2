@@ -1,6 +1,5 @@
-// CORREÇÃO 1: A importação agora é 'default', sem chaves {}
-const generateDevKeysMenu = require('../../ui/devPanel/devKeysMenu');
-const { EPHEMERAL_FLAG, V2_FLAG } = require('../../utils/constants'); // Adicionada V2_FLAG
+const generateDevKeysMenu = require('../../ui/devPanel/devKeysMenu'); // Importação 'default' (sem chaves)
+const { EPHEMERAL_FLAG, V2_FLAG } = require('../../utils/constants');
 
 module.exports = {
 	customId: 'dev_keys_page_', // Dynamic customId
@@ -14,23 +13,29 @@ module.exports = {
 		await interaction.deferUpdate();
 
 		try {
-			const { embeds, components } = await generateDevKeysMenu(db, newPage);
+			// 1. Gerar o payload V2
+			const v2Payload = await generateDevKeysMenu(db, newPage);
 		
+			// 2. Enviar a resposta V2
 			await interaction.editReply({
-				embeds: embeds,
-				components: components,
-				// CORREÇÃO 2: Ambas as flags são necessárias para manter a UI V2
-				flags: EPHEMERAL_FLAG | V2_FLAG
+				// NUNCA use 'content' ou 'embeds' com V2_FLAG
+				components: v2Payload.components, // Componentes V2 (botões)
+				v2_embed: v2Payload.v2_embed,     // Embed V2 (type: 17)
+				flags: EPHEMERAL_FLAG | V2_FLAG   // Flag V2 é OBRIGATÓRIA
 			});
 
 		} catch (error) {
 			console.error('Erro ao gerar página do menu de chaves:', error);
+			// Resposta de erro V2 (não pode usar 'content')
 			await interaction.editReply({
-				content: '❌ Ocorreu um erro ao carregar a página. Verifique os logs.',
+				v2_embed: {
+					type: 17,
+					title: 'Erro Crítico',
+					description: '❌ Ocorreu um erro ao carregar a página. Verifique os logs.',
+					color: 0xFF0000 // Vermelho
+				},
 				components: [],
-				embeds: [],
-				// CORREÇÃO 2: Ambas as flags são necessárias, mesmo em erro
-				flags: EPHEMERAL_FLAG | V2_FLAG
+				flags: EPHEMERAL_FLAG | V2_FLAG // Obrigatório manter a flag
 			});
 		}
 	}
