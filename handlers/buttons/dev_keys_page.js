@@ -1,21 +1,36 @@
-// handlers/buttons/dev_keys_page.js
-const db = require('../../database.js');
-const generateDevKeysMenu = require('../../ui/devPanel/devKeysMenu.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+const { generateDevKeysMenu } = require('../../ui/devPanel/devKeysMenu');
+const { EPHEMERAL_FLAG } = require('../../utils/constants');
 
 module.exports = {
-    customId: 'dev_keys_page_',
-    async execute(interaction) {
-        const page = parseInt(interaction.customId.split('_')[3], 10);
-        if (isNaN(page)) return;
+	customId: 'dev_keys_page_', // Dynamic customId
+	async execute(interaction, client, db) {
+		
+		// CORREÇÃO (Erro 2): Adicionada verificação de NaN
+		let newPage = parseInt(interaction.customId.split('_').pop(), 10);
+		if (isNaN(newPage) || newPage < 1) {
+			newPage = 1; // Garante que a página seja sempre um número válido
+		}
+		
+		await interaction.deferUpdate();
 
-        await interaction.deferUpdate();
-        const keys = (await db.query('SELECT * FROM activation_keys ORDER BY key ASC')).rows;
-        
-        await interaction.editReply({
-            components: generateDevKeysMenu(keys, page),
-            flags: V2_FLAG | EPHEMERAL_FLAG,
-        });
-    }
+		try {
+			// CORREÇÃO (Erro 1): Desestruturação
+			const { embeds, components } = await generateDevKeysMenu(db, newPage);
+		
+			await interaction.editReply({
+				embeds: embeds,
+				components: components,
+				flags: EPHEMERAL_FLAG
+			});
+
+		} catch (error) {
+			console.error('Erro ao gerar página do menu de chaves:', error);
+			await interaction.editReply({
+				content: '❌ Ocorreu um erro ao carregar a página. Verifique os logs.',
+				components: [],
+				embeds: [],
+				flags: EPHEMERAL_FLAG
+			});
+		}
+	}
 };

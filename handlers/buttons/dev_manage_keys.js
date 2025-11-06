@@ -1,19 +1,30 @@
-// handlers/buttons/dev_manage_keys.js
-const db = require('../../database.js');
-const generateDevKeysMenu = require('../../ui/devPanel/devKeysMenu.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+const { generateDevKeysMenu } = require('../../ui/devPanel/devKeysMenu');
+const { EPHEMERAL_FLAG } = require('../../utils/constants');
 
 module.exports = {
-    customId: 'dev_manage_keys',
-    async execute(interaction) {
-        await interaction.deferUpdate();
-        // CORREÇÃO: Busca apenas chaves com usos restantes
-        const keys = (await db.query('SELECT * FROM activation_keys WHERE uses_left > 0 ORDER BY key ASC')).rows;
+	customId: 'dev_manage_keys',
+	async execute(interaction, client, db) {
+		
+		await interaction.deferUpdate();
 
-        await interaction.editReply({
-            components: generateDevKeysMenu(keys, 0),
-            flags: V2_FLAG | EPHEMERAL_FLAG,
-        });
-    }
+		try {
+			// O menu é gerado com a página 1 por padrão
+			const { embeds, components } = await generateDevKeysMenu(db, 1); // <-- MUDANÇA: Desestruturação
+		
+			await interaction.editReply({
+				embeds: embeds,       // <-- MUDANÇA: Passado explicitamente
+				components: components, // <-- MUDANÇA: Passado explicitamente
+				flags: EPHEMERAL_FLAG
+			});
+
+		} catch (error) {
+			console.error('Erro ao gerar menu de chaves:', error);
+			await interaction.editReply({
+				content: '❌ Ocorreu um erro ao carregar o menu de chaves. Verifique os logs.',
+				components: [],
+				embeds: [],
+				flags: EPHEMERAL_FLAG
+			});
+		}
+	}
 };
