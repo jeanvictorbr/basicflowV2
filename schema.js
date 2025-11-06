@@ -66,6 +66,14 @@ const schema = {
         registros_status: { type: 'BOOLEAN', default: true },
         registros_canal_vitrine: { type: 'VARCHAR(255)' },
         registros_imagem_vitrine: { type: 'VARCHAR(1024)' },
+
+        // --- INÍCIO DAS NOVAS COLUNAS DE REGISTRO POR CAPTCHA ---
+        captcha_verify_enabled: { type: 'BOOLEAN', default: false },
+        captcha_verify_channel_id: { type: 'VARCHAR(255)' },
+        captcha_verify_log_channel_id: { type: 'VARCHAR(255)' },
+        captcha_verify_roles_to_grant: { type: 'TEXT[]' }, // Array de IDs de cargos
+        // --- FIM DAS NOVAS COLUNAS ---
+
         welcome_enabled: { type: 'BOOLEAN', default: false },
         welcome_channel_id: { type: 'VARCHAR(255)' },
         welcome_message_config: { type: 'JSONB' },
@@ -546,15 +554,23 @@ const schema = {
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
 
+    // --- NOVA TABELA PARA GERENCIAR TENTATIVAS DE CAPTCHA ---
+    pending_captchas: {
+        user_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        captcha_code: { type: 'VARCHAR(10)', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+
     // Adicione este bloco dentro do objeto 'schema' no seu arquivo schema.js
-command_usage: {
-    id: { type: 'SERIAL', primaryKey: true },
-    command_name: { type: 'VARCHAR(255)', notNull: true },
-    user_id: { type: 'VARCHAR(255)', notNull: true },
-    guild_id: { type: 'VARCHAR(255)', notNull: true },
-    // CORREÇÃO AQUI: 'NOW()' é o padrão correto para o seu sistema.
-    used_at: { type: 'TIMESTAMP WITH TIME ZONE', default: 'NOW()' }
-},
+    command_usage: {
+        id: { type: 'SERIAL', primaryKey: true },
+        command_name: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        // CORREÇÃO AQUI: 'NOW()' é o padrão correto para o seu sistema.
+        used_at: { type: 'TIMESTAMP WITH TIME ZONE', default: 'NOW()' }
+    },
 };
 
 module.exports = schema;

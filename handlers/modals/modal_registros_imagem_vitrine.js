@@ -1,6 +1,7 @@
 // Crie este arquivo em: handlers/modals/modal_registros_imagem_vitrine.js
 const db = require('../../database.js');
-const generateRegistrosMenu = require('../../ui/registrosMenu.js');
+// --- CORREÇÃO DE FLUXO ---
+const generateRegistrosVitrineMenu = require('../../ui/registrosVitrineMenu.js'); // Alterado de registrosMenu
 
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
@@ -13,11 +14,11 @@ module.exports = {
         
         const settingsResult = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
         
-        // CORREÇÃO: Passa a 'interaction' e garante que 'settings' seja sempre um objeto.
-        const menu = await generateRegistrosMenu(interaction, settingsResult.rows[0] || {});
+        // --- CORREÇÃO DO ERRO E FLUXO ---
+        const menu = await generateRegistrosVitrineMenu(interaction, settingsResult.rows[0] || {});
         
         await interaction.update({ 
-            components: menu, 
+            ...menu, // Usa spread
             flags: V2_FLAG | EPHEMERAL_FLAG 
         });
     }
