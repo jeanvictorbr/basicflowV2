@@ -1,5 +1,6 @@
-const { generateDevKeysMenu } = require('../../ui/devPanel/devKeysMenu');
-const { EPHEMERAL_FLAG } = require('../../utils/constants');
+// CORREÇÃO 1: A importação agora é 'default', sem chaves {}
+const generateDevKeysMenu = require('../../ui/devPanel/devKeysMenu'); 
+const { EPHEMERAL_FLAG, V2_FLAG } = require('../../utils/constants'); // Adicionada V2_FLAG
 
 module.exports = {
 	customId: 'dev_manage_keys',
@@ -9,12 +10,13 @@ module.exports = {
 
 		try {
 			// O menu é gerado com a página 1 por padrão
-			const { embeds, components } = await generateDevKeysMenu(db, 1); // <-- MUDANÇA: Desestruturação
+			const { embeds, components } = await generateDevKeysMenu(db, 1); 
 		
 			await interaction.editReply({
-				embeds: embeds,       // <-- MUDANÇA: Passado explicitamente
-				components: components, // <-- MUDANÇA: Passado explicitamente
-				flags: EPHEMERAL_FLAG
+				embeds: embeds,
+				components: components,
+				// CORREÇÃO 2: Ambas as flags são necessárias para manter a UI V2
+				flags: EPHEMERAL_FLAG | V2_FLAG 
 			});
 
 		} catch (error) {
@@ -23,7 +25,8 @@ module.exports = {
 				content: '❌ Ocorreu um erro ao carregar o menu de chaves. Verifique os logs.',
 				components: [],
 				embeds: [],
-				flags: EPHEMERAL_FLAG
+				// CORREÇÃO 2: Ambas as flags são necessárias, mesmo em erro
+				flags: EPHEMERAL_FLAG | V2_FLAG 
 			});
 		}
 	}
