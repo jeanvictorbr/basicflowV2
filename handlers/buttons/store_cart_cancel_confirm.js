@@ -1,6 +1,6 @@
-// Substitua o conteúdo em: handlers/buttons/store_cart_cancel_confirm.js
+// handlers/buttons/store_cart_cancel_confirm.js
 const db = require('../../database.js');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js'); // Importa o EmbedBuilder
 
 module.exports = {
     customId: 'store_cart_cancel_confirm',
@@ -9,29 +9,45 @@ module.exports = {
 
         const cart = (await db.query('SELECT * FROM store_carts WHERE channel_id = $1', [interaction.channel.id])).rows[0];
         if (!cart) {
-             // Se o carrinho não existe mais, apenas edita a mensagem e encerra.
-             return interaction.editReply({ content: 'Este carrinho já foi removido.', components: [], embeds: []});
+            return interaction.editReply({ content: 'Este carrinho não foi encontrado.', ephemeral: true });
         }
 
+        // --- INÍCIO DA CORREÇÃO (LOG) ---
         try {
-            const finalPrice = (cart.products_json || []).reduce((sum, p) => sum + parseFloat(p.price), 0);
-            await db.query(
-                `INSERT INTO store_sales_log (guild_id, user_id, total_amount, product_details, status) VALUES ($1, $2, $3, $4::jsonb, 'cancelled')`,
-                [cart.guild_id, cart.user_id, finalPrice, JSON.stringify(cart.products_json || [])]
-            );
+            const settings = (await db.query('SELECT store_log_channel_id FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
+            if (settings && settings.store_log_channel_id) {
+                const logChannel = await interaction.client.channels.fetch(settings.store_log_channel_id).catch(() => null);
+                if (logChannel) {
+                    const buyer = await interaction.client.users.fetch(cart.user_id).catch(() => ({ tag: 'Usuário Desconhecido', id: cart.user_id }));
+                    
+                    const logEmbed = new EmbedBuilder()
+                        .setTitle('🛒 Carrinho Cancelado')
+                        .setColor('Red')
+                        .setDescription(`O carrinho \`${cart.channel_id}\` foi cancelado.`)
+                        .addFields(
+                            { name: 'Usuário', value: `${buyer.tag} (\`${buyer.id}\`)`, inline: true },
+                            { name: 'Cancelado por', value: `${interaction.user.tag} (\`${interaction.user.id}\`)`, inline: true },
+                            { name: 'Valor Total', value: `R$ ${cart.total_price || '0.00'}` }
+                        )
+                        .setTimestamp();
+                    
+                    await logChannel.send({ embeds: [logEmbed] });
+                }
+            }
         } catch (logError) {
-            console.error('[Store] Falha ao registrar venda cancelada no log:', logError);
+            console.error('[Store Log] Falha ao logar cancelamento de carrinho:', logError);
         }
+        // --- FIM DA CORREÇÃO (LOG) ---
 
-        const finalEmbed = new EmbedBuilder().setColor('#99AAB5').setTitle('Compra Cancelada').setDescription('Seu carrinho foi esvaziado. Este canal será deletado em 10 segundos.');
-        await interaction.editReply({ embeds: [finalEmbed], components: [] });
-        
-        setTimeout(async () => {
-            try {
-                const channelToDelete = await interaction.client.channels.fetch(cart.channel_id).catch(() => null);
-                if (channelToDelete) await channelToDelete.delete('Carrinho cancelado.');
-                await db.query('DELETE FROM store_carts WHERE channel_id = $1', [cart.channel_id]);
-            } catch (error) { console.error(`[Store] Falha ao deletar canal do carrinho ${cart.channel_id}:`, error); }
-        }, 10000);
+        // Deleta o canal do carrinho
+        await interaction.channel.delete('Carrinho cancelado pelo staff.');
+
+        // Tenta enviar DM ao usuário
+        try {
+            const user = await interaction.client.users.fetch(cart.user_id);
+            await user.send(`Seu carrinho de compras \`#${interaction.channel.name}\` no servidor **${interaction.guild.name}** foi cancelado pela administração.`);
+        } catch (dmError) {
+            console.warn(`[Store] Não foi possível notificar ${cart.user_id} sobre o cancelamento do carrinho.`);
+        }
     }
 };

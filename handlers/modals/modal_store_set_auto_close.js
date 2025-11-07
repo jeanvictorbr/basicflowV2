@@ -22,10 +22,12 @@ module.exports = {
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         const menu = await generateConfigAdvancedMenu(interaction, settings);
         
+        // --- INÍCIO DA CORREÇÃO ---
         await interaction.editReply({
-            components: menu,
+            ...menu, // Alterado de 'components: menu' para '...menu'
             flags: V2_FLAG | EPHEMERAL_FLAG,
         });
+        // --- FIM DA CORREÇÃO ---
         
         await interaction.followUp({ content: '✅ Tempo de auto-fecho atualizado com sucesso!', ephemeral: true });
     }

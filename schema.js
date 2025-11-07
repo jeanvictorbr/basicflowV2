@@ -101,6 +101,7 @@ const schema = {
         tickets_dm_flow_enabled: { type: 'BOOLEAN', default: false },
         tickets_dm_claim_channel_id: { type: 'VARCHAR(255)' }, // <<< ADICIONE ESTA LINHA
         tickets_dm_category_id: { type: 'VARCHAR(255)' },
+        store_public_log_channel_id: { type: 'VARCHAR(255)' },
         // --- FIM DAS NOVAS COLUNAS ---
 
             // --- NOVAS COLUNAS PARA TICKET DM ---
@@ -193,6 +194,7 @@ const schema = {
         role_duration_days: { type: 'INTEGER' },
         is_enabled: { type: 'BOOLEAN', default: true },
         category_id: { type: 'INTEGER' },
+        auto_created_role: { type: 'BOOLEAN', default: false },
         image_url: { type: 'VARCHAR(1024)' }
     },
     store_categories: {

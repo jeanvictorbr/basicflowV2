@@ -1,4 +1,6 @@
 // ui/store/staffCartPanel.js
+// VERIFIQUE QUE SEU ARQUIVO ESTÁ ASSIM (Baseado no seu 'a8504d6')
+
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function generateStaffCartPanel(cart, productsInCart, customer) {
@@ -8,7 +10,7 @@ module.exports = function generateStaffCartPanel(cart, productsInCart, customer)
 
     const embed = new EmbedBuilder()
         .setColor('#E67E22')
-        .setTitle(`🤝 Atendimento - Carrinho #${cart.channel_id}`)
+        .setTitle(`🤝 Atendimento - Carrinho #${cart.channel_id}`) // Pega o ID do canal
         .setAuthor({ name: `Cliente: ${customer.tag}`, iconURL: customer.displayAvatarURL() })
         .setDescription('Responda nesta thread para falar com o cliente. Use os botões para gerenciar a compra.')
         .addFields(
@@ -17,10 +19,28 @@ module.exports = function generateStaffCartPanel(cart, productsInCart, customer)
         )
         .setFooter({ text: `ID do Cliente: ${cart.user_id}` });
 
-    // CORREÇÃO: Os customIds agora são os handlers de DENTRO do servidor, pois os botões estão na thread.
+    // Desabilitar botões se já processado
+    const buttonsDisabled = cart.status === 'approved' || cart.status === 'denied';
+    if (buttonsDisabled) {
+        let statusText = cart.status === 'approved' ? 'Aprovado' : 'Recusado';
+        embed.setDescription(`Status: **${statusText}** por <@${cart.staff_id}>`);
+        embed.setColor(cart.status === 'approved' ? '#2ECC71' : '#E74C3C');
+    }
+
+    // IDs ESTÁTICOS (Correto para os handlers que forneci acima)
     const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('store_staff_approve_payment').setLabel('Marcar como Pago').setStyle(ButtonStyle.Success).setEmoji('✅'),
-        new ButtonBuilder().setCustomId('store_staff_deny_payment').setLabel('Cancelar Compra').setStyle(ButtonStyle.Danger).setEmoji('❌')
+        new ButtonBuilder()
+            .setCustomId('store_staff_approve_payment')
+            .setLabel('Marcar como Pago')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('✅')
+            .setDisabled(buttonsDisabled),
+        new ButtonBuilder()
+            .setCustomId('store_staff_deny_payment')
+            .setLabel('Cancelar Compra')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('❌')
+            .setDisabled(buttonsDisabled)
     );
 
     return { embeds: [embed], components: [actionRow] };

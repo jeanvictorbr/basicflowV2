@@ -356,6 +356,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
+// --- INÍCIO DA CORREÇÃO DO WEBHOOK (ADICIONADO FECHAMENTO) ---
 const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/mp-webhook') {
         let body = '';
@@ -374,6 +375,12 @@ const server = http.createServer(async (req, res) => {
                         res.end('OK');
                         return;
                     }
+                    if (cart.status === 'delivered') {
+                        console.log(`[MP Webhook] Pagamento ${paymentId} já foi processado (status: ${cart.status}). Ignorando.`);
+                        res.writeHead(200);
+                        res.end('OK');
+                        return;
+                    }
                     const settings = (await db.query('SELECT store_mp_token FROM guild_settings WHERE guild_id = $1', [cart.guild_id])).rows[0];
                     if(!settings || !settings.store_mp_token) {
                         console.error(`[MP Webhook] Token do MP não encontrado para a guild ${cart.guild_id}`);
@@ -384,9 +391,32 @@ const server = http.createServer(async (req, res) => {
                     const mpClient = new MercadoPagoConfig({ accessToken: settings.store_mp_token });
                     const payment = new Payment(mpClient);
                     const paymentInfo = await payment.get({ id: paymentId });
+
                     if (paymentInfo.status === 'approved') {
                         console.log(`[MP Webhook] Pagamento ${paymentId} para o carrinho ${cart.channel_id} foi APROVADO. Iniciando entrega...`);
-                        await approvePurchase(client, cart.guild_id, cart.channel_id);
+                        
+                        // Chama a função centralizada
+                        await approvePurchase(client, cart.guild_id, cart.channel_id, null);
+
+                        // Lógica de fechamento automático do carrinho
+                        try {
+                            const guild = await client.guilds.fetch(cart.guild_id);
+                            const channel = await guild.channels.fetch(cart.channel_id);
+                            
+                            if (channel) {
+                                await channel.send('✅ Pagamento aprovado! Este carrinho será fechado e deletado em 10 segundos.');
+                                
+                                setTimeout(async () => {
+                                    try {
+                                        await channel.delete('Compra aprovada e finalizada (Mercado Pago).');
+                                    } catch (e) {
+                                        console.error(`[Store MP] Falha ao deletar o canal do carrinho ${cart.channel_id}:`, e);
+                                    }
+                                }, 10000); // 10 segundos
+                            }
+                        } catch (e) {
+                            console.error(`[Store MP] Falha ao encontrar canal ${cart.channel_id} para fechamento:`, e);
+                        }
                     }
                 }
                 res.writeHead(200);
@@ -402,6 +432,7 @@ const server = http.createServer(async (req, res) => {
         res.end('Not Found');
     }
 });
+// --- FIM DA CORREÇÃO DO WEBHOOK ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);

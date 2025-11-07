@@ -20,9 +20,16 @@ module.exports = {
             ),
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder().setCustomId('input_stock_type').setLabel("Tipo de Estoque ('REAL' ou 'GHOST')").setStyle(TextInputStyle.Short).setValue('GHOST').setRequired(true)
+            ),
+            // --- CAMPO CORRIGIDO AQUI (Label encurtado) ---
+            new ActionRowBuilder().addComponents(
+                new TextInputBuilder().setCustomId('input_role_duration')
+                    .setLabel("Cargo Temp. (Dias) - Opcional") // Correção: Texto com menos de 45 caracteres
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('Ex: 30 (cria um cargo automático de 30 dias)')
+                    .setRequired(false)
             )
-            // Campos de Categoria e Cargo foram removidos para respeitar o limite de 5 componentes.
-            // A categoria agora é gerenciada no menu "Gerenciar Categorias".
+            // --- FIM DA CORREÇÃO ---
         );
         
         await interaction.showModal(modal);
