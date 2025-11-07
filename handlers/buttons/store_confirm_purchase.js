@@ -3,10 +3,13 @@
  * Descrição: Arquivo COMPLETO E ATUALIZADO.
  *
  * Alteração (Cirúrgica):
- * 1. (Função createOrUpdateStandardCart): Adicionada uma verificação
- * (interaction.guild.roles.fetch) para garantir que o 'staffRoleId'
- * salvo no banco de dados ainda existe no servidor antes de usá-lo
- * nas 'permissionOverwrites'. Isso corrige o crash 'InvalidType'.
+ * 1. (Função execute): A lógica de extração de 'productIdsString' e 'couponCode'
+ * do 'interaction.customId' foi completamente reescrita.
+ * 2. O código anterior (parts.find(...).split('-')) estava incorreto e causava o
+ * crash 'Cannot read properties of undefined (reading 'split')'.
+ * 3. A nova lógica usa 'parts.indexOf(...)' para encontrar os dados corretamente.
+ * 4. Adicionada uma verificação de segurança para 'quantity' caso o customId
+ * venha malformado (ex: "5" em vez de "5x1").
  */
 const { V2_FLAG, EPHEMERAL_FLAG, buildEmbed } = require('../../utils/constants.js');
 const db = require('../../database.js');
@@ -67,7 +70,6 @@ async function createOrUpdateStandardCart(interaction, client, guildId, userId, 
         }
     ];
 
-    // --- INÍCIO DA CORREÇÃO ---
     // Verifica se o cargo de staff existe ANTES de adicioná-lo
     if (staffRoleId) {
         const staffRole = await interaction.guild.roles.fetch(staffRoleId).catch(() => null);
@@ -85,7 +87,6 @@ async function createOrUpdateStandardCart(interaction, client, guildId, userId, 
             }
         }
     }
-    // --- FIM DA CORREÇÃO ---
 
     // Criar o canal do carrinho
     channel = await interaction.guild.channels.create({
@@ -189,15 +190,45 @@ module.exports = {
         const guildId = interaction.guildId;
         const userId = interaction.user.id;
 
+        // --- INÍCIO DA CORREÇÃO ---
         // Extrair dados do customId
         const parts = interaction.customId.split('_');
-        const productIdsString = parts.find(p => p.startsWith('products')).split('-')[1];
-        const couponCode = parts.find(p => p.startsWith('coupon')).split('-')[1] || 'none';
         
-        const productRequests = productIdsString.split(';').map(p => ({
-            id: p.split('x')[0],
-            quantity: parseInt(p.split('x')[1], 10)
-        }));
+        let productIdsString;
+        let couponCode;
+
+        // Encontra o índice da palavra 'products'
+        const productsIndex = parts.indexOf('products');
+        if (productsIndex !== -1 && parts.length > productsIndex + 1) {
+            // O productIdsString é o item logo após 'products'
+            productIdsString = parts[productsIndex + 1];
+        } else {
+            // Se não encontrar, loga o erro e falha
+            console.error(`[store_confirm_purchase] Erro crítico: Não foi possível parsear 'productIdsString' do customId: ${interaction.customId}`);
+            return interaction.reply({ content: 'Erro ao processar seu carrinho (ID Malformado: P).', flags: EPHEMERAL_FLAG, ephemeral: true });
+        }
+
+        // Encontra o índice da palavra 'coupon'
+        const couponIndex = parts.indexOf('coupon');
+        if (couponIndex !== -1 && parts.length > couponIndex + 1) {
+            // O couponCode é o item logo após 'coupon'
+            couponCode = parts[couponIndex + 1];
+        } else {
+            couponCode = 'none'; // Fallback padrão
+        }
+
+        const productRequests = productIdsString.split(';').map(p => {
+            const itemParts = p.split('x');
+            const id = itemParts[0];
+            const quantity = parseInt(itemParts[1], 10);
+
+            // Se a quantidade não for um número (ex: ID "5" em vez de "5x1"), assume 1
+            return {
+                id: id,
+                quantity: isNaN(quantity) ? 1 : quantity
+            };
+        });
+        // --- FIM DA CORREÇÃO ---
         
         await interaction.deferReply({ flags: EPHEMERAL_FLAG });
 
