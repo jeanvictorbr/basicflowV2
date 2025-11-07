@@ -107,6 +107,26 @@ client.on(Events.GuildMemberRemove, async (member) => {
 });
 // --- FIM DA NOVA LÓGICA DE DESPEDIDA ---
 
+// --- INÍCIO DA CORREÇÃO DO ROLETAGS ---
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+    // Verifica se os cargos do membro realmente mudaram.
+    // Isso evita que a função rode em atualizações de status, apelido, etc.
+    const rolesChanged = oldMember.roles.cache.size !== newMember.roles.cache.size ||
+                         !oldMember.roles.cache.every((role) => newMember.roles.cache.has(role.id));
+
+    if (rolesChanged) {
+        try {
+            // A função updateUserTag (já importada no topo do index.js)
+            // contém toda a lógica necessária, incluindo a verificação
+            // se o sistema está ativo no servidor.
+            await updateUserTag(newMember);
+        } catch (error) {
+            console.error(`[RoleTag] Falha ao atualizar a tag para ${newMember.user.tag}:`, error);
+        }
+    }
+});
+// --- FIM DA CORREÇÃO DO ROLETAGS ---
+
 client.on(Events.GuildCreate, async guild => {
     if (!process.env.GUILD_ADD_WEBHOOK_URL) {
         console.log(`[GUILD JOIN] Bot adicionado ao servidor ${guild.name} (${guild.id}), mas o webhook de notificação não está configurado.`);
