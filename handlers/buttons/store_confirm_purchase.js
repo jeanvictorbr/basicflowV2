@@ -1,329 +1,182 @@
-/*
- * Caminho: handlers/buttons/store_confirm_purchase.js
- * Descrição: Arquivo COMPLETO E ATUALIZADO.
- *
- * Alteração (Cirúrgica):
- * 1. (Função execute): A lógica de extração de 'productIdsString' e 'couponCode'
- * do 'interaction.customId' foi completamente reescrita.
- * 2. O código anterior (parts.find(...).split('-')) estava incorreto e causava o
- * crash 'Cannot read properties of undefined (reading 'split')'.
- * 3. A nova lógica usa 'parts.indexOf(...)' para encontrar os dados corretamente.
- * 4. Adicionada uma verificação de segurança para 'quantity' caso o customId
- * venha malformado (ex: "5" em vez de "5x1").
- */
-const { V2_FLAG, EPHEMERAL_FLAG, buildEmbed } = require('../../utils/constants.js');
+// Substitua o conteúdo em: handlers/buttons/store_confirm_purchase.js
+// jeanvictorbr/basicflowv2-beta/basicflowV2-BETA-37a76a5f8c6981d2e0e8259174db35646d1de700/handlers/buttons/store_confirm_purchase.js
+
+const { ChannelType, PermissionsBitField, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
-const { PermissionsBitField, ChannelType } = require('discord.js');
-const getCartPanel = require('../../ui/store/cartPanel.js');
-const getStaffCartPanel = require('../../ui/store/staffCartPanel.js');
-const storeLog = require('../../utils/loggers/storeLog.js');
-const getDMCartPanel = require('../../ui/store/dmConversationalFlow.js');
+// CORREÇÃO CRÍTICA: Importa todas as funções de UI necessárias
+const { generateMainCartMessage, generateAutomaticPaymentDM, generatePaymentMessage } = require('../../ui/store/dmConversationalFlow.js');
+const generateCartPanel = require('../../ui/store/cartPanel.js');
+const hasFeature = require('../../utils/featureCheck.js');
+const { updateCartActivity } = require('../../utils/storeInactivityMonitor.js');
+// CORREÇÃO CRÍTICA: Importa a função de criação de PIX
+const { createPixPayment } = require('../../utils/mercadoPago.js'); 
 
-// Função auxiliar para criar/atualizar carrinhos padrão (em canais)
-async function createOrUpdateStandardCart(interaction, client, guildId, userId, settings, products, totalPrice, coupon) {
-    const existingCart = (await db.query("SELECT * FROM store_carts WHERE guild_id = $1 AND user_id = $2 AND status = 'open'", [guildId, userId])).rows[0];
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-    let cart;
-    let channel;
-
-    if (existingCart && existingCart.channel_id) {
-        // --- Carrinho existente encontrado ---
-        channel = await client.channels.fetch(existingCart.channel_id).catch(() => null);
-        
-        if (!channel) {
-             // O canal foi deletado, mas o carrinho ainda existe no DB. Limpar e recriar.
-             await db.query('DELETE FROM store_cart_items WHERE cart_id = $1', [existingCart.cart_id]);
-             await db.query('DELETE FROM store_carts WHERE cart_id = $1', [existingCart.cart_id]);
-             // Continua para a lógica de criação abaixo
-        } else {
-            // Atualiza o carrinho existente
-            cart = existingCart;
-            await db.query('UPDATE store_carts SET total_price = $1, coupon_code = $2 WHERE cart_id = $3', [totalPrice, coupon?.code, cart.cart_id]);
-            
-            // Limpa itens antigos e insere novos
-            await db.query('DELETE FROM store_cart_items WHERE cart_id = $1', [cart.cart_id]);
-            for (const product of products) {
-                await db.query('INSERT INTO store_cart_items (cart_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)', [cart.cart_id, product.product_id, product.quantity, product.price]);
-            }
-            return { cart, channel };
-        }
+async function createDirectPaymentCart(interaction, products, coupon) {
+    // ... (MANTENHA A LÓGICA DE CRIAÇÃO DO CARRINHO E DA THREAD)
+    // Apenas a lógica abaixo é necessária para a integridade do arquivo:
+    const oldCarts = await db.query('SELECT * FROM store_carts WHERE guild_id = $1 AND user_id = $2 AND (status = $3 OR status = $4)', [interaction.guild.id, interaction.user.id, 'open', 'payment']);
+    for(const oldCart of oldCarts.rows) {
+        await db.query('DELETE FROM store_carts WHERE channel_id = $1', [oldCart.channel_id]);
+        const oldChannel = await interaction.guild.channels.fetch(oldCart.channel_id).catch(() => null);
+        if(oldChannel) await oldChannel.delete('Iniciando novo carrinho premium.').catch(()=>{});
     }
 
-    // --- Se não houver carrinho ou o canal foi deletado, criar um novo ---
+    const settings = (await db.query('SELECT store_category_id, store_staff_role_id FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
+    const category = await interaction.guild.channels.fetch(settings.store_category_id);
+    const channelName = `🛒-carrinho-${interaction.user.username.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
     
-    // Preparar permissões
-    const staffRoleId = settings.staff_role_id;
-    const logChannelId = settings.log_channel_id;
-
-    let permissionOverwrites = [
-        {
-            id: guildId, // @everyone
-            deny: [PermissionsBitField.Flags.ViewChannel],
-        },
-        {
-            id: userId, // O comprador
-            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.AttachFiles],
-        },
-        {
-            id: client.user.id, // O Bot
-            allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.EmbedLinks, PermissionsBitField.Flags.AttachFiles, PermissionsBitField.Flags.ManageChannels],
-        }
-    ];
-
-    // Verifica se o cargo de staff existe ANTES de adicioná-lo
-    if (staffRoleId) {
-        const staffRole = await interaction.guild.roles.fetch(staffRoleId).catch(() => null);
-        if (staffRole) {
-            permissionOverwrites.push({
-                id: staffRoleId,
-                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.EmbedLinks, PermissionsBitField.Flags.AttachFiles],
-            });
-        } else {
-            console.warn(`[Store] O cargo de staff (ID: ${staffRoleId}) está configurado no DB, mas não foi encontrado no servidor ${guildId}. O carrinho foi criado sem ele.`);
-            // Opcional: Notificar o log de que o cargo de staff não foi encontrado
-            if(logChannelId) {
-                const logChannel = await client.channels.fetch(logChannelId).catch(() => null);
-                if(logChannel) await logChannel.send(`⚠️ **Alerta de Configuração da Loja:** O cargo de Staff (ID: \`${staffRoleId}\`) não foi encontrado. Carrinhos criados não serão visíveis para a staff até que o cargo seja reconfigurado.`);
-            }
-        }
-    }
-
-    // Criar o canal do carrinho
-    channel = await interaction.guild.channels.create({
-        name: `🛒-carrinho-${interaction.user.username}`,
-        type: ChannelType.GuildText,
-        topic: `Carrinho de ${interaction.user.tag} (ID: ${userId}). Total: R$ ${totalPrice.toFixed(2)}.`,
-        parent: settings.cart_category_id || null, // Usar null se a categoria não estiver definida
-        permissionOverwrites: permissionOverwrites,
+    const cartChannel = await interaction.guild.channels.create({
+        name: channelName, type: ChannelType.GuildText, parent: category,
+        permissionOverwrites: [
+            { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+            { id: settings.store_staff_role_id, allow: [PermissionsBitField.Flags.ViewChannel] },
+            { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel] } 
+        ],
     });
 
-    // Inserir o novo carrinho no DB
-    const cartInsertQuery = await db.query(
-        'INSERT INTO store_carts (guild_id, user_id, channel_id, status, total_price, coupon_code, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING cart_id',
-        [guildId, userId, channel.id, 'open', totalPrice, coupon?.code, new Date()]
-    );
-    cart = { cart_id: cartInsertQuery.rows[0].cart_id };
+    const thread = await cartChannel.threads.create({
+        name: `Atendimento de ${interaction.user.username}`,
+        autoArchiveDuration: 1440,
+        reason: `Atendimento VIP para o carrinho #${cartChannel.id}`
+    });
 
-    // Inserir os itens do carrinho
-    for (const product of products) {
-        await db.query('INSERT INTO store_cart_items (cart_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)', [cart.cart_id, product.product_id, product.quantity, product.price]);
+    await thread.members.add(interaction.user.id);
+    await cartChannel.permissionOverwrites.delete(interaction.user.id, 'Acesso à thread concedido.');
+
+    let totalPrice = products.reduce((sum, p) => sum + parseFloat(p.price), 0);
+    if (coupon) {
+        totalPrice = totalPrice * (1 - (coupon.discount_percent / 100));
     }
+    
+    await db.query(
+        'INSERT INTO store_carts (channel_id, thread_id, guild_id, user_id, products_json, status, coupon_id, total_price) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8)',
+        [cartChannel.id, thread.id, interaction.guild.id, interaction.user.id, JSON.stringify(products), 'payment', coupon ? coupon.id : null, totalPrice.toFixed(2)]
+    );
+    const cart = (await db.query('SELECT * FROM store_carts WHERE channel_id = $1', [cartChannel.id])).rows[0];
 
-    return { cart, channel };
+    return { cart };
 }
 
-
-// Função auxiliar para criar/atualizar carrinhos DM (via DM)
-async function createOrUpdateDMCart(interaction, client, guildId, userId, settings, products, totalPrice, coupon) {
-     const existingCart = (await db.query("SELECT * FROM store_carts WHERE guild_id = $1 AND user_id = $2 AND status = 'open' AND thread_id IS NOT NULL", [guildId, userId])).rows[0];
-
-    let cart;
-    let thread;
+async function createOrUpdateStandardCart(interaction, products) {
+    // ... (MANTENHA A LÓGICA DE CRIAÇÃO DO CARRINHO PADRÃO)
+    // Apenas a lógica abaixo é necessária para a integridade do arquivo:
+    const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
+    let cartChannel;
+    
+    let existingCart = (await db.query('SELECT * FROM store_carts WHERE guild_id = $1 AND user_id = $2 AND status = $3', [interaction.guild.id, interaction.user.id, 'open'])).rows[0];
 
     if (existingCart) {
-        // --- Carrinho existente encontrado ---
-        cart = existingCart;
-        await db.query('UPDATE store_carts SET total_price = $1, coupon_code = $2 WHERE cart_id = $3', [totalPrice, coupon?.code, cart.cart_id]);
-        
-        // Limpa itens antigos e insere novos
-        await db.query('DELETE FROM store_cart_items WHERE cart_id = $1', [cart.cart_id]);
-        for (const product of products) {
-            await db.query('INSERT INTO store_cart_items (cart_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)', [cart.cart_id, product.product_id, product.quantity, product.price]);
+        cartChannel = await interaction.guild.channels.fetch(existingCart.channel_id).catch(() => null);
+        if (!cartChannel) {
+            await db.query('DELETE FROM store_carts WHERE channel_id = $1', [existingCart.channel_id]);
+            existingCart = null;
+        } else {
+            const currentProducts = existingCart.products_json || [];
+            const newProducts = [...currentProducts, ...products];
+            await db.query('UPDATE store_carts SET products_json = $1::jsonb WHERE channel_id = $2', [JSON.stringify(newProducts), existingCart.channel_id]);
         }
-        return { cart, thread: null }; // Retorna null pois o canal/thread já existe
     }
-
-    // --- Criar um novo carrinho DM ---
-    const logChannelId = settings.log_channel_id;
-    const logChannel = await client.channels.fetch(logChannelId).catch(() => null);
-    if (!logChannel) {
-        throw new Error('Canal de logs da loja (DM Flow) não configurado ou não encontrado.');
-    }
-
-    // Criar o novo carrinho no DB
-    const cartInsertQuery = await db.query(
-        'INSERT INTO store_carts (guild_id, user_id, status, total_price, coupon_code, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING cart_id',
-        [guildId, userId, 'open', totalPrice, coupon?.code, new Date()]
-    );
-    cart = { cart_id: cartInsertQuery.rows[0].cart_id };
-    const cartId = cart.cart_id;
-
-    // Inserir os itens do carrinho
-    for (const product of products) {
-        await db.query('INSERT INTO store_cart_items (cart_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4)', [cartId, product.product_id, product.quantity, product.price]);
-    }
-     
-    // Criar a thread no canal de logs
-    try {
-        const staffPanel = await getStaffCartPanel(client, guildId, cartId, userId, products, totalPrice, coupon, 'dm_flow');
-        const message = await logChannel.send({
-            content: `Novo carrinho (via DM) de <@${userId}> (ID: \`${userId}\`)`,
-            embeds: staffPanel.embeds,
-            components: staffPanel.components
+    
+    if (!existingCart) {
+        const category = await interaction.guild.channels.fetch(settings.store_category_id);
+        const channelName = `🛒-carrinho-${interaction.user.username.replace(/[^a-zA-Z0-9]/g, '').substring(0, 20)}`;
+        cartChannel = await interaction.guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            parent: category,
+            permissionOverwrites: [
+                { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.AttachFiles] },
+                { id: settings.store_staff_role_id, allow: [PermissionsBitField.Flags.ViewChannel] },
+            ],
         });
-
-        thread = await message.startThread({
-            name: `🛒-dm-${interaction.user.username}`,
-            autoArchiveDuration: 1440, // 24 horas
-            reason: `Carrinho DM ${cartId} de ${interaction.user.tag}`
-        });
-
-        // Atualizar o carrinho no DB com o ID da thread
-        await db.query('UPDATE store_carts SET thread_id = $1 WHERE cart_id = $2', [thread.id, cartId]);
-
-    } catch (e) {
-        console.error("[Store DM Flow] Erro ao criar thread para o carrinho:", e);
-        // Se falhar, deleta o carrinho para evitar órfãos
-        await db.query('DELETE FROM store_cart_items WHERE cart_id = $1', [cartId]);
-        await db.query('DELETE FROM store_carts WHERE cart_id = $1', [cartId]);
-        throw new Error('Falha ao criar a thread de atendimento para o carrinho.');
+        await db.query(
+            'INSERT INTO store_carts (channel_id, guild_id, user_id, products_json) VALUES ($1, $2, $3, $4::jsonb)',
+            [cartChannel.id, interaction.guild.id, interaction.user.id, JSON.stringify(products)]
+        );
     }
 
-    return { cart, thread };
+    await updateCartActivity(cartChannel.id);
+    const updatedCart = (await db.query('SELECT * FROM store_carts WHERE channel_id = $1', [cartChannel.id])).rows[0];
+    const productsInCart = updatedCart.products_json || [];
+    const cartPanelPayload = generateCartPanel(updatedCart, productsInCart, settings, null, interaction);
+
+    const messagesInCart = await cartChannel.messages.fetch({ limit: 10 });
+    const botPanelMessage = messagesInCart.find(m => m.author.id === interaction.client.user.id && m.embeds[0]?.title.includes('Carrinho de Compras'));
+    
+    if (botPanelMessage) {
+        await botPanelMessage.edit(cartPanelPayload);
+    } else {
+        await cartChannel.send({ content: `Bem-vindo ao seu carrinho, ${interaction.user}!`, ...cartPanelPayload });
+    }
+    
+    return cartChannel;
 }
 
-
 module.exports = {
-    customId: 'store_confirm_purchase_',
+    customId: 'store_confirm_purchase_products_',
     async execute(interaction) {
-        const client = interaction.client;
-        const guildId = interaction.guildId;
-        const userId = interaction.user.id;
+        const parts = interaction.customId.split('_coupon_');
+        const productIdsString = parts[0].replace('store_confirm_purchase_products_', '');
+        const productIds = productIdsString.split('-');
+        const couponId = parts[1] === 'none' ? null : parts[1];
 
-        // --- INÍCIO DA CORREÇÃO ---
-        // Extrair dados do customId
-        const parts = interaction.customId.split('_');
+        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         
-        let productIdsString;
-        let couponCode;
+        if (settings.store_premium_dm_flow_enabled) {
+            const loadingEmbed = new EmbedBuilder().setColor('#5865F2').setAuthor({ name: "Estamos a preparar seu checkout VIP...", iconURL: "https://media.tenor.com/JwPW0tw69vAAAAAi/cargando-loading.gif" });
+            await interaction.update({ content: '', embeds: [loadingEmbed], components: [] });
+            await delay(1500);
 
-        // Encontra o índice da palavra 'products'
-        const productsIndex = parts.indexOf('products');
-        if (productsIndex !== -1 && parts.length > productsIndex + 1) {
-            // O productIdsString é o item logo após 'products'
-            productIdsString = parts[productsIndex + 1];
-        } else {
-            // Se não encontrar, loga o erro e falha
-            console.error(`[store_confirm_purchase] Erro crítico: Não foi possível parsear 'productIdsString' do customId: ${interaction.customId}`);
-            return interaction.reply({ content: 'Erro ao processar seu carrinho (ID Malformado: P).', flags: EPHEMERAL_FLAG, ephemeral: true });
-        }
+            const products = (await db.query(`SELECT * FROM store_products WHERE id = ANY($1::int[])`, [productIds])).rows;
+            let coupon = couponId ? (await db.query('SELECT * FROM store_coupons WHERE id = $1', [couponId])).rows[0] : null;
 
-        // Encontra o índice da palavra 'coupon'
-        const couponIndex = parts.indexOf('coupon');
-        if (couponIndex !== -1 && parts.length > couponIndex + 1) {
-            // O couponCode é o item logo após 'coupon'
-            couponCode = parts[couponIndex + 1];
-        } else {
-            couponCode = 'none'; // Fallback padrão
-        }
-
-        const productRequests = productIdsString.split(';').map(p => {
-            const itemParts = p.split('x');
-            const id = itemParts[0];
-            const quantity = parseInt(itemParts[1], 10);
-
-            // Se a quantidade não for um número (ex: ID "5" em vez de "5x1"), assume 1
-            return {
-                id: id,
-                quantity: isNaN(quantity) ? 1 : quantity
-            };
-        });
-        // --- FIM DA CORREÇÃO ---
-        
-        await interaction.deferReply({ flags: EPHEMERAL_FLAG });
-
-        try {
-            const settingsQuery = await db.query('SELECT * FROM store_settings WHERE guild_id = $1', [guildId]);
-            if (settingsQuery.rows.length === 0) {
-                return interaction.editReply({ content: 'O sistema de loja ainda não foi configurado neste servidor.', flags: EPHEMERAL_FLAG });
-            }
-            const settings = settingsQuery.rows[0];
-
-            let products = [];
-            let totalPrice = 0;
-
-            for (const req of productRequests) {
-                const productQuery = await db.query('SELECT * FROM store_products WHERE product_id = $1 AND guild_id = $2', [req.id, guildId]);
-                if (productQuery.rows.length > 0) {
-                    const product = productQuery.rows[0];
-                    products.push({ ...product, quantity: req.quantity });
-                    totalPrice += product.price * req.quantity;
-                }
-            }
-
-            if (products.length === 0) {
-                return interaction.editReply({ content: 'Os produtos selecionados não estão mais disponíveis.', flags: EPHEMERAL_FLAG });
-            }
-
-            // Aplicar cupom
-            let appliedCoupon = null;
-            if (couponCode !== 'none') {
-                const couponQuery = await db.query('SELECT * FROM store_coupons WHERE guild_id = $1 AND code = $2 AND (uses < max_uses OR max_uses IS NULL) AND (expires_at > NOW() OR expires_at IS NULL)', [guildId, couponCode]);
-                if (couponQuery.rows.length > 0) {
-                    appliedCoupon = couponQuery.rows[0];
-                    const discount = totalPrice * (appliedCoupon.discount_percentage / 100);
-                    totalPrice -= discount;
-                }
-            }
-            
-            // --- Fluxo de Criação de Carrinho (Padrão ou DM) ---
-            if (settings.dm_flow_enabled) {
-                // --- DM Cart Flow ---
-                const { cart, thread } = await createOrUpdateDMCart(interaction, client, guildId, userId, settings, products, totalPrice, appliedCoupon);
+            try {
+                const { cart } = await createDirectPaymentCart(interaction, products, coupon); 
                 
-                // Logar
-                storeLog.logCartCreation(client, guildId, userId, cart.cart_id);
-
-                // Enviar painel para a DM do usuário
-                const dmPanel = await getDMCartPanel(guildId, cart.cart_id, products, totalPrice, appliedCoupon);
-                try {
-                    await interaction.user.send({
-                        embeds: dmPanel.embeds,
-                        components: dmPanel.components
-                    });
-                    await interaction.editReply({ content: '🛒 Seu carrinho foi criado! Verifique sua DM para continuar a compra.' });
-                } catch (dmError) {
-                    // Se a DM estiver fechada, deleta o carrinho e avisa
-                    await db.query('DELETE FROM store_cart_items WHERE cart_id = $1', [cart.cart_id]);
-                    await db.query('DELETE FROM store_carts WHERE cart_id = $1', [cart.cart_id]);
-                    if (thread) await thread.delete('Usuário com DM fechada. Carrinho cancelado.');
-                    
-                    await interaction.editReply({ content: '❌ **Falha ao criar carrinho!** Parece que sua DM está fechada. Por favor, abra sua DM para mim e tente novamente.' });
+                if (settings.store_log_channel_id) {
+                    const logChannel = await interaction.guild.channels.fetch(settings.store_log_channel_id).catch(() => null);
+                    if (logChannel) {
+                        const claimButton = new ButtonBuilder().setCustomId(`store_staff_claim_cart_${cart.channel_id}`).setLabel('Assumir Atendimento').setStyle(ButtonStyle.Primary);
+                        const logEmbed = new EmbedBuilder().setColor('Blue').setTitle('🛒 Novo Carrinho VIP').setDescription(`**Cliente:** ${interaction.user}\n**Canal de Atendimento:** <#${cart.thread_id}>`);
+                        await logChannel.send({ embeds: [logEmbed], components: [new ActionRowBuilder().addComponents(claimButton)] });
+                    }
                 }
 
-            } else {
-                // --- Standard Cart Flow ---
-                const { cart, channel } = await createOrUpdateStandardCart(interaction, client, guildId, userId, settings, products, totalPrice, appliedCoupon);
-
-                // Logar
-                storeLog.logCartCreation(client, guildId, userId, cart.cart_id);
-
-                // Enviar painel de usuário no canal
-                const userPanel = await getCartPanel(guildId, cart.cart_id, products, totalPrice, appliedCoupon);
-                await channel.send({
-                    content: `<@${userId}>`,
-                    embeds: userPanel.embeds,
-                    components: userPanel.components
-                });
+                await updateCartActivity(cart.channel_id);
                 
-                // Enviar painel de staff no canal (se configurado)
-                if(settings.staff_role_id) {
-                     const staffPanel = await getStaffCartPanel(client, guildId, cart.cart_id, userId, products, totalPrice, appliedCoupon, 'standard');
-                     await channel.send({
-                        content: `<@&${settings.staff_role_id}>`,
-                        embeds: staffPanel.embeds,
-                        components: staffPanel.components
-                    });
+                const hasAutomation = await hasFeature(interaction.guild.id, 'STORE_AUTOMATION');
+                let dmPayload;
+
+                if (hasAutomation && settings.store_mp_token) {
+                    try {
+                        const paymentData = await createPixPayment(interaction.guild.id, cart, products);
+                        dmPayload = generateAutomaticPaymentDM(cart, paymentData);
+                    } catch (mpError) {
+                        console.error("Falha ao gerar pagamento com Mercado Pago, a reverter para o modo manual:", mpError);
+                        // Se falhar, reverte para a mensagem de pagamento manual na DM
+                        dmPayload = generatePaymentMessage(cart, settings, coupon);
+                    }
+                } else {
+                    dmPayload = generatePaymentMessage(cart, settings, coupon);
                 }
-               
-                await interaction.editReply({
-                    content: `🛒 Seu carrinho foi criado com sucesso! Acesse o canal <#${channel.id}> para finalizar sua compra.`
-                });
+
+                await interaction.user.send(dmPayload);
+
+                await interaction.editReply({ content: '✅ **Checkout Iniciado!** Verifique as suas mensagens diretas (DM) para continuar.', embeds: [] });
+
+            } catch (error) {
+                console.error("Erro no fluxo de pagamento direto: ", error);
+                await interaction.editReply({ content: '❌ Ocorreu um erro. Verifique se as suas DMs estão abertas e se as configurações da loja (categoria, cargo) estão corretas.', embeds: [] });
             }
 
-        } catch (error) {
-            console.error('Erro ao confirmar compra e criar carrinho:', error);
-            await interaction.editReply({ content: '🔴 Ocorreu um erro ao criar seu carrinho. Verifique se o bot tem permissão para criar canais nesta categoria.', flags: EPHEMERAL_FLAG });
+        } else {
+            await interaction.deferUpdate();
+            const products = (await db.query(`SELECT * FROM store_products WHERE id = ANY($1::int[])`, [productIds])).rows;
+            const cartChannel = await createOrUpdateStandardCart(interaction, products);
+            await interaction.followUp({ content: `✅ Produto(s) adicionado(s)! Confira o seu carrinho em ${cartChannel}`, ephemeral: true });
         }
     }
 };
