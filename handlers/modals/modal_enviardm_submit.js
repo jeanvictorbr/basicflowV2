@@ -6,7 +6,12 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = {
     customId: 'modal_enviardm_submit',
-    execute: async (interaction, client) => {
+    // CORREÇÃO: Removemos o segundo argumento que estava vindo errado do index.js
+    execute: async (interaction) => {
+        
+        // 1. Definição correta do Client
+        const client = interaction.client;
+
         // Adia a resposta, pois isso VAI demorar mais de 3 segundos
         await interaction.deferReply({ ephemeral: true });
 
@@ -63,6 +68,7 @@ module.exports = {
                 .addFields(
                     { name: 'Enviado por', value: `Administração do **${guild.name}**`, inline: true }
                 )
+                // AQUI ESTAVA O ERRO: Agora 'client' está definido corretamente
                 .setFooter({ 
                     text: `Esta é uma mensagem oficial enviada via ${client.user.username}.`, 
                     iconURL: client.user.displayAvatarURL() 
