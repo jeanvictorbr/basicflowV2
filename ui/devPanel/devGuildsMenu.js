@@ -51,7 +51,8 @@ module.exports = function generateDevGuildsMenu(allGuildData, page = 0, totals, 
     
     const manageButtons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('dev_guild_manage_select').setLabel('Gerenciar Guilda').setStyle(ButtonStyle.Primary).setEmoji('⚙️').setDisabled(allGuildData.length === 0),
-        new ButtonBuilder().setCustomId('devpanel').setLabel('Voltar').setStyle(ButtonStyle.Secondary).setEmoji('↩️')
+        // CORREÇÃO: custom_id alterado para 'dev_main_menu_back'
+        new ButtonBuilder().setCustomId('dev_main_menu_back').setLabel('Voltar').setStyle(ButtonStyle.Secondary).setEmoji('↩️')
     );
 
     const massDmButtons = new ActionRowBuilder().addComponents(

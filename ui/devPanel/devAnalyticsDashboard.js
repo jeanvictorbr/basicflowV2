@@ -1,5 +1,5 @@
-// Crie em: ui/devPanel/devAnalyticsDashboard.js
-module.exports = function generateDevAnalyticsDashboard(stats, client) {
+// Substitua o conteúdo em: ui/devPanel/devAnalyticsDashboard.js
+module.exports = function generateDevAnalyticsDashboard(stats, client, period = '7d') {
     const { general, topCommands, topButtons, topModules, topGuilds } = stats;
 
     const topCommandsList = topCommands.map(c => `> • \`/${c.name}\` - **${c.count}** usos`).join('\n') || '> Nenhuma atividade.';
@@ -11,11 +11,24 @@ module.exports = function generateDevAnalyticsDashboard(stats, client) {
         return `> • **${guild?.name || 'Servidor Desconhecido'}** - **${g.count}** interações`;
     }).join('\n') || '> Nenhuma atividade.';
 
+    let periodText = "Últimos 7 Dias";
+    if (period === '30d') periodText = "Últimos 30 Dias";
+    if (period === 'total') periodText = "Período Total (Desde o Início)";
+
     return [
         {
             "type": 17, "accent_color": 15844367,
             "components": [
-                { "type": 10, "content": "## 📊 Analytics Global - Últimos 7 Dias" },
+                { "type": 10, "content": `## 📊 Analytics Global - ${periodText}` },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 1,
+                    "components": [
+                        { "type": 2, "style": period === '7d' ? 1 : 2, "label": "7 Dias", "custom_id": "dev_analytics_period_7d", "disabled": period === '7d' },
+                        { "type": 2, "style": period === '30d' ? 1 : 2, "label": "30 Dias", "custom_id": "dev_analytics_period_30d", "disabled": period === '30d' },
+                        { "type": 2, "style": period === 'total' ? 1 : 2, "label": "Total", "custom_id": "dev_analytics_period_total", "disabled": period === 'total' }
+                    ]
+                },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 10, "content":
@@ -38,7 +51,7 @@ module.exports = function generateDevAnalyticsDashboard(stats, client) {
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 1, "components": [
-                        { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }
+                        { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "dev_main_menu_back" }
                     ]
                 }
             ]

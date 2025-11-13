@@ -1,16 +1,27 @@
-// config/features.js
+// Em: config/features.js
+// (Este é o seu arquivo original, com a nova feature 'AUTOMATIONS' adicionada no final)
+
 const FEATURES = [
-    { label: "Pacote Completo", value: "ALL" },
-    { label: "Módulo Guardian AI", value: "GUARDIAN_AI" },
-    { label: "Módulo Moderação Premium", value: "MODERATION_PREMIUM" },
-    { label: "Módulo RoleTags", value: "ROLE_TAGS" },
-    { label: "Módulo de Estatísticas", value: "STATS" },
-    { label: "Customização de Imagens e Cores", value: "CUSTOM_VISUALS" },
-    { label: "Funcionalidades Premium de Tickets", value: "TICKETS_PREMIUM" },
-    { label: "Funcionalidades Premium de Ponto", value: "PONTO_PREMIUM" },
-    { label: "Análise de Dossiê com IA", value: "DOSSIE_AI_ANALYSIS" },
-    { label: "Automação da Loja (Mercado Pago)", value: "STORE_AUTOMATION" },
-    { label: "Arquiteto de Servidor (IA)", value: "ARQUITETO" } // <-- NOVA FEATURE ADICIONADA AQUI
+    { value: 'ALL', label: 'Todas as Features (ALL)' },
+    { value: 'STATS', label: 'Estatísticas (/stats)' },
+    { value: 'ARQUITETO', label: 'Arquiteto IA (/arquiteto)' },
+    { value: 'GUARDIAN_AI', label: 'Guardian AI (Moderação IA)' },
+    { value: 'AI_ASSISTANT', label: 'Assistente IA (Tickets/Chat)' },
+    { value: 'ADVANCED_LOGS', label: 'Logs Avançados' },
+    { value: 'CUSTOM_VISUALS', label: 'Visuais Customizados (Embeds)' },
+    { value: 'REGISTROS', label: 'Sistema de Registros' },
+    { value: 'AUSENCIAS', label: 'Sistema de Ausências' },
+    { value: 'PONTO', label: 'Sistema de Ponto (Básico)' },
+    { value: 'ADVANCED_PONTO', label: 'Sistema de Ponto (Avançado)' },
+    { value: 'STORE', label: 'Módulo de Loja (StoreFlow)' },
+    { value: 'STORE_DM_FLOW', label: 'Loja com Fluxo DM' },
+    { value: 'TICKET_DM_FLOW', label: 'Ticket com Fluxo DM' },
+    { value: 'UNIFORMES', label: 'Sistema de Uniformes' },
+    { value: 'ADVANCED_MOD', label: 'Moderação Avançada' },
+    { value: 'ROLE_TAGS', label: 'Tags por Cargo (RoleTags)' },
+    { value: 'SUGGESTIONS', label: 'Sistema de Sugestões' },
+    // --- CORREÇÃO ADICIONADA AQUI ---
+    { value: 'AUTOMATIONS', label: 'Módulo de Automatizações' } 
 ];
 
 module.exports = FEATURES;

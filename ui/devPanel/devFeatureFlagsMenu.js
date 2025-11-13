@@ -1,4 +1,4 @@
-// Garanta que o conteúdo deste arquivo esteja assim:
+// Substitua o conteúdo em: ui/devPanel/devFeatureFlagsMenu.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const ITEMS_PER_PAGE = 5; 
 
@@ -31,7 +31,6 @@ module.exports = function generateFeatureFlagsMenu(statuses, page = 0) {
     }
 
     const paginationRow = new ActionRowBuilder().addComponents(
-        // O customId aqui está correto e irá corresponder ao handler renomeado
         new ButtonBuilder().setCustomId(`dev_ff_page_${page - 1}`).setLabel('Anterior').setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
         new ButtonBuilder().setCustomId(`dev_ff_page_${page + 1}`).setLabel('Próxima').setStyle(ButtonStyle.Secondary).setDisabled(page + 1 >= totalPages)
     );
@@ -48,7 +47,8 @@ module.exports = function generateFeatureFlagsMenu(statuses, page = 0) {
                 totalPages > 1 ? { "type": 1, "components": paginationRow.toJSON().components } : null,
                 {
                     "type": 1, "components": [
-                        { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }
+                        // CORREÇÃO: custom_id alterado para 'dev_main_menu_back'
+                        { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "dev_main_menu_back" }
                     ]
                 }
             ].filter(Boolean)

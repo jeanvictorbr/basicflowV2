@@ -1,8 +1,8 @@
-// Substitua o conteúdo em: database.js
+// Conteúdo completo para: database.js
 const { Pool } = require('pg');
 require('dotenv').config();
 const schema = require('./schema.js');
-const MODULES = require('./config/modules.js'); // <-- NOVA IMPORTAÇÃO
+const MODULES = require('./config/modules.js');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -11,6 +11,7 @@ const pool = new Pool({
 async function synchronizeDatabase() {
     console.log('[DB] Iniciando sincronização do schema...');
     const client = await pool.connect();
+    
     try {
         // ... (toda a lógica de criação de tabelas e colunas continua igual)
         for (const tableName in schema) {
@@ -28,8 +29,8 @@ async function synchronizeDatabase() {
                 for (const columnName in schema[tableName]) {
                     if (columnName.startsWith('_')) {
                          if(schema[tableName][columnName].type === 'UNIQUE') {
-                            constraints.push(`UNIQUE (${schema[tableName][columnName].columns.join(', ')})`);
-                        }
+                             constraints.push(`UNIQUE (${schema[tableName][columnName].columns.join(', ')})`);
+                         }
                         continue;
                     }
 
@@ -90,8 +91,34 @@ async function synchronizeDatabase() {
     }
 }
 
+// ===================================================================
+//  ⬇️  A CORREÇÃO ESTÁ AQUI  ⬇️
+// ===================================================================
+/**
+ * Busca as configurações de uma guilda no banco de dados.
+ * @param {string} guildId O ID da Guilda.
+ * @returns {Promise<Object|null>} O objeto de configurações ou null.
+ */
+const getGuildSettings = async (guildId) => {
+    if (!guildId) return null;
+    try {
+        // Usa o pool diretamente, assim como a função query
+        // CORRIGIDO: "guilds" -> "guild_settings"
+        const { rows } = await pool.query('SELECT * FROM guild_settings WHERE guild_id = $1', [guildId]);
+        return rows[0] || null; // Retorna a primeira config ou null
+    } catch (error) {
+        console.error(`[DB] Falha ao buscar GuildSettings para ${guildId}:`, error);
+        return null; // Retorna null em caso de erro
+    }
+};
+// ===================================================================
+//  ⬆️  FIM DA CORREÇÃO ⬆️
+// ===================================================================
+
+
 module.exports = {
     query: (text, params) => pool.query(text, params),
     synchronizeDatabase,
     getClient: () => pool.connect(),
+    getGuildSettings, // <-- Adicionada a exportação aqui
 };

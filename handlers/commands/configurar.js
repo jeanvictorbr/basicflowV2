@@ -1,21 +1,56 @@
-// Crie este novo arquivo em: handlers/commands/configurar.js
-const generateMainMenu = require('../../ui/mainMenu.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+// Conteúdo completo para: handlers/commands/configurar.js
+const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants.js');
+const mainMenu = require('../../ui/mainMenu.js'); 
+const { PermissionsBitField } = require('discord.js');
 
-module.exports = {
-    customId: 'configurar',
-    async execute(interaction) {
-        // Adia a resposta para ganhar mais tempo de processamento.
-        await interaction.deferReply({ ephemeral: true });
+/**
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ */
+async function execute(interaction) {
+    // 1. Adia a resposta para garantir que temos tempo
+    await interaction.deferReply({ flags: EPHEMERAL_FLAG });
 
-        // A lógica para gerar o menu continua a mesma
-        const mainMenuComponents = await generateMainMenu(interaction, 0); 
-        
-        // Usa editReply para enviar a resposta final.
-        await interaction.editReply({
-            components: mainMenuComponents,
-            flags: V2_FLAG | EPHEMERAL_FLAG,
+    // 2. Verificar permissões
+    if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return interaction.editReply({
+            content: '❌ Você precisa de permissão de Administrador para usar este comando.'
         });
-    },
+    }
+
+    try {
+        // 3. Gerar o menu
+        // O mainMenu (ui/mainMenu.js) retorna um ARRAY de componentes V2
+        const menuComponents = await mainMenu(interaction, 0); 
+
+        // 4. Responder com editReply
+        await interaction.editReply({
+            // ===================================================================
+            //  ⬇️  A CORREÇÃO ESTÁ AQUI  ⬇️
+            // ===================================================================
+
+            // ANTES (ERRADO):
+            // ...menuComponents, 
+            
+            // DEPOIS (CORRETO):
+            // O array retornado pelo UI deve ser atribuído à chave 'components'
+            components: menuComponents,
+
+            // ===================================================================
+            //  ⬆️  FIM DA CORREÇÃO ⬆️
+            // ===================================================================
+            
+            flags: V2_FLAG | EPHEMERAL_FLAG
+        });
+
+    } catch (error) {
+        console.error('Erro ao executar /configurar:', error);
+        await interaction.editReply({
+            content: '❌ Ocorreu um erro ao buscar as configurações do servidor.'
+        });
+    }
+}
+
+// Exporta o execute para o index.js
+module.exports = {
+    execute,
 };

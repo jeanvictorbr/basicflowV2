@@ -1,33 +1,26 @@
 // handlers/buttons/dev_guild_manage_select.js
-const { StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 
 module.exports = {
     customId: 'dev_guild_manage_select',
     async execute(interaction) {
-        const guilds = Array.from(interaction.client.guilds.cache.values());
+        // Em vez de atualizar a mensagem direto, abrimos um Modal para pesquisa
+        // Isso resolve o problema de listar apenas 20 de 90 servidores.
+        
+        const modal = new ModalBuilder()
+            .setCustomId('modal_dev_search_guild')
+            .setTitle('Gerenciar Guilda - Buscar');
 
-        const options = guilds.slice(0, 25).map(g => ({
-            label: g.name,
-            description: `ID: ${g.id}`,
-            value: g.id,
-        }));
+        const searchInput = new TextInputBuilder()
+            .setCustomId('search_query')
+            .setLabel("Nome ou ID do Servidor")
+            .setPlaceholder("Digite para filtrar (deixe vazio para listar)")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(false);
 
-        const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('select_dev_manage_guild')
-            .setPlaceholder('Selecione a guilda para gerenciar')
-            .addOptions(options);
+        const firstActionRow = new ActionRowBuilder().addComponents(searchInput);
+        modal.addComponents(firstActionRow);
 
-        const cancelButton = new ButtonBuilder().setCustomId('dev_manage_guilds').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
-
-        await interaction.update({
-            components: [
-                { type: 17, components: [{ type: 10, content: "> Selecione no menu abaixo qual guilda você deseja gerenciar." }] },
-                new ActionRowBuilder().addComponents(selectMenu),
-                new ActionRowBuilder().addComponents(cancelButton)
-            ],
-            flags: V2_FLAG | EPHEMERAL_FLAG
-        });
+        await interaction.showModal(modal);
     }
 };

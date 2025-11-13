@@ -1,4 +1,4 @@
-// Crie em: ui/devPanel/devAiMonitorMenu.js
+// Substitua o conteúdo em: ui/devPanel/devAiMonitorMenu.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const ITEMS_PER_PAGE = 1; // 1 log por página para melhor visualização
 
@@ -42,7 +42,10 @@ module.exports = function generateDevAiMonitorMenu(logs = [], page = 0, total, v
                 { "type": 10, "content": logDisplay },
                 { "type": 14, "divider": true, "spacing": 2 },
                 totalPages > 1 ? { "type": 1, "components": paginationRow.toJSON().components } : null,
-                { "type": 1, "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "devpanel" }] }
+                { "type": 1, "components": [
+                    // CORREÇÃO: custom_id alterado para 'dev_main_menu_back'
+                    { "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "dev_main_menu_back" }
+                ] }
             ].filter(Boolean)
         }
     ];

@@ -85,4 +85,16 @@ async function getAndPrepareGuildData(client, sortKey = 'default') {
     return { allGuildData, totals };
 }
 
+/**
+ * Converte uma string de cor HEX para um número inteiro.
+ * @param {string} hexString A string da cor (ex: "#FF0000").
+ * @returns {number|null} O número da cor ou null se inválido.
+ */
+function parseColor(hexString) {
+    if (!hexString || typeof hexString !== 'string') return null;
+    const match = hexString.match(/^#?([a-f\d]{6})$/i);
+    if (!match) return null;
+    return parseInt(match[1], 16);
+}
+
 module.exports = { getAndPrepareGuildData };

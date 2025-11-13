@@ -1,59 +1,65 @@
-// ui/devPanel/devKeysMenu.js
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-// REMOVIDO: const db = require('../../database'); // NÃO FAÇA QUERIES NA UI
-
 /**
- * Gera o menu de chaves (Versão Legacy, usando Builders)
- * @param {Array} keys - As chaves (rows do db) a serem exibidas.
- * @param {number} page - A página atual (0-indexada).
- * @param {number} totalKeys - O número total de chaves.
- * @param {number} totalPages - O número total de páginas.
+ * Gera o menu de chaves no formato V2 (JSON Type 17)
  */
 function generateDevKeysMenu(keys, page, totalKeys, totalPages) {
     
-    // CORREÇÃO: Os dados agora vêm do handler.
-    // 'page' agora é 0-indexada, então somamos 1 para exibição.
-    const embed = new EmbedBuilder()
-        .setColor(0x0099FF) // Azul
-        .setTitle('Painel de Gestão de Keys')
-        .setFooter({ text: `Página ${page + 1} de ${totalPages}` });
+    let keysListText = "Nenhuma chave ativa encontrada.";
 
     if (keys.length > 0) {
-        // CORREÇÃO: Usando os nomes corretos das colunas do schema 'activation_keys'
-        // O schema original estava errado ('premium_keys', 'key_value', etc.)
-        const keyList = keys.map(key => {
-            const features = key.grants_features ? (Array.isArray(key.grants_features) ? key.grants_features.join(', ') : key.grants_features) : 'N/A';
-            return `\`${key.key}\` - ${features} (${key.duration_days}d) | Usos: ${key.uses_left}`;
-        }).join('\n');
-        embed.setDescription(`**Chaves Ativas (${totalKeys}):**\n${keyList}`);
-    } else {
-        embed.setDescription('Nenhuma chave ativa encontrada.');
+        // Formata a lista de chaves com destaque
+        keysListText = keys.map(k => {
+            let features = k.grants_features;
+            // Mostra a CHAVE (k.key) explicitamente
+            return `> 🔑 **KEY:** \`${k.key}\`\n> └─ ⏳ ${k.duration_days} dias • 👥 Usos Restantes: ${k.uses_left} • 🎁 ${features}`;
+        }).join('\n\n');
     }
 
-    // Botões
-    const row = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder().setCustomId('dev_key_create').setLabel('Gerar Key Única').setStyle(ButtonStyle.Success).setEmoji('🔑'),
-            new ButtonBuilder().setCustomId('dev_open_bulk_keys').setLabel('Gerar Keys em Massa').setStyle(ButtonStyle.Primary).setEmoji('📦'),
-            new ButtonBuilder().setCustomId('dev_key_revoke').setLabel('Revogar Keys').setStyle(ButtonStyle.Danger).setEmoji('✖️')
-        );
-
-    const row2 = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder().setCustomId('dev_open_key_stats').setLabel('Estatísticas').setStyle(ButtonStyle.Secondary).setEmoji('📊'),
-            new ButtonBuilder().setCustomId('dev_open_key_history').setLabel('Histórico de Ativação').setStyle(ButtonStyle.Secondary).setEmoji('📜')
-        );
-
-    // Navegação (CORREÇÃO: 'page' é 0-indexada)
-    const row3 = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder().setCustomId(`dev_keys_page_${page - 1}`).setLabel('Anterior').setStyle(ButtonStyle.Primary).setDisabled(page === 0),
-            new ButtonBuilder().setCustomId(`dev_keys_page_${page + 1}`).setLabel('Próxima').setStyle(ButtonStyle.Primary).setDisabled(page + 1 >= totalPages),
-            new ButtonBuilder().setCustomId('dev_main_menu_back').setLabel('Voltar ao Menu Principal').setStyle(ButtonStyle.Secondary).setEmoji('⬅️')
-        );
-
-    // Retorna o objeto legacy (sem 'data' ou 'type: 17')
-    return { embeds: [embed], components: [row, row2, row3] };
+    return {
+        type: 17, // Container V2
+        accent_color: 3447003, // Azul (Blue)
+        components: [
+            { 
+                type: 10, 
+                content: `## 🔑 Gerenciador de Chaves Premium\nExibindo **${keys.length}** de **${totalKeys}** chaves ativas.` 
+            },
+            { type: 14, divider: true, spacing: 2 },
+            { 
+                type: 10, 
+                content: keysListText 
+            },
+            { type: 14, divider: true, spacing: 2 },
+            // Botões de Ação
+            {
+                type: 1,
+                components: [
+                    { type: 2, style: 3, label: 'Criar Aleatória', emoji: { name: '🎲' }, custom_id: 'dev_key_create' },
+                    // NOVO BOTAO PERSONALIZADO
+                    { type: 2, style: 1, label: 'Criar Personalizada', emoji: { name: '✏️' }, custom_id: 'dev_key_create_custom' },
+                    { type: 2, style: 1, label: 'Massa (Bulk)', emoji: { name: '📦' }, custom_id: 'dev_open_bulk_keys' }
+                ]
+            },
+            // Botões Secundários
+            {
+                type: 1,
+                components: [
+                    { type: 2, style: 4, label: 'Revogar', emoji: { name: '✖️' }, custom_id: 'dev_key_revoke' },
+                    { type: 2, style: 2, label: 'Histórico', emoji: { name: '📜' }, custom_id: 'dev_open_key_history' },
+                    // Adicionei botão de atualizar para facilitar
+                    { type: 2, style: 2, label: 'Atualizar', emoji: { name: '🔄' }, custom_id: 'dev_manage_keys' }
+                ]
+            },
+            // Navegação
+            {
+                type: 1,
+                components: [
+                    { type: 2, style: 1, label: 'Anterior', custom_id: `dev_keys_page_${page - 1}`, disabled: page === 0 },
+                    { type: 2, style: 2, label: `Página ${page + 1}/${totalPages}`, custom_id: 'noop', disabled: true },
+                    { type: 2, style: 1, label: 'Próxima', custom_id: `dev_keys_page_${page + 1}`, disabled: page + 1 >= totalPages },
+                    { type: 2, style: 2, label: 'Voltar', emoji: { name: '⬅️' }, custom_id: 'dev_main_menu_back' }
+                ]
+            }
+        ]
+    };
 }
 
 module.exports = generateDevKeysMenu;

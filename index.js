@@ -3,7 +3,9 @@ const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const { checkTokenUsage } = require('./utils/tokenMonitor.js');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder } = require('discord.js');
+const automationsMonitor = require('./utils/automationsMonitor.js');
+const { EPHEMERAL_FLAG } = require('./utils/constants');
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder, PermissionsBitField } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
@@ -22,14 +24,28 @@ const db = require('./database.js');
 const http = require('http');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { approvePurchase } = require('./utils/approvePurchase.js');
+const { startGiveawayMonitor } = require('./utils/giveawayManager');
+
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers] });
-
+automationsMonitor.start(client); //
 client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 client.hangmanTimeouts = new Map();
 client.moduleStatusCache = new Map();
+
+// ===================================================================
+//  ⬇️  COLEÇÕES DE HANDLERS CORRIGIDAS  ⬇️
+// ===================================================================
+client.commandHandlers = new Collection();
+client.buttons = new Collection();
+client.modals = new Collection();
+client.selects = new Collection();
+// ===================================================================
+//  ⬆️  FIM DA CORREÇÃO ⬆️
+// ===================================================================
+
 
 const commandUsage = new Map();
 const COMMAND_THRESHOLD = 15;
@@ -210,31 +226,72 @@ for (const file of commandFiles) {
         }
     }
 }
+
+// ===================================================================
+//  ⬇️  LÓGICA DE CARREGAMENTO DE HANDLERS CORRIGIDA  ⬇️
+// ===================================================================
 console.log('--- Carregando Handlers ---');
-client.handlers = new Collection();
 const handlersPath = path.join(__dirname, 'handlers');
-const handlerTypes = ['buttons', 'modals', 'selects', 'commands'];
-handlerTypes.forEach(handlerType => {
-    const handlerDir = path.join(handlersPath, handlerType);
-    if (fs.existsSync(handlerDir)) {
-        const handlerFiles = fs.readdirSync(handlerDir).filter(file => file.endsWith('.js'));
-        for (const file of handlerFiles) {
-            try {
-                const handler = require(path.join(handlerDir, file));
-                if (handler.customId && handler.execute) {
-                    client.handlers.set(handler.customId, handler.execute);
-                }
-            } catch (error) {
-                console.error(`[HANDLER] ❌ Erro ao carregar ${file}:`, error);
+
+// 1. Carregar Handlers de Comandos (por nome de arquivo)
+try {
+    const commandHandlersPath = path.join(handlersPath, 'commands');
+    const commandHandlerFiles = fs.readdirSync(commandHandlersPath).filter(file => file.endsWith('.js'));
+    for (const file of commandHandlerFiles) {
+        try {
+            const handler = require(path.join(commandHandlersPath, file));
+            const commandName = file.split('.')[0];
+            if (handler.execute) {
+                client.commandHandlers.set(commandName, handler.execute);
+            } else {
+                console.warn(`[HANDLER] ⚠️ Handler de comando ${file} não possui 'execute'.`);
             }
+        } catch (error) {
+            console.error(`[HANDLER] ❌ Erro ao carregar comando ${file}:`, error);
         }
     }
+    console.log(`[HANDLER] ✅ ${client.commandHandlers.size} handlers de comando carregados.`);
+} catch (error) {
+    console.error('[HANDLER] ❌ Falha ao ler o diretório de handlers de comando:', error);
+}
+
+// 2. Carregar Handlers de Componentes (por customId)
+const componentTypes = ['buttons', 'modals', 'selects'];
+componentTypes.forEach(type => {
+    try {
+        const componentDir = path.join(handlersPath, type);
+        if (fs.existsSync(componentDir)) {
+            const componentFiles = fs.readdirSync(componentDir).filter(file => file.endsWith('.js'));
+            for (const file of componentFiles) {
+                try {
+                    const handler = require(path.join(componentDir, file));
+                    if (handler.customId && handler.execute) {
+                        // Usa a collection correta (client.buttons, client.modals, etc.)
+                        client[type].set(handler.customId, handler);
+                    } else {
+                        console.warn(`[HANDLER] ⚠️ ${type} handler ${file} não possui 'customId' ou 'execute'.`);
+                    }
+                } catch (error) {
+                    console.error(`[HANDLER] ❌ Erro ao carregar ${type} ${file}:`, error);
+                }
+            }
+            console.log(`[HANDLER] ✅ ${client[type].size} handlers de ${type} carregados.`);
+        } else {
+            console.warn(`[HANDLER] ⚠️ Diretório para ${type} não encontrado.`);
+        }
+    } catch (error) {
+        console.error(`[HANDLER] ❌ Falha ao ler o diretório de handlers de ${type}:`, error);
+    }
 });
+// ===================================================================
+//  ⬆️  FIM DA CORREÇÃO DO CARREGAMENTO ⬆️
+// ===================================================================
 
 
 console.log('--- Handlers Carregados ---');
 
 client.once(Events.ClientReady, async () => {
+    startGiveawayMonitor(client);
     await db.synchronizeDatabase();
     await updateModuleStatusCache(client);
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -269,113 +326,149 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
 });
 
+// ===================================================================
+//  ⬇️  ROTEADOR DE INTERAÇÃO CORRIGIDO  ⬇️
+// ===================================================================
 client.on(Events.InteractionCreate, async interaction => {
-    logInteraction(interaction);
-    let handler;
-    let customId;
-    if (interaction.isChatInputCommand() || interaction.isUserContextMenuCommand()) {
-        customId = interaction.commandName;
-    } else if (interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
-        customId = interaction.customId;
+    
+    // Obter configurações da guilda (essencial para verificações)
+    const guildSettings = await db.getGuildSettings(interaction.guildId);
+    if (!guildSettings && interaction.guildId) {
+        // Se não houver configurações, é provável que a guilda não esteja no DB.
+        // Apenas comandos de devpanel e ativar devem funcionar.
+        if (interaction.isChatInputCommand() && 
+            interaction.commandName !== 'devpanel' && 
+            interaction.commandName !== 'configurar') {
+            
+            return interaction.reply({ 
+                content: '❌ Este servidor não parece estar registrado corretamente no meu banco de dados. Use `/configurar` (se for admin) ou contate o suporte.', 
+                ephemeral: true 
+            });
+        }
     }
 
-    // --- CORREÇÃO FINAL DA LÓGICA DE FEATURE FLAG ---
-    if (customId) { // Garante que temos um ID para verificar
-        const targetModule = MODULES.find(m => m.check(customId));
-        if (targetModule) {
-            const moduleStatus = client.moduleStatusCache.get(targetModule.name);
-            // Se o módulo está desativado E o utilizador NÃO é o dev, bloqueia a interação.
-            if (moduleStatus && !moduleStatus.is_enabled && interaction.user.id !== process.env.DEV_USER_ID) {
-                const maintenanceMessage = moduleStatus.maintenance_message || `O módulo **${targetModule.name}** está em manutenção. Tente novamente mais tarde.`;
-                return interaction.reply({ content: `🔧 ${maintenanceMessage}`, ephemeral: true }).catch(() => {});
-            }
-        }
-    }
-    // --- FIM DA CORREÇÃO ---
-    
-    const botStatus = (await db.query("SELECT bot_enabled, maintenance_message_global FROM bot_status WHERE status_key = 'main'")).rows[0];
-    if (!botStatus?.bot_enabled && interaction.user.id !== process.env.DEV_USER_ID) {
-        const defaultMsg = "O bot está em manutenção. Por favor, tente novamente mais tarde.";
-        return interaction.reply({ content: botStatus.maintenance_message_global || defaultMsg, ephemeral: true }).catch(() => {});
-    }
-    if (interaction.isChatInputCommand() && process.env.SPAM_ALERT_WEBHOOK_URL) {
-        const now = Date.now();
-        const key = `${interaction.guildId}-${interaction.user.id}`;
-        const userUsage = (commandUsage.get(key) || []).filter(timestamp => now - timestamp < COMMAND_TIMEFRAME);
-        userUsage.push(now);
-        commandUsage.set(key, userUsage);
-        if (userUsage.length === COMMAND_THRESHOLD) {
-            const spamEmbed = new EmbedBuilder()
-                .setColor('Orange')
-                .setTitle('🚨 Alerta de Alto Tráfego de Comandos')
-                .setDescription(`O utilizador **${interaction.user.tag}** atingiu o limite de uso de comandos.`)
-                .addFields(
-                    { name: 'Utilizador', value: `${interaction.user}\n\`${interaction.user.id}\``, inline: true },
-                    { name: 'Servidor', value: `**${interaction.guild.name}**\n\`${interaction.guild.id}\``, inline: true },
-                    { name: 'Comando', value: `\`/${interaction.commandName}\`` },
-                    { name: 'Alerta', value: `\`${COMMAND_THRESHOLD}\` comandos em menos de \`${COMMAND_TIMEFRAME / 1000}\` segundos.` }
-                )
-                .setTimestamp();
-            fetch(process.env.SPAM_ALERT_WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: 'BasicFlow Monitor', avatar_url: client.user.displayAvatarURL(), embeds: [spamEmbed] }),
-            }).catch(err => console.error("[WEBHOOK] Falha ao enviar alerta de spam:", err));
-        }
-    }
-    if (interaction.guild) {
-        const guildSettings = (await db.query("SELECT bot_enabled_in_guild, maintenance_message_guild FROM guild_settings WHERE guild_id = $1", [interaction.guild.id])).rows[0];
-        if (guildSettings && guildSettings.bot_enabled_in_guild === false && interaction.user.id !== process.env.DEV_USER_ID) {
-            const defaultMsg = "O bot está temporariamente em manutenção neste servidor. Agradecemos a compreensão.";
-            return interaction.reply({ content: guildSettings.maintenance_message_guild || defaultMsg, ephemeral: true }).catch(() => {});
-        }
-    }
-    try {
-        if (customId) {
-            handler = client.handlers.get(customId);
-            if (!handler) {
-                const dynamicHandlerId = Array.from(client.handlers.keys()).find(key => key.endsWith('_') && customId.startsWith(key));
-                if (dynamicHandlerId) {
-                    handler = client.handlers.get(dynamicHandlerId);
-                }
-            }
-        }
-        if (!handler) {
-            console.warn(`[HANDLER] Nenhum handler encontrado para a interação "${customId}"`);
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: 'Esta interação expirou ou não foi encontrada.', ephemeral: true }).catch(() => {});
+    // Verificação de Manutenção (baseado nas settings)
+    if (guildSettings && guildSettings.maintenance_mode) {
+        if (!process.env.DEVELOPER_IDS.includes(interaction.user.id)) {
+            const maintenanceMessage = guildSettings.maintenance_message || 'O bot está em manutenção no momento. Tente novamente mais tarde.';
+            if (interaction.isChatInputCommand() || interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
+                try {
+                    await interaction.reply({ content: `⚠️ **Manutenção**\n${maintenanceMessage}`, flags: EPHEMERAL_FLAG });
+                } catch (e) {}
             }
             return;
         }
-        if (interaction.user.id !== process.env.DEV_USER_ID) {
-            const isAiCommand = customId.includes('_ai') || customId.includes('debugai');
-            const aiStatus = (await db.query("SELECT ai_services_enabled, maintenance_message FROM bot_status WHERE status_key = 'main'")).rows[0];
-            if (isAiCommand && !aiStatus?.ai_services_enabled) {
-                const defaultMsg = "Os serviços de IA estão em manutenção. Tente novamente mais tarde.";
-                return interaction.reply({ content: aiStatus.maintenance_message || defaultMsg, ephemeral: true }).catch(()=>{});
+    }
+    
+    try {
+        
+        // 1. Handle Chat Input Commands
+        if (interaction.isChatInputCommand()) {
+            // Get the DEFINITION (from /commands)
+            const command = client.commands.get(interaction.commandName);
+            if (!command) return; // Definition not found
+
+            // Get the HANDLER (from /handlers/commands)
+            const commandHandler = client.commandHandlers.get(interaction.commandName);
+            
+            if (!commandHandler) {
+                console.error(`[HANDLER] ❌ Handler de comando não encontrado para: ${interaction.commandName}`);
+                return interaction.reply({ content: '❌ Erro: O handler de execução para este comando não foi encontrado.', flags: EPHEMERAL_FLAG });
+            }
+
+            // Module/Admin checks (from definition file)
+            if (command.module) {
+                const moduleStatus = client.moduleStatusCache.get(command.module);
+                if (moduleStatus && !moduleStatus.is_enabled) {
+                    return interaction.reply({ 
+                        content: `❌ O módulo \`${command.module}\` está desativado globalmente.`, 
+                        flags: EPHEMERAL_FLAG 
+                    });
+                }
+            }
+            if (command.adminOnly) {
+                if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                    return interaction.reply({ 
+                        content: '❌ Você precisa de permissão de Administrador para usar este comando.', 
+                        flags: EPHEMERAL_FLAG 
+                    });
+                }
+            }
+            
+            // Execute the HANDLER
+            await commandHandler(interaction, guildSettings);
+
+        // 2. Handle Buttons
+        } else if (interaction.isButton()) {
+            const handler = client.buttons.get(interaction.customId);
+            if (handler) {
+                await handler.execute(interaction, guildSettings);
+            } else {
+                // Dynamic button logic
+                const dynamicHandler = client.buttons.find(b => interaction.customId.startsWith(b.customId));
+                if (dynamicHandler) {
+                    await dynamicHandler.execute(interaction, guildSettings);
+                }
+            }
+
+        // 3. Handle Modals
+        } else if (interaction.isModalSubmit()) {
+            const handler = client.modals.get(interaction.customId);
+            if (handler) {
+                await handler.execute(interaction, guildSettings);
+            } else {
+                // Dynamic modal logic
+                const dynamicHandler = client.modals.find(m => interaction.customId.startsWith(m.customId));
+                if (dynamicHandler) {
+                    await dynamicHandler.execute(interaction, guildSettings);
+                }
+            }
+
+        // 4. Handle Select Menus (Todos os tipos)
+        } else if (interaction.isAnySelectMenu()) {
+            const handler = client.selects.get(interaction.customId);
+            if (handler) {
+                await handler.execute(interaction, guildSettings);
+            } else {
+                // Dynamic select logic
+                const dynamicHandler = client.selects.find(s => interaction.customId.startsWith(s.customId));
+                if (dynamicHandler) {
+                    await dynamicHandler.execute(interaction, guildSettings);
+                }
+            }
+        
+        // 5. Handle Autocomplete
+        } else if (interaction.isAutocomplete()) {
+            const command = client.commands.get(interaction.commandName);
+            if (!command || !command.autocomplete) return;
+            
+            try {
+                await command.autocomplete(interaction, guildSettings);
+            } catch (autocompleteError) {
+                console.error(`Erro no autocomplete do comando ${interaction.commandName}:`, autocompleteError);
             }
         }
-        await handler(interaction, client);
+
     } catch (error) {
-        // --- INÍCIO DA CORREÇÃO ---
-        console.error(`❌ Erro CRÍTICO executando o handler de interação "${customId}":`, error);
-
-        // Adiciona o log do erro ao arquivo error.log
-        const logStream = fs.createWriteStream(path.join(__dirname, 'error.log'), { flags: 'a' });
-        logStream.write(`[${new Date().toISOString()}] Erro na interação "${customId}"\n`);
-        logStream.write(`Usuário: ${interaction.user.tag} (${interaction.user.id})\n`);
-        logStream.write(`Servidor: ${interaction.guild?.name} (${interaction.guild?.id})\n`);
-        logStream.write(error.stack + '\n\n');
-        logStream.end();
-        // --- FIM DA CORREÇÃO ---
-
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: '🔴 Houve um erro interno ao processar sua solicitação. A equipe de desenvolvimento foi notificada.', ephemeral: true }).catch(console.error);
-        } else {
-            await interaction.reply({ content: '🔴 Houve um erro interno ao processar sua solicitação. A equipe de desenvolvimento foi notificada.', ephemeral: true }).catch(console.error);
+        console.error(`❌ Erro CRÍTICO executando o handler de interação "${interaction.customId || interaction.commandName}":`, error);
+        
+        const errorMessage = '❌ Ocorreu um erro ao executar esta interação!';
+        
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: errorMessage, flags: EPHEMERAL_FLAG });
+            } else {
+                await interaction.reply({ content: errorMessage, flags: EPHEMERAL_FLAG });
+            }
+        } catch (replyError) {
+            console.error('Erro ao tentar responder ao usuário sobre o erro original:', replyError);
         }
     }
 });
+// ===================================================================
+//  ⬆️  FIM DA CORREÇÃO DO ROTEADOR ⬆️
+// ===================================================================
+
 // --- INÍCIO DA CORREÇÃO DO WEBHOOK (ADICIONADO FECHAMENTO) ---
 const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && req.url === '/mp-webhook') {

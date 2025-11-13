@@ -1,45 +1,49 @@
-// Crie em: ui/devPanel/devGuildAnalyticsDashboard.js
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+// Substitua o conteúdo em: ui/devPanel/devGuildAnalyticsDashboard.js
+module.exports = function generateDevGuildAnalyticsDashboard(stats, guildName, guildId, period = '7d') {
+    // Desestruturação segura (com valores padrão para evitar crash)
+    const general = stats.general || { total: 0, unique_users: 0 };
+    const topUsers = stats.topUsers || [];
+    const topCommands = stats.topCommands || [];
+    const topModules = stats.topModules || [];
 
-module.exports = function generateGuildAnalyticsDashboard(guild, stats, period) {
-    const { summary, topCommands, topButtons, actionLog } = stats;
-
+    const topUsersList = topUsers.map(u => `> • <@${u.user_id}> - **${u.count}** ações`).join('\n') || '> Nenhuma atividade.';
     const topCommandsList = topCommands.map(c => `> • \`/${c.name}\` - **${c.count}** usos`).join('\n') || '> Nenhuma atividade.';
-    const topButtonsList = topButtons.map(b => `> • \`${b.name}\` - **${b.count}** cliques`).join('\n') || '> Nenhuma atividade.';
-    
-    const actionLogList = actionLog.map(log => {
-        const time = `<t:${Math.floor(new Date(log.timestamp).getTime() / 1000)}:R>`;
-        return `> ${time} - **${log.module}**: <@${log.user_id}> usou \`${log.name}\``;
-    }).join('\n') || '> Nenhuma ação registrada.';
+    const topModulesList = topModules.map(m => `> • **${m.module}** - **${m.count}** interações`).join('\n') || '> Nenhuma atividade.';
 
-    const periodButtons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`dev_guild_analytics_period_${guild.id}_1`).setLabel("Hoje").setStyle(ButtonStyle.Secondary).setDisabled(period === 1),
-        new ButtonBuilder().setCustomId(`dev_guild_analytics_period_${guild.id}_7`).setLabel("7 Dias").setStyle(ButtonStyle.Secondary).setDisabled(period === 7),
-        new ButtonBuilder().setCustomId(`dev_guild_analytics_period_${guild.id}_30`).setLabel("30 Dias").setStyle(ButtonStyle.Secondary).setDisabled(period === 30)
-    );
+    let periodText = "Últimos 7 Dias";
+    if (period === '30d') periodText = "Últimos 30 Dias";
+    if (period === 'total') periodText = "Período Total (Desde o Início)";
 
     return [
         {
             "type": 17, "accent_color": 3447003,
             "components": [
-                { "type": 10, "content": `## 🔍 Atividade do Servidor: ${guild.name}` },
-                { "type": 1, "components": periodButtons.toJSON().components },
+                { "type": 10, "content": `## 📊 Analytics: ${guildName}` },
+                { "type": 10, "content": `> Visualizando dados: **${periodText}**` },
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 1,
+                    "components": [
+                        { "type": 2, "style": period === '7d' ? 1 : 2, "label": "7 Dias", "custom_id": `dev_guild_analytics_period_7d_${guildId}`, "disabled": period === '7d' },
+                        { "type": 2, "style": period === '30d' ? 1 : 2, "label": "30 Dias", "custom_id": `dev_guild_analytics_period_30d_${guildId}`, "disabled": period === '30d' },
+                        { "type": 2, "style": period === 'total' ? 1 : 2, "label": "Total", "custom_id": `dev_guild_analytics_period_total_${guildId}`, "disabled": period === 'total' }
+                    ]
+                },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 10, "content":
-                        `> **Total de Interações:** \`${summary.total_interactions}\`\n` +
-                        `> **Utilizadores Ativos:** \`${summary.active_users}\`\n` +
-                        `> **Módulo Mais Usado:** \`${summary.top_module || 'N/A'}\``
+                        `> **Total Interações:** \`${general.total}\`\n` +
+                        `> **Usuários Únicos:** \`${general.unique_users}\``
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": "### 🚀 Top 5 Comandos" },
+                { "type": 10, "content": "### 🏆 Top Usuários Ativos" },
+                { "type": 10, "content": topUsersList },
+                { "type": 14, "divider": true, "spacing": 1 },
+                { "type": 10, "content": "### 🚀 Comandos Mais Usados" },
                 { "type": 10, "content": topCommandsList },
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": "### 🖱️ Top 5 Botões" },
-                { "type": 10, "content": topButtonsList },
-                { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": "### 📋 Últimas 10 Ações" },
-                { "type": 10, "content": actionLogList },
+                { "type": 10, "content": "### 📦 Módulos Mais Ativos" },
+                { "type": 10, "content": topModulesList },
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 1, "components": [

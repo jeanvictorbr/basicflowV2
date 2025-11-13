@@ -28,9 +28,10 @@ module.exports = {
 
         const totalMembers = members.size;
         await interaction.editReply({ 
-            content: `Iniciando o envio para **${totalMembers}** membros.\n` +
-                     `Isso pode demorar muito (aprox. ${Math.round(totalMembers / 60)} minutos).\n` +
-                     `Você será notificado aqui quando o processo for concluído.` 
+            content: `📢 **Iniciando Transmissão**\n` +
+                     `> Alvo: **${totalMembers}** membros em **${guild.name}**.\n` +
+                     `> Estimativa: ${Math.round(totalMembers / 60)} minutos.\n` +
+                     `> Status: Enviando... ⏳` 
         });
 
         let successCount = 0;
@@ -50,8 +51,27 @@ module.exports = {
                 .replace(/{user.tag}/g, member.user.tag)
                 .replace(/{user.mention}/g, `<@${member.id}>`);
 
+            // --- CRIAÇÃO DA EMBED PERSONALIZADA ---
+            const dmEmbed = new EmbedBuilder()
+                .setColor(interaction.guild.members.me.displayHexColor || '#5865F2') // Usa a cor do bot ou Blurple
+                .setAuthor({ 
+                    name: `Mensagem de: ${guild.name}`, 
+                    iconURL: guild.iconURL({ dynamic: true }) 
+                })
+                .setThumbnail(guild.iconURL({ dynamic: true })) // Ícone do servidor em destaque
+                .setDescription(finalMessage) // A mensagem do admin vai aqui
+                .addFields(
+                    { name: 'Enviado por', value: `Administração do **${guild.name}**`, inline: true }
+                )
+                .setFooter({ 
+                    text: `Esta é uma mensagem oficial enviada via ${client.user.username}.`, 
+                    iconURL: client.user.displayAvatarURL() 
+                })
+                .setTimestamp();
+
             try {
-                await member.send(finalMessage);
+                // Envia a Embed em vez de texto puro
+                await member.send({ embeds: [dmEmbed] });
                 successCount++;
             } catch (error) {
                 // Falha comum: O usuário tem DMs desativadas ou bloqueou o bot.
@@ -65,15 +85,13 @@ module.exports = {
 
         // Envia o relatório final para o Admin que executou
         const reportEmbed = new EmbedBuilder()
-            .setTitle('✅ Envio em Massa Concluído!')
-            .setDescription(`Um relatório do envio de DMs em massa foi gerado.`)
+            .setTitle('✅ Transmissão de DM Concluída!')
+            .setDescription(`O processo de envio em massa para os membros de **${guild.name}** foi finalizado.`)
             .addFields(
-                { name: 'Mensagem Enviada', value: `>>> ${messageContent}` },
-                { name: '📤 Sucessos', value: `\`${successCount}\` membros receberam a DM.`, inline: true },
-                { name: '🚫 Falhas', value: `\`${failCount}\` membros não puderam ser contatados (DMs fechadas).`, inline: true }
+                { name: '📝 Conteúdo Original', value: `\`\`\`${messageContent.substring(0, 1000)}\`\`\`` }, // Limita tamanho para não quebrar embed
+                { name: '📊 Estatísticas', value: `✅ **Sucesso:** ${successCount}\n❌ **Falhas (DM Fechada):** ${failCount}\n👥 **Total Tentado:** ${memberArray.length}` }
             )
             .setColor('#2ECC71')
-            .setFooter({ text: `Servidor: ${guild.name}` })
             .setTimestamp();
 
         await interaction.followUp({

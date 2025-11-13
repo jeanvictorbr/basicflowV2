@@ -10,6 +10,53 @@ const schema = {
         // --- NOVA COLUNA ADICIONADA AQUI ---
         active_ai_provider: { type: 'VARCHAR(50)', default: 'openai' } // RemPode ser 'openai' ou 'gemini'
     },
+    // --- INÍCIO: MÓDULO DE AUTOMAÇÕES ---
+	automations_settings: {
+		guild_id: { type: 'VARCHAR(255)', primaryKey: true },
+		enabled: { type: 'BOOLEAN', default: false }
+	},
+automations_announcements: {
+		announcement_id: { type: 'SERIAL', primaryKey: true },
+		guild_id: { type: 'VARCHAR(255)', notNull: true },
+		name: { type: 'TEXT', notNull: true },
+		channel_id: { type: 'VARCHAR(255)', notNull: true },
+		cron_string: { type: 'VARCHAR(255)', notNull: true },
+        // ATUALIZADO: content_data agora armazena a nova estrutura
+		content_data: { type: 'JSONB', notNull: true }, // { title, message, color, imageUrl, buttons: [{label, channel_id}] }
+		content_v2: { type: 'JSONB', notNull: true }, 
+		enabled: { type: 'BOOLEAN', default: true },
+		created_by: { type: 'VARCHAR(255)', notNull: true },
+        mention_everyone: { type: 'BOOLEAN', default: false },
+		created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        // Coluna do novo sistema de agendamento (essencial)
+        next_run_timestamp: { type: 'BIGINT', default: 0 }
+	},
+// --- MÓDULO DE AUTOMAÇÕES (SORTEIOS - RENOMEADO PARA EVITAR ERROS) ---
+    automations_giveaways: {
+        message_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        channel_id: { type: 'VARCHAR(255)', notNull: true },
+        host_id: { type: 'VARCHAR(255)', notNull: true },
+        prize: { type: 'TEXT', notNull: true },
+        description: { type: 'TEXT' },
+        winner_count: { type: 'INTEGER', default: 1 },
+        end_timestamp: { type: 'BIGINT', notNull: true }, // Unix timestamp ms
+        status: { type: 'VARCHAR(20)', default: 'active' }, // active, ended, cancelled, draft
+        required_roles: { type: 'TEXT[]' }, 
+        
+        bonus_roles: { type: 'JSONB' }, // Ex: {"ROLE_ID": 2} (+2 entradas)
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    automations_giveaway_participants: {
+        id: { type: 'SERIAL', primaryKey: true },
+        giveaway_message_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        entry_count: { type: 'INTEGER', default: 1 },
+        joined_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        _unique: { type: 'UNIQUE', columns: ['giveaway_message_id', 'user_id'] }
+    },
+	// --- FIM: MÓDULO DE AUTOMAÇÕES ---
+	// --- FIM: MÓDULO DE AUTOMAÇÕES ---
         // NOVA TABELA PARA ARMAZENAR ATUALIZAÇÕES
     bot_updates: {
         id: { type: 'SERIAL', primaryKey: true },
@@ -59,6 +106,7 @@ const schema = {
         ausencias_canal_logs: { type: 'VARCHAR(255)' },
         ausencias_imagem_vitrine: { type: 'VARCHAR(1024)' },
         ausencias_canal_vitrine: { type: 'VARCHAR(255)' },
+        giveaway_log_channel_id: { type: 'VARCHAR(255)' },
         registros_canal_aprovacoes: { type: 'VARCHAR(255)' },
         registros_cargo_aprovado: { type: 'VARCHAR(255)' },
         registros_canal_logs: { type: 'VARCHAR(255)' },

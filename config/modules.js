@@ -24,6 +24,10 @@ const MODULES = [
         name: 'Sugestões',
         check: (id) => id.startsWith('suggestion_') || id.startsWith('suggestions_') || id.startsWith('modal_suggestion_') || id.startsWith('select_suggestion_') || id === 'open_suggestions_menu'
     },
+    { // <-- ADICIONE ESTE BLOCO INTEIRO
+        name: 'AUTOMATIONS',
+        check: (id) => id.startsWith('aut_') || id.startsWith('open_automations_menu') || id.startsWith('automations_')
+    },
     {
         name: 'Registros',
         check: (id) => id.startsWith('registros_') || id.startsWith('modal_registro_') || id.startsWith('select_registros_') || id === 'open_registros_menu'

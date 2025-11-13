@@ -1,4 +1,5 @@
 // Substitua o conteúdo em: ui/mainMenu.js
+// (Este é o seu arquivo original, com a linha 'const hasAutomations = ...' adicionada)
 const hasFeature = require('../utils/featureCheck.js');
 const db = require('../database.js');
 const FEATURES = require('../config/features.js');
@@ -44,9 +45,9 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             const featuresList = group.features.map(f => `\`${FEATURES_MAP.get(f) || f}\``).join(', ');
 
             if (group.features.length > 1 || group.features.includes('ALL')) {
-                packages.push(`> 📦 **Pacote de Funções** (Expira em: ${formattedDate})\n>    └─ Acessos: ${featuresList}`);
+                packages.push(`> 📦 **Pacote de Funções** (Expira em: ${formattedDate})\n>     └─ Acessos: ${featuresList}`);
             } else {
-                singleFeatures.push(`> 🔑 **Função Individual** (Expira em: ${formattedDate})\n>    └─ Acesso: ${featuresList}`);
+                singleFeatures.push(`> 🔑 **Função Individual** (Expira em: ${formattedDate})\n>     └─ Acesso: ${featuresList}`);
             }
         }
         
@@ -60,7 +61,9 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
     
     const hasGuardianAccess = await hasFeature(interaction.guild.id, 'GUARDIAN_AI');
     const hasStatsAccess = await hasFeature(interaction.guild.id, 'STATS');
-    const hasArchitectAccess = await hasFeature(interaction.guild.id, 'ARQUITETO'); // <-- VERIFICAÇÃO DA NOVA FEATURE
+    const hasArchitectAccess = await hasFeature(interaction.guild.id, 'ARQUITETO');
+    // --- CORREÇÃO ADICIONADA AQUI ---
+    const hasAutomations = await hasFeature(interaction.guild.id, 'AUTOMATIONS'); 
 
     const allModules = [
         {
@@ -73,8 +76,15 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
             components: [{ type: 10, content: "🏖️ Ausências" }, { type: 10, content: "Configure todo o sistema de **ausências**." }]
         },
         { type: 14, divider: true, spacing: 2 },
+          {
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_automations_menu",disabled: !hasAutomations },
+            components: [{ type: 10, content: "⚙️ Automatizações" }, { type: 10, content: "Configure sistemas de automação como anuncios, etc." }]
+        },
+    
+        { type: 14, divider: true, spacing: 2 },
+       
         {
-            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_welcome_menu",disabled: "false" },
+            type: 9, accessory: { type: 2, style: 2, label: "Abrir", emoji: { name: "➕" }, custom_id: "open_welcome_menu",disabled: false },
             components: [{ type: 10, content: "👋 Boas-Vindas" }, { type: 10, content: "Configure as mensagens de entrada e saída." }]
         },
         { type: 14, divider: true, spacing: 2 },
@@ -166,12 +176,12 @@ module.exports = async function generateMainMenu(interaction, page = 0) {
                     "type": 1,
                     "components": [
                         { "type": 2, "style": 3, "label": "Ativar Key", "custom_id": "main_ativar_key" },
-                        { "type": 2, "style": 1, "label": "Atualizações", "emoji": { "name": "📢" }, "disabled": "false", "custom_id": "open_updates_menu" },
+                        { "type": 2, "style": 1, "label": "Atualizações", "emoji": { "name": "📢" }, "disabled": false, "custom_id": "open_updates_menu" },
                         { "type": 2, "style": 1, "label": "Estatísticas", "emoji": { "name": "📊" }, "disabled": !hasStatsAccess, "custom_id": "main_show_stats" }
                     ]
                 },
                 { type: 14, "divider": true, "spacing": 1 },
-                { type: 10, "content": " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
+                { type: 10, "content": " ↘   Conheça tambem o PoliceFlow e FactionFlow! 🥇" }
             ].filter(Boolean)
         }
     ];

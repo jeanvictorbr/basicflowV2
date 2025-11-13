@@ -6,11 +6,12 @@ const EPHEMERAL_FLAG = 1 << 6;
 module.exports = {
     customId: 'dev_guild_force_leave_',
     async execute(interaction) {
+        // Pega o ID da guilda (índice 4)
         const guildId = interaction.customId.split('_')[4];
-        // CORREÇÃO: Trocado .cache.get() por .fetch() para garantir que a guilda seja encontrada
+        
+        // Tenta buscar a guilda
         const guild = await interaction.client.guilds.fetch(guildId).catch(() => null);
 
-        // Se, por algum motivo, a guilda realmente não existir, exibe uma mensagem de erro clara.
         if (!guild) {
             return interaction.update({
                 components: [
@@ -26,8 +27,9 @@ module.exports = {
             });
         }
 
+        // CORREÇÃO AQUI: Alterado o ID para 'dev_guild_confirm_leave_' para evitar conflito
         const confirmationButtons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`dev_guild_force_leave_confirm_${guildId}`).setLabel('Sim, Forçar Saída').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId(`dev_guild_confirm_leave_${guildId}`).setLabel('Sim, Forçar Saída').setStyle(ButtonStyle.Danger),
             new ButtonBuilder().setCustomId('dev_manage_guilds').setLabel('Cancelar').setStyle(ButtonStyle.Secondary)
         );
 

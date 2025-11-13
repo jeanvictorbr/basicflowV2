@@ -3,6 +3,20 @@ const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const db = require('../database.js');
 const ms = require('ms');
 
+/**
+ * Adicionada: Função para converter HEX para Decimal
+ * Valida e converte uma string de cor HEX (ex: #FF0000) para seu valor decimal.
+ * @param {string} hex - A string da cor HEX.
+ * @returns {number|null} O valor decimal ou null se inválido.
+ */
+function parseColor(hex) {
+    if (!hex || typeof hex !== 'string') return null;
+    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+    const result = /^#?([a-f\d]{6})$/i.exec(hex);
+    return result ? parseInt(result[1], 16) : null;
+}
+
 async function hasModPermission(interaction) {
     const settings = (await db.query('SELECT mod_roles FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
     const modRoles = settings?.mod_roles?.split(',') || [];
@@ -125,4 +139,9 @@ async function executePunishment(interaction, action, target, reason, durationSt
     }
 }
 
-module.exports = executePunishment;
+// CORREÇÃO: Exportar todas as funções necessárias
+module.exports = {
+    executePunishment,
+    hasModPermission,
+    parseColor
+};

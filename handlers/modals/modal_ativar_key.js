@@ -38,9 +38,9 @@ module.exports = {
                     await client.query(
                         `UPDATE guild_features 
                          SET expires_at = CASE 
-                                            WHEN expires_at < NOW() THEN NOW() + INTERVAL '1 day' * $3 
-                                            ELSE expires_at + INTERVAL '1 day' * $3 
-                                          END 
+                                WHEN expires_at < NOW() THEN NOW() + INTERVAL '1 day' * $3 
+                                ELSE expires_at + INTERVAL '1 day' * $3 
+                             END 
                          WHERE guild_id = $1 AND feature_key = $2`,
                         [interaction.guild.id, feature, duration_days]
                     );
@@ -56,8 +56,9 @@ module.exports = {
             const newUsesLeft = keyData.uses_left - 1;
             await client.query('UPDATE activation_keys SET uses_left = $1 WHERE key = $2', [newUsesLeft, key]);
             
-            // CORREÇÃO: A coluna chama-se 'grants_features' e não 'features_granted'.
-            await client.query('INSERT INTO activation_key_history (key, guild_id, user_id, grants_features, guild_name, user_tag) VALUES ($1, $2, $3, $4, $5, $6)', 
+            // CORREÇÃO FINAL: Adicionando 'activated_at' na query para garantir que o registro seja salvo corretamente
+            await client.query(
+                'INSERT INTO activation_key_history (key, guild_id, user_id, grants_features, guild_name, user_tag, activated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())', 
                 [key, interaction.guild.id, interaction.user.id, grants_features, interaction.guild.name, interaction.user.tag]
             );
 
@@ -91,6 +92,7 @@ module.exports = {
                 }
             }
 
+            // Esta resposta é LEGACY (content + sem V2_FLAG) e está correta para este arquivo.
             await interaction.editReply({
                 content: `✅ Licença ativada! As funcionalidades **[${featuresToGrant.join(', ')}]** foram ativadas/estendidas por ${duration_days} dias.`
             });
