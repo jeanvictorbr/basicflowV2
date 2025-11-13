@@ -8,22 +8,35 @@ const EPHEMERAL_FLAG = 1 << 6;
 module.exports = {
     customId: 'modal_ativar_key',
     async execute(interaction) {
-        // A resposta agora usa flags desde o início
         await interaction.deferReply({ flags: EPHEMERAL_FLAG });
 
-        const key = interaction.fields.getTextInputValue('input_key');
+        const key = interaction.fields.getTextInputValue('input_key').trim();
         const client = await db.getClient();
 
         try {
             await client.query('BEGIN');
 
+            // 1. Verifica se a chave existe e tem usos restantes
             const keyResult = await client.query('SELECT * FROM activation_keys WHERE key = $1 AND uses_left > 0 FOR UPDATE', [key]);
             const keyData = keyResult.rows[0];
 
             if (!keyData) {
                 await client.query('ROLLBACK');
-                return interaction.editReply({ content: '❌ Chave de ativação inválida ou já utilizada.' });
+                return interaction.editReply({ content: '❌ Chave de ativação inválida, esgotada ou não encontrada.' });
             }
+
+            // 2. TRAVA DE SEGURANÇA: Verifica se esta guilda JÁ usou esta chave específica
+            const historyCheck = await client.query(
+                'SELECT * FROM activation_key_history WHERE key = $1 AND guild_id = $2',
+                [key, interaction.guild.id]
+            );
+
+            if (historyCheck.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return interaction.editReply({ content: '❌ Esta chave já foi ativada neste servidor. Você não pode usar a mesma chave duas vezes na mesma guilda.' });
+            }
+
+            // --- Se passou, prossegue com a ativação ---
 
             const { grants_features, duration_days } = keyData;
             const featuresToGrant = grants_features.split(',').map(f => f.trim());
@@ -53,10 +66,11 @@ module.exports = {
                 }
             }
 
+            // Consome um uso da chave
             const newUsesLeft = keyData.uses_left - 1;
             await client.query('UPDATE activation_keys SET uses_left = $1 WHERE key = $2', [newUsesLeft, key]);
             
-            // CORREÇÃO FINAL: Adicionando 'activated_at' na query para garantir que o registro seja salvo corretamente
+            // Registra no histórico para a trava funcionar no futuro
             await client.query(
                 'INSERT INTO activation_key_history (key, guild_id, user_id, grants_features, guild_name, user_tag, activated_at) VALUES ($1, $2, $3, $4, $5, $6, NOW())', 
                 [key, interaction.guild.id, interaction.user.id, grants_features, interaction.guild.name, interaction.user.tag]
@@ -64,6 +78,7 @@ module.exports = {
 
             await client.query('COMMIT');
 
+            // Webhook de Log (Opcional)
             if (process.env.PREMIUM_LOG_WEBHOOK_URL) {
                 try {
                     const activationEmbed = new EmbedBuilder()
@@ -92,7 +107,6 @@ module.exports = {
                 }
             }
 
-            // Esta resposta é LEGACY (content + sem V2_FLAG) e está correta para este arquivo.
             await interaction.editReply({
                 content: `✅ Licença ativada! As funcionalidades **[${featuresToGrant.join(', ')}]** foram ativadas/estendidas por ${duration_days} dias.`
             });
