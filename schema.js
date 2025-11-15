@@ -15,6 +15,17 @@ const schema = {
 		guild_id: { type: 'VARCHAR(255)', primaryKey: true },
 		enabled: { type: 'BOOLEAN', default: false }
 	},
+    
+ // --- NOVA TABELA PARA BLUEPRINTS DO ARQUITETO ---
+    guild_blueprints: {
+        blueprint_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        created_by: { type: 'VARCHAR(255)', notNull: true },
+        template_name: { type: 'VARCHAR(100)', notNull: true },
+        template_data: { type: 'JSONB', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        _unique: { type: 'UNIQUE', columns: ['created_by', 'template_name'] }
+    },
 automations_announcements: {
 		announcement_id: { type: 'SERIAL', primaryKey: true },
 		guild_id: { type: 'VARCHAR(255)', notNull: true },

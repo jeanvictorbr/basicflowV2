@@ -3,11 +3,11 @@ const { V2_FLAG } = require('../utils/constants');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('arquiteto')
-        .setDescription('Inicia o assistente de arquitetura de servidor (Premium).'),
+        .setName('blueprint-importar')
+        .setDescription('Lista os seus blueprints salvos para importação neste servidor. (Dev)'),
     v2: V2_FLAG,
+    devOnly: true, // <-- ADICIONE ESTA LINHA
     execute: async (interaction, client) => {
-        // Este comando agora será tratado pelo handler/commands/arquiteto.js
-        // que já existe e funciona.
+        // A lógica está no handler
     }
 };
