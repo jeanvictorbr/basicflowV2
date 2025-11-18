@@ -189,6 +189,15 @@ automations_announcements: {
         suggestions_mention_everyone: { type: 'BOOLEAN', default: false },
         mod_log_channel: { type: 'VARCHAR(255)' },
         bot_enabled_in_guild: { type: 'BOOLEAN', default: true },
+        // ===== COLUNA DO CLOUDFLOW ADICIONADA AQUI =====
+        cloudflow_oauth_secret: { type: 'TEXT' },
+        // --- CONFIGURAÇÕES DA VITRINE DE VERIFICAÇÃO CLOUDFLOW ---
+        cloudflow_verify_role_id: { type: 'VARCHAR(255)' }, // Cargo a ser dado
+        cloudflow_verify_channel_id: { type: 'VARCHAR(255)' }, // Canal da mensagem
+        cloudflow_verify_message_id: { type: 'VARCHAR(255)' }, // ID da mensagem
+        cloudflow_verify_config: { type: 'JSONB' }, // { title, description, image, footer }
+        // --------------------------------------------------------
+        // ===============================================
         maintenance_message_guild: { type: 'TEXT' },
         mod_roles: { type: 'TEXT' },
         mod_temp_ban_enabled: { type: 'BOOLEAN', default: false },
@@ -219,6 +228,12 @@ automations_announcements: {
         store_auto_close_hours: { type: 'INTEGER', default: 24 },
         store_premium_dm_flow_enabled: { type: 'BOOLEAN', default: false }
     },
+    pending_verification: {
+        guild_id: { type: 'VARCHAR(255)', primaryKey: true },
+        user_id: { type: 'VARCHAR(255)', primaryKey: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+    
     
     // ... (O resto do seu schema.js continua aqui)
     
@@ -622,7 +637,50 @@ automations_announcements: {
         captcha_code: { type: 'VARCHAR(10)', notNull: true },
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
+    // -----------------------------------------------------------------
+    // NOVAS TABELAS PARA CLOUDFLOW
+    // -----------------------------------------------------------------
 
+    cloudflow_backups: {
+        backup_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(20)', notNull: true },
+        user_id: { type: 'VARCHAR(20)', notNull: true },
+        backup_name: { type: 'TEXT', notNull: true },
+        password_hash: { type: 'TEXT', notNull: true },
+        created_at: { type: 'BIGINT', notNull: true },
+        backup_data: { type: 'JSONB' }
+    },
+// =================================================================
+// =================================================================
+    // ⬇️⬇️⬇️ SUBSTITUA O BLOCO 'cloudflow_verified_users' POR ESTE ⬇️⬇️⬇️
+    // =================================================================
+// --- TABELA ATUALIZADA PARA OAUTH2 ---
+    cloudflow_verified_users: {
+        user_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', primaryKey: true }, // Guild onde ele se verificou originalmente
+        access_token: { type: 'TEXT', notNull: true }, // Token criptografado
+        refresh_token: { type: 'TEXT', notNull: true }, // Token criptografado
+        expires_at: { type: 'BIGINT', notNull: true },
+        iv: { type: 'TEXT' }, // Para desencriptar
+        scopes: { type: 'TEXT' }, // 'identify guilds.join'
+        verified_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
+
+ guild_aut_purge: {
+        guild_id: { type: 'VARCHAR(255)', primaryKey: true },
+        channel_id: { type: 'VARCHAR(255)', primaryKey: true },
+        max_age_hours: { type: 'NUMERIC(10, 4)', default: 24 }, // MUDOU DE INTEGER PARA NUMERIC
+        last_run: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        enabled: { type: 'BOOLEAN', default: true }
+    },
+    // =================================================================
+    // ⬆️⬆️⬆️ FIM DA CORREÇÃO ⬆️⬆️⬆️
+    // =====
+    // =================================================================
+    // ⬆️⬆️⬆️ O BLOCO ANTIGO DA LINHA 620 FOI REMOVIDO ⬆️⬆️⬆️
+    // =================================================================
+
+    // Adicione este bloco dentro do objeto 'schema' no seu arquivo schema.js
     // Adicione este bloco dentro do objeto 'schema' no seu arquivo schema.js
     command_usage: {
         id: { type: 'SERIAL', primaryKey: true },
@@ -632,6 +690,17 @@ automations_announcements: {
         // CORREÇÃO AQUI: 'NOW()' é o padrão correto para o seu sistema.
         used_at: { type: 'TIMESTAMP WITH TIME ZONE', default: 'NOW()' }
     },
+cloudflow_transfer_logs: {
+        transfer_id: { type: 'SERIAL', primaryKey: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        source_guild_id: { type: 'VARCHAR(255)' }, // De onde ele veio
+        target_guild_id: { type: 'VARCHAR(255)', notNull: true }, // Para onde foi
+        transferred_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        status: { type: 'VARCHAR(50)', notNull: true }, // 'success', 'failed', 'skipped_exists'
+        // Regra para nunca transferir o mesmo user para a mesma guild 2x
+        _unique: { type: 'UNIQUE', columns: ['user_id', 'target_guild_id'] }
+    },
+    
 };
 
 module.exports = schema;

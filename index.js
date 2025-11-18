@@ -1,6 +1,9 @@
-// Substitua o conteúdo em: index.js
+// File: index.js
+// CONTEÚDO COMPLETO E CORRIGIDO
+
 const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
+const { startPurgeMonitor } = require('./utils/purgeMonitor');
 const { checkTokenUsage } = require('./utils/tokenMonitor.js');
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
@@ -26,7 +29,11 @@ const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { approvePurchase } = require('./utils/approvePurchase.js');
 const { startGiveawayMonitor } = require('./utils/giveawayManager');
 
-
+// --- IMPORTAÇÕES ADICIONADAS PARA O OAUTH2 FUNCIONAR ---
+const url = require('url');
+const crypto = require('crypto');
+const axios = require('axios'); // Mais seguro que fetch nativo
+// -
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers] });
 automationsMonitor.start(client); //
 client.pontoIntervals = new Map();
@@ -34,6 +41,7 @@ client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 client.hangmanTimeouts = new Map();
 client.moduleStatusCache = new Map();
+
 
 // ===================================================================
 //  ⬇️  COLEÇÕES DE HANDLERS CORRIGIDAS  ⬇️
@@ -46,6 +54,23 @@ client.selects = new Collection();
 //  ⬆️  FIM DA CORREÇÃO ⬆️
 // ===================================================================
 
+// --- FUNÇÕES DE CRIPTOGRAFIA ADICIONADAS ---
+const ALGORITHM = 'aes-256-cbc';
+const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(process.env.DISCORD_TOKEN)).digest('base64').substr(0, 32);
+
+function encrypt(text) {
+    try {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY), iv);
+        let encrypted = cipher.update(text);
+        encrypted = Buffer.concat([encrypted, cipher.final()]);
+        return { iv: iv.toString('hex'), content: encrypted.toString('hex') };
+    } catch (e) {
+        console.error('[Crypto] Erro ao encriptar:', e);
+        return null;
+    }
+}
+// -------------------------------------------
 
 const commandUsage = new Map();
 const COMMAND_THRESHOLD = 15;
@@ -93,10 +118,12 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
 });
 
+
 // --- INÍCIO DA NOVA LÓGICA DE DESPEDIDA ---
 client.on(Events.GuildMemberRemove, async (member) => {
     const settingsResult = await db.query('SELECT goodbye_enabled, goodbye_channel_id, goodbye_message_text FROM guild_settings WHERE guild_id = $1', [member.guild.id]);
     const settings = settingsResult.rows[0];
+    
 
     // Verifica se o sistema está ativado e se o canal está configurado
     if (!settings || !settings.goodbye_enabled || !settings.goodbye_channel_id) return;
@@ -241,11 +268,26 @@ try {
         try {
             const handler = require(path.join(commandHandlersPath, file));
             const commandName = file.split('.')[0];
-            if (handler.execute) {
+            
+            // ===================================================================
+            //  ⬇️  A CORREÇÃO ESTÁ AQUI  ⬇️
+            // ===================================================================
+            // Verifica se o handler é uma função direta (ex: module.exports = async (...) => ...)
+            if (typeof handler === 'function') {
+                client.commandHandlers.set(commandName, handler);
+            } 
+            // Verifica o padrão antigo (ex: module.exports = { execute: ... })
+            else if (handler.execute && typeof handler.execute === 'function') {
                 client.commandHandlers.set(commandName, handler.execute);
-            } else {
-                console.warn(`[HANDLER] ⚠️ Handler de comando ${file} não possui 'execute'.`);
+            } 
+            // Se não for nenhum dos dois, avisa o erro
+            else {
+                console.warn(`[HANDLER] ⚠️ Handler de comando ${file} não é uma função válida ou não possui 'execute'.`);
             }
+            // ===================================================================
+            //  ⬆️  FIM DA CORREÇÃO ⬆️
+            // ===================================================================
+
         } catch (error) {
             console.error(`[HANDLER] ❌ Erro ao carregar comando ${file}:`, error);
         }
@@ -293,6 +335,10 @@ console.log('--- Handlers Carregados ---');
 client.once(Events.ClientReady, async () => {
     startGiveawayMonitor(client);
     await db.synchronizeDatabase();
+    try {
+        startPurgeMonitor(client, db); // Inicia o cronjob
+    } catch(e) { console.error('[Monitor] Erro ao iniciar Purge:', e); }
+
     await updateModuleStatusCache(client);
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
@@ -321,6 +367,7 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
     setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
     setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000);
+    setInterval(checkPendingVerifications, 7000);
     setInterval(() => syncUsedKeys(client), 60 * 1000);
     setInterval(() => updateModuleStatusCache(client), 15 * 60 * 1000);
     setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
@@ -465,91 +512,316 @@ client.on(Events.InteractionCreate, async interaction => {
         }
     }
 });
+async function checkPendingVerifications() {
+    console.log('[VerificationLoop] Checando verificações pendentes...');
+    
+    let pendingUsers = [];
+    try {
+        const { rows } = await db.query('SELECT * FROM pending_verification LIMIT 10');
+        pendingUsers = rows;
+    } catch (e) {
+        console.error('[VerificationLoop] Erro ao buscar fila:', e.message);
+        return; 
+    }
+
+    if (pendingUsers.length === 0) {
+        return; 
+    }
+    
+    console.log(`[VerificationLoop] Encontradas ${pendingUsers.length} verificações.`);
+
+    for (const user of pendingUsers) {
+        try {
+            const guild = await client.guilds.cache.get(user.guild_id) || await client.guilds.fetch(user.guild_id);
+            if (!guild) {
+                // ... (código de falha de guild)
+                await db.query('DELETE FROM pending_verification WHERE guild_id = $1 AND user_id = $2', [user.guild_id, user.user_id]);
+                continue;
+            }
+
+            const settings = await db.getGuildSettings(user.guild_id);
+            const roleId = settings?.cloudflow_verify_role_id;
+            
+            if (!roleId) {
+                // ... (código de falha de roleId)
+                await db.query('DELETE FROM pending_verification WHERE guild_id = $1 AND user_id = $2', [user.guild_id, user.user_id]);
+                continue;
+            }
+            
+            const role = await guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId);
+            if (!role) {
+                // ... (código de falha de role)
+                await db.query('DELETE FROM pending_verification WHERE guild_id = $1 AND user_id = $2', [user.guild_id, user.user_id]);
+                continue;
+            }
+
+            const member = await guild.members.cache.get(user.user_id) || await guild.members.fetch(user.user_id);
+            
+            if (member) {
+                // 1. Adiciona o cargo
+                await member.roles.add(role);
+                console.log(`[VerificationLoop] Cargo ${role.name} ADICIONADO para ${member.user.username} em ${guild.name}.`);
+
+                // =====================================================================
+                // ⬇️ CORREÇÃO: REGISTRAR NA TABELA PERMANENTE (ADICIONE ISSO) ⬇️
+                // =====================================================================
+                try {
+                    // ⚠️ MUDE 'guild_verified_users' SE O NOME DA SUA TABELA FOR OUTRO
+                    const insertQuery = `
+                        INSERT INTO cloudflow_verified_users (guild_id, user_id) 
+                        VALUES ($1, $2) 
+                        ON CONFLICT (guild_id, user_id) DO NOTHING
+                    `;
+                    await db.query(insertQuery, [guild.id, member.id]);
+                    console.log(`[VerificationLoop] Usuário ${member.user.username} REGISTRADO como verificado.`);
+                } catch (regError) {
+                    console.error(`[VerificationLoop] Falha ao REGISTRAR usuário ${member.user.username} no DB permanente:`, regError.message);
+                    // Não paramos por isso, o cargo já foi dado.
+                }
+                // =====================================================================
+                // ⬆️ FIM DA CORREÇÃO ⬆️
+                // =====================================================================
+
+                // 2. Tenta enviar a DM para o usuário
+                try {
+                    const embed = new EmbedBuilder()
+                        .setColor('#57f287') // Verde Sucesso
+                        .setTitle('✅ Verificação Concluída!')
+                        .setDescription(`Olá, ${member.user.username}! Seu acesso foi confirmado.`)
+                        .setThumbnail(guild.iconURL({ dynamic: true, size: 128 }))
+                        .addFields(
+                            { name: 'Servidor', value: `**${guild.name}**`, inline: true },
+                            { name: 'Cargo Recebido', value: `${role.name}`, inline: true }
+                        )
+                        .setTimestamp()
+                        .setFooter({ text: `Bem-vindo(a) ao ${guild.name}!` });
+                    
+                    await member.send({ embeds: [embed] });
+                    console.log(`[VerificationLoop] DM de sucesso enviada para ${member.user.username}.`);
+                
+                } catch (dmError) {
+                    console.warn(`[VerificationLoop] Falha ao enviar DM para ${member.user.username}. (Provavelmente DMs fechadas).`);
+                }
+
+            } else {
+                console.warn(`[VerificationLoop] Membro ${user.user_id} não encontrado em ${guild.name}. (Talvez saiu?)`);
+            }
+
+            // 3. Tira da fila
+            await db.query('DELETE FROM pending_verification WHERE guild_id = $1 AND user_id = $2', [user.guild_id, user.user_id]);
+
+        } catch (err) {
+            console.error(`[VerificationLoop] Erro ao processar ${user.user_id} em ${user.guild_id}: ${err.message}`);
+            if (err.message.includes('Missing Permissions')) {
+                await db.query('DELETE FROM pending_verification WHERE guild_id = $1 AND user_id = $2', [user.guild_id, user.user_id]);
+            }
+        }
+    }
+}
 // ===================================================================
 //  ⬆️  FIM DA CORREÇÃO DO ROTEADOR ⬆️
 // ===================================================================
 
-// --- INÍCIO DA CORREÇÃO DO WEBHOOK (ADICIONADO FECHAMENTO) ---
-const server = http.createServer(async (req, res) => {
-    if (req.method === 'POST' && req.url === '/mp-webhook') {
-        let body = '';
-        req.on('data', chunk => { body += chunk.toString(); });
-        req.on('end', async () => {
+    // --- INÍCIO DA CORREÇÃO DO WEBHOOK E OAUTH2 UNIFICADOS ---
+    const server = http.createServer(async (req, res) => {
+        const reqUrl = url.parse(req.url, true);
+
+        // 1. Rota de Callback do OAuth2 (CloudFlow)
+        if (reqUrl.pathname === '/cloudflow/callback') {
+            const code = reqUrl.query.code;
+            const guildId = reqUrl.query.state; // O state carrega o ID da guilda
+
+            if (!code) {
+                console.log('[OAuth] Erro: Código não fornecido.');
+                res.writeHead(400);
+                return res.end('Erro: Codigo de autorizacao nao encontrado.');
+            }
+
             try {
-                const notification = JSON.parse(body);
-                if (notification.type === 'payment') {
-                    const paymentId = notification.data.id;
-                    console.log(`[MP Webhook] Notificação de pagamento recebida: ${paymentId}`);
-                    const cartResult = await db.query('SELECT * FROM store_carts WHERE payment_id = $1', [paymentId]);
-                    const cart = cartResult.rows[0];
-                    if (!cart) {
-                        console.warn(`[MP Webhook] Pagamento ${paymentId} recebido, mas nenhum carrinho correspondente encontrado.`);
-                        res.writeHead(200);
-                        res.end('OK');
-                        return;
-                    }
-                    if (cart.status === 'delivered') {
-                        console.log(`[MP Webhook] Pagamento ${paymentId} já foi processado (status: ${cart.status}). Ignorando.`);
-                        res.writeHead(200);
-                        res.end('OK');
-                        return;
-                    }
-                    const settings = (await db.query('SELECT store_mp_token FROM guild_settings WHERE guild_id = $1', [cart.guild_id])).rows[0];
-                    if(!settings || !settings.store_mp_token) {
-                        console.error(`[MP Webhook] Token do MP não encontrado para a guild ${cart.guild_id}`);
-                        res.writeHead(500);
-                        res.end('Internal Server Error');
-                        return;
-                    }
-                    const mpClient = new MercadoPagoConfig({ accessToken: settings.store_mp_token });
-                    const payment = new Payment(mpClient);
-                    const paymentInfo = await payment.get({ id: paymentId });
+                // Troca do CODE pelo TOKEN usando AXIOS (Mais robusto que fetch em alguns ambientes)
+                const params = new URLSearchParams();
+                params.append('client_id', process.env.CLIENT_ID);
+                params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
+                params.append('grant_type', 'authorization_code');
+                params.append('code', code);
+                params.append('redirect_uri', process.env.REDIRECT_URI);
+                params.append('scope', 'identify guilds.join'); // Escopo necessário
 
-                    if (paymentInfo.status === 'approved') {
-                        console.log(`[MP Webhook] Pagamento ${paymentId} para o carrinho ${cart.channel_id} foi APROVADO. Iniciando entrega...`);
-                        
-                        // Chama a função centralizada
-                        await approvePurchase(client, cart.guild_id, cart.channel_id, null);
+                console.log('[OAuth] Tentando trocar token...'); 
+                
+                const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                });
 
-                        // Lógica de fechamento automático do carrinho
-                        try {
-                            const guild = await client.guilds.fetch(cart.guild_id);
-                            const channel = await guild.channels.fetch(cart.channel_id);
-                            
-                            if (channel) {
-                                await channel.send('✅ Pagamento aprovado! Este carrinho será fechado e deletado em 10 segundos.');
-                                
-                                setTimeout(async () => {
-                                    try {
-                                        await channel.delete('Compra aprovada e finalizada (Mercado Pago).');
-                                    } catch (e) {
-                                        console.error(`[Store MP] Falha ao deletar o canal do carrinho ${cart.channel_id}:`, e);
-                                    }
-                                }, 10000); // 10 segundos
+                const tokenData = tokenResponse.data;
+                console.log('[OAuth] Token recebido com sucesso.'); 
+
+                // Buscar dados do usuário
+                const userResponse = await axios.get('https://discord.com/api/users/@me', {
+                    headers: { authorization: `${tokenData.token_type} ${tokenData.access_token}` }
+                });
+                const userData = userResponse.data;
+                console.log(`[OAuth] Usuário autenticado: ${userData.username} (${userData.id})`); 
+
+                // Criptografar tokens
+                const encAccess = encrypt(tokenData.access_token);
+                const encRefresh = encrypt(tokenData.refresh_token);
+                
+                if (!encAccess || !encRefresh) {
+                    throw new Error('Falha na criptografia dos tokens.');
+                }
+
+                const expiresAt = Date.now() + (tokenData.expires_in * 1000);
+
+                // Salvar no Banco de Dados
+                console.log('[OAuth] Salvando no banco de dados...');
+                
+                await db.query(`
+                    INSERT INTO cloudflow_verified_users 
+                    (user_id, guild_id, access_token, refresh_token, expires_at, iv, scopes)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    ON CONFLICT (user_id, guild_id) 
+                    DO UPDATE SET 
+                        access_token = EXCLUDED.access_token,
+                        refresh_token = EXCLUDED.refresh_token,
+                        expires_at = EXCLUDED.expires_at,
+                        iv = EXCLUDED.iv,
+                        scopes = EXCLUDED.scopes;
+                `, [
+                    userData.id, 
+                    guildId || 'global', 
+                    encAccess.content, 
+                    encRefresh.content, 
+                    expiresAt, 
+                    encAccess.iv, 
+                    tokenData.scope
+                ]);
+
+                // Tentar dar o cargo na guilda (se houver guildId válido)
+                if (guildId && guildId !== 'global') {
+                    try {
+                        const guild = await client.guilds.fetch(guildId).catch(() => null);
+                        if (guild) {
+                            const settings = await db.getGuildSettings(guildId);
+                            if (settings && settings.cloudflow_verify_role_id) {
+                                const member = await guild.members.fetch(userData.id).catch(() => null);
+                                if (member) {
+                                    await member.roles.add(settings.cloudflow_verify_role_id);
+                                    console.log(`[OAuth] Cargo adicionado para ${userData.username} na guild ${guildId}`);
+                                }
                             }
-                        } catch (e) {
-                            console.error(`[Store MP] Falha ao encontrar canal ${cart.channel_id} para fechamento:`, e);
                         }
+                    } catch (roleError) {
+                        console.error(`[OAuth] Erro ao dar cargo:`, roleError.message);
                     }
                 }
-                res.writeHead(200);
-                res.end('OK');
+
+                // Resposta de Sucesso HTML
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head><title>Verificado</title></head>
+                    <body style="background-color:#2b2d31; color:#fff; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
+                        <div style="text-align:center;">
+                            <h1 style="color:#57F287; font-size:40px;">✅ Sucesso!</h1>
+                            <p style="font-size:18px;">Sua conta <b>${userData.username}</b> foi verificada e vinculada com sucesso.</p>
+                            <p style="color:#aaa;">Você pode fechar esta janela e voltar ao Discord.</p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+
             } catch (error) {
-                console.error('[MP Webhook] Erro ao processar notificação:', error);
-                res.writeHead(500);
-                res.end('Internal Server Error');
+                console.error('[CloudFlow OAuth] ❌ Erro Fatal:', error.message);
+                if (error.response) console.error('Dados do Erro:', error.response.data); 
+                
+                res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(`<h1>❌ Erro na Verificação</h1><p>Ocorreu um erro interno: ${error.message}</p><p>Verifique se o CLIENT_SECRET e REDIRECT_URI estão corretos no painel do bot.</p>`);
             }
-        });
-    } else {
-        res.writeHead(404);
-        res.end('Not Found');
-    }
-});
-// --- FIM DA CORREÇÃO DO WEBHOOK ---
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
-});
+            return;
+        }
+
+        // 2. Rota do Webhook Mercado Pago
+        if (req.method === 'POST' && req.url === '/mp-webhook') {
+            let body = '';
+            req.on('data', chunk => { body += chunk.toString(); });
+            req.on('end', async () => {
+                try {
+                    const notification = JSON.parse(body);
+                    if (notification.type === 'payment') {
+                        const paymentId = notification.data.id;
+                        console.log(`[MP Webhook] Notificação de pagamento recebida: ${paymentId}`);
+                        const cartResult = await db.query('SELECT * FROM store_carts WHERE payment_id = $1', [paymentId]);
+                        const cart = cartResult.rows[0];
+                        if (!cart) {
+                            console.warn(`[MP Webhook] Pagamento ${paymentId} recebido, mas nenhum carrinho correspondente encontrado.`);
+                            res.writeHead(200);
+                            res.end('OK');
+                            return;
+                        }
+                        if (cart.status === 'delivered') {
+                            console.log(`[MP Webhook] Pagamento ${paymentId} já foi processado (status: ${cart.status}). Ignorando.`);
+                            res.writeHead(200);
+                            res.end('OK');
+                            return;
+                        }
+                        const settings = (await db.query('SELECT store_mp_token FROM guild_settings WHERE guild_id = $1', [cart.guild_id])).rows[0];
+                        if(!settings || !settings.store_mp_token) {
+                            console.error(`[MP Webhook] Token do MP não encontrado para a guild ${cart.guild_id}`);
+                            res.writeHead(500);
+                            res.end('Internal Server Error');
+                            return;
+                        }
+                        const mpClient = new MercadoPagoConfig({ accessToken: settings.store_mp_token });
+                        const payment = new Payment(mpClient);
+                        const paymentInfo = await payment.get({ id: paymentId });
+
+                        if (paymentInfo.status === 'approved') {
+                            console.log(`[MP Webhook] Pagamento ${paymentId} para o carrinho ${cart.channel_id} foi APROVADO. Iniciando entrega...`);
+                            
+                            // Chama a função centralizada
+                            await approvePurchase(client, cart.guild_id, cart.channel_id, null);
+
+                            // Lógica de fechamento automático do carrinho
+                            try {
+                                const guild = await client.guilds.fetch(cart.guild_id);
+                                const channel = await guild.channels.fetch(cart.channel_id);
+                                
+                                if (channel) {
+                                    await channel.send('✅ Pagamento aprovado! Este carrinho será fechado e deletado em 10 segundos.');
+                                    
+                                    setTimeout(async () => {
+                                        try {
+                                            await channel.delete('Compra aprovada e finalizada (Mercado Pago).');
+                                        } catch (e) {
+                                            console.error(`[Store MP] Falha ao deletar o canal do carrinho ${cart.channel_id}:`, e);
+                                        }
+                                    }, 10000); // 10 segundos
+                                }
+                            } catch (e) {
+                                console.error(`[Store MP] Falha ao encontrar canal ${cart.channel_id} para fechamento:`, e);
+                            }
+                        }
+                    }
+                    res.writeHead(200);
+                    res.end('OK');
+                } catch (error) {
+                    console.error('[MP Webhook] Erro ao processar notificação:', error);
+                    res.writeHead(500);
+                    res.end('Internal Server Error');
+                }
+            });
+        } else {
+            res.writeHead(404);
+            res.end('Not Found');
+        }
+    });
+    // --- FIM DA CORREÇÃO DO WEBHOOK ---
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+        console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
+    });
 // Substitua este bloco inteiro no seu arquivo index.js
 
 client.on(Events.MessageCreate, async (message) => {
@@ -850,7 +1122,7 @@ client.on(Events.MessageCreate, async (message) => {
         // 3. Condição para a IA responder
         // A IA responde se:
         //   - O status for 'active' E a mensagem for do dono do ticket
-        //   - OU se o bot for mencionado diretamente (por qualquer um no ticket)
+        //   - OU se o bot for mencionado diretamente (porquerquer um no ticket)
         const shouldReply = (ticket.ai_assistant_status === 'active' && isTicketOwner) || botWasMentioned;
 
         if (!shouldReply) return;

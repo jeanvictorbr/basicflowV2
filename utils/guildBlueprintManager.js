@@ -1,10 +1,24 @@
 const db = require('../database.js');
 const { ChannelType, PermissionsBitField } = require('discord.js');
 
+// Helper para logar
+const log = async (logChannel, message) => {
+    if (logChannel) {
+        try {
+            await logChannel.send(message);
+        } catch (e) {
+            console.warn(`Falha ao logar no canal: ${e.message}`);
+        }
+    } else {
+        // Se não houver canal, apenas loga no console
+        console.log(`[guildBlueprintManager] ${message}`);
+    }
+};
+
 // Função de exportação (executada em segundo plano)
 async function exportGuildBlueprint(guild, userId, templateName, logChannel) {
     try {
-        await logChannel.send(`Iniciando exportação do blueprint: **${templateName}**\nGuilda: ${guild.name} (${guild.id})`);
+        await log(logChannel, `Iniciando exportação do blueprint: **${templateName}**\nGuilda: ${guild.name} (${guild.id})`);
         
         const blueprint = {
             roles: [],
@@ -13,7 +27,7 @@ async function exportGuildBlueprint(guild, userId, templateName, logChannel) {
         };
 
         // 1. Salvar Cargos
-        await logChannel.send('`[1/3]` 📥 Coletando cargos...');
+        await log(logChannel, '`[1/3]` 📥 Coletando cargos...');
         const roles = await guild.roles.fetch();
         const sortedRoles = roles
             .filter(role => !role.managed && role.name !== '@everyone')
@@ -29,10 +43,10 @@ async function exportGuildBlueprint(guild, userId, templateName, logChannel) {
                 position: role.position
             });
         }
-        await logChannel.send(`> 💾 ${blueprint.roles.length} cargos salvos.`);
+        await log(logChannel, `> 💾 ${blueprint.roles.length} cargos salvos.`);
 
         // 2. Salvar Canais (Categorias primeiro)
-        await logChannel.send('`[2/3]` 📥 Coletando canais e categorias...');
+        await log(logChannel, '`[2/3]` 📥 Coletando canais e categorias...');
         const channels = await guild.channels.fetch();
         
         const categories = channels
@@ -42,7 +56,7 @@ async function exportGuildBlueprint(guild, userId, templateName, logChannel) {
         const textAndVoiceChannels = channels
             .filter(c => 
                 (c.type === ChannelType.GuildText || c.type === ChannelType.GuildVoice) && 
-                c.id !== logChannel.id // Ignora o próprio canal de log
+                (!logChannel || c.id !== logChannel.id) // Ignora o canal de log se ele for fornecido
             )
             .sort((a, b) => a.position - b.position);
 
@@ -79,43 +93,49 @@ async function exportGuildBlueprint(guild, userId, templateName, logChannel) {
             });
         }
         
-        await logChannel.send(`> 💾 ${blueprint.categories.length} categorias e ${blueprint.channels.length} canais salvos.`);
+        await log(logChannel, `> 💾 ${blueprint.categories.length} categorias e ${blueprint.channels.length} canais salvos.`);
 
-        // 3. Salvar no Banco de Dados
-        await logChannel.send('`[3/3]` 💿 Salvando no banco de dados...');
-        await db.query(
-            'INSERT INTO guild_blueprints (guild_id, created_by, template_name, template_data) VALUES ($1, $2, $3, $4)',
-            [guild.id, userId, templateName, blueprint]
-        );
+        // 3. Salvar no Banco de Dados (SE O templateName for fornecido, se não, só retorna)
+        if (templateName) {
+            await log(logChannel, '`[3/3]` 💿 Salvando no banco de dados...');
+            await db.query(
+                'INSERT INTO guild_blueprints (guild_id, created_by, template_name, template_data) VALUES ($1, $2, $3, $4)',
+                [guild.id, userId, templateName, blueprint]
+            );
+            await log(logChannel, `✅ **Exportação Concluída!** O blueprint **${templateName}** foi salvo com sucesso.`);
+        } else {
+            await log(logChannel, '`[3/3]` 💿 Exportação finalizada, retornando dados.');
+        }
 
-        await logChannel.send(`✅ **Exportação Concluída!** O blueprint **${templateName}** foi salvo com sucesso.`);
+        // Retorna o blueprint para o CloudFlow
+        return blueprint; 
 
     } catch (e) {
         console.error('Falha na exportação do blueprint:', e);
-        if (logChannel) {
-            await logChannel.send(`❌ **Erro Crítico na Exportação:**\n\`\`\`${e.message}\`\`\``);
-        }
+        await log(logChannel, `❌ **Erro Crítico na Exportação:**\n\`\`\`${e.message}\`\`\``);
+        return null; // Retorna null em caso de falha
     }
 }
 
 // Função de importação (executada em segundo plano)
 async function importGuildBlueprint(guild, blueprint, logChannel, client) {
+    const counts = { roles: 0, channels: 0 };
     try {
-        await logChannel.send(`Iniciando importação do blueprint: **${blueprint.template_name}**...`);
+        await log(logChannel, `Iniciando importação do blueprint: **${blueprint.template_name}**...`);
         const data = blueprint.template_data;
         const roleMap = new Map(); // Mapeia 'roleName' -> newRoleObject
         const categoryMap = new Map(); // Mapeia 'categoryName' -> newCategoryObject
 
         // 1. Limpar Servidor
-        await logChannel.send('`[1/5]` 🧹 Limpando canais existentes...');
+        await log(logChannel, '`[1/5]` 🧹 Limpando canais existentes...');
         const channels = await guild.channels.fetch();
         for (const channel of channels.values()) {
-            if (channel.id !== logChannel.id) {
+            if (!logChannel || channel.id !== logChannel.id) {
                 try { await channel.delete('Importação de Blueprint'); } catch (e) { console.warn(`Falha ao deletar canal ${channel.name}: ${e.message}`); }
             }
         }
 
-        await logChannel.send('`[2/5]` 🧹 Limpando cargos existentes...');
+        await log(logChannel, '`[2/5]` 🧹 Limpando cargos existentes...');
         const botRole = guild.members.me.roles.highest;
         const roles = await guild.roles.fetch();
         for (const role of roles.values()) {
@@ -125,8 +145,7 @@ async function importGuildBlueprint(guild, blueprint, logChannel, client) {
         }
         
         // 2. Criar Cargos
-        await logChannel.send(`\`[3/5]\` 📥 Criando ${data.roles.length} cargos...`);
-        // Ordena pela posição DESCENDENTE para criar de cima para baixo
+        await log(logChannel, `\`[3/5]\` 📥 Criando ${data.roles.length} cargos...`);
         const sortedRoles = data.roles.sort((a,b) => b.position - a.position);
         
         for (const roleData of sortedRoles) {
@@ -138,6 +157,7 @@ async function importGuildBlueprint(guild, blueprint, logChannel, client) {
                 permissions: BigInt(roleData.permissions)
             });
             roleMap.set(roleData.name, newRole);
+            counts.roles++;
         }
 
         // Helper para remapear permissões
@@ -166,7 +186,7 @@ async function importGuildBlueprint(guild, blueprint, logChannel, client) {
         };
 
         // 3. Criar Categorias
-        await logChannel.send(`\`[4/5]\` 📥 Criando ${data.categories.length} categorias...`);
+        await log(logChannel, `\`[4/5]\` 📥 Criando ${data.categories.length} categorias...`);
         const sortedCategories = data.categories.sort((a,b) => a.position - b.position);
 
         for (const catData of sortedCategories) {
@@ -177,10 +197,11 @@ async function importGuildBlueprint(guild, blueprint, logChannel, client) {
                 permissionOverwrites: remapPermissions(catData.permissions)
             });
             categoryMap.set(catData.name, newCat);
+            counts.channels++;
         }
 
         // 4. Criar Canais
-        await logChannel.send(`\`[5/5]\` 📥 Criando ${data.channels.length} canais...`);
+        await log(logChannel, `\`[5/5]\` 📥 Criando ${data.channels.length} canais...`);
         const sortedChannels = data.channels.sort((a,b) => a.position - b.position);
 
         for (const chanData of sortedChannels) {
@@ -193,15 +214,16 @@ async function importGuildBlueprint(guild, blueprint, logChannel, client) {
                 position: chanData.position,
                 permissionOverwrites: remapPermissions(chanData.permissions)
             });
+            counts.channels++;
         }
         
-        await logChannel.send(`✅ **Importação Concluída!** O blueprint **${blueprint.template_name}** foi aplicado.`);
+        await log(logChannel, `✅ **Importação Concluída!** O blueprint **${blueprint.template_name}** foi aplicado.`);
+        return { success: true, counts: counts };
 
     } catch (e) {
         console.error('Falha na importação do blueprint:', e);
-        if (logChannel) {
-            await logChannel.send(`❌ **Erro Crítico na Importação:**\n\`\`\`${e.stack}\`\`\`\nO processo foi interrompido. O servidor pode estar em um estado inconsistente.`);
-        }
+        await log(logChannel, `❌ **Erro Crítico na Importação:**\n\`\`\`${e.stack}\`\`\`\nO processo foi interrompido. O servidor pode estar em um estado inconsistente.`);
+        return { success: false, error: e.message, counts: counts };
     }
 }
 

@@ -1,5 +1,7 @@
 // ui/registrosMenu.js
-// ADAPTADO PARA INCLUIR O NOVO SISTEMA DE CAPTCHA V2
+// SEGUINDO O PADRÃO V17 ORIGINAL
+// - Seção CAPTCHA removida.
+// - Seção OAUTH2 adicionada.
 
 function getStatus(value) {
     return value ? '✅ Ativado' : '❌ Desativado';
@@ -20,17 +22,8 @@ module.exports = async function generateRegistrosMenu(interaction, settings) {
     const cargoAprovado = getRole(settings.registros_cargo_aprovado);
     const canalLogsAprovacao = getChannel(settings.registros_canal_logs);
 
-    // --- Configs do Sistema de CAPTCHA (Novo) ---
-    const statusCaptcha = getStatus(settings.captcha_verify_enabled);
-    const toggleCaptcha = settings.captcha_verify_enabled ? { label: 'Desativar', style: 4 } : { label: 'Ativar', style: 3 };
-    const canalVerificacao = getChannel(settings.captcha_verify_channel_id);
-    const canalLogsCaptcha = getChannel(settings.captcha_verify_log_channel_id);
-    
-    // Formata a lista de cargos
-    let cargosCaptcha = '`Não definidos`';
-    if (settings.captcha_verify_roles_to_grant && settings.captcha_verify_roles_to_grant.length > 0) {
-        cargosCaptcha = settings.captcha_verify_roles_to_grant.map(id => `<@&${id}>`).join(', ');
-    }
+    // --- Configs do Sistema de CAPTCHA (REMOVIDO) ---
+    // ...
 
     return {
         "type": 17, "accent_color": 5763719,
@@ -38,31 +31,19 @@ module.exports = async function generateRegistrosMenu(interaction, settings) {
             { "type": 10, "content": "## 🛂 Módulo de Registros e Verificação" },
             { "type": 10, "content": "> Gerencie como os novos membros são autenticados no seu servidor." },
             
-            // --- Seção: Verificação por CAPTCHA (Novo) ---
+            // --- Seção: Verificação por CAPTCHA (REMOVIDO) ---
+            // ...
+
+            // ===== NOVO SISTEMA: VERIFICAÇÃO OAUTH (ADICIONADO) =====
             { "type": 14, "divider": true, "spacing": 1 },
-            { "type": 10, "content": "### 🤖 Verificação por CAPTCHA" },
-            { "type": 10, "content": "> Um sistema simples onde o usuário clica em um botão, digita um código e recebe os cargos automaticamente." },
             {
-                "type": 9, "accessory": { "type": 2, "style": toggleCaptcha.style, "label": toggleCaptcha.label, "custom_id": "registros_captcha_toggle_system" },
-                "components": [{ "type": 10, "content": `**Sistema de CAPTCHA:** ${statusCaptcha}` }]
-            },
-            {
-                "type": 9, "accessory": { "type": 2, "style": 2, "label": "Definir Canal", "custom_id": "registros_captcha_set_channel", "disabled": !settings.captcha_verify_enabled },
-                "components": [{ "type": 10, "content": `> Canal do Painel: ${canalVerificacao}` }]
-            },
-            {
-                "type": 9, "accessory": { "type": 2, "style": 2, "label": "Definir Cargos", "custom_id": "registros_captcha_set_roles", "disabled": !settings.captcha_verify_enabled },
-                "components": [{ "type": 10, "content": `> Cargos a Receber: ${cargosCaptcha}` }]
-            },
-            {
-                "type": 9, "accessory": { "type": 2, "style": 2, "label": "Definir Logs", "custom_id": "registros_captcha_set_log_channel", "disabled": !settings.captcha_verify_enabled },
-                "components": [{ "type": 10, "content": `> Canal de Logs: ${canalLogsCaptcha}` }]
-            },
-            {
-                "type": 1, "components": [
-                    { "type": 2, "style": 1, "label": "Publicar Painel de Verificação", "emoji": { "name": "✅" }, "custom_id": "registros_captcha_publish_panel", "disabled": !settings.captcha_verify_enabled || !settings.captcha_verify_channel_id }
+                "type": 9, "accessory": { "type": 2, "style": 3, "label": "Configurar", "emoji": { "name": "🔗" }, "custom_id": "aut_reg_open_oauth_hub" },
+                "components": [
+                    { "type": 10, "content": "### 🔗 Verificação via OAuth (Recomendado)" },
+                    { "type": 10, "content": "> **Método mais confiável.** Permite ao admin gerenciar e transferir membros entre servidores, garantindo acesso contínuo." }
                 ]
             },
+            // ==============================================================
 
             // --- Seção: Registro por Aprovação (Existente) ---
             { "type": 14, "divider": true, "spacing": 1 },
