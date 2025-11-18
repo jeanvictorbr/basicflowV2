@@ -1,24 +1,20 @@
 // File: ui/admin/membrosAdminHub.js
-// CONTEÚDO COMPLETO E CORRIGIDO (Correção do Limite de 25 Opções)
+// CONTEÚDO COMPLETO E ATUALIZADO
 
 const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants.js');
 const db = require('../../database.js');
+// Agora esta importação funciona
 const { getGuilds } = require('../../utils/devPanelUtils.js');
 
-// Função auxiliar com CORREÇÃO DE LIMITE
+// Função auxiliar
 async function formatarGuilds(client, guilds) {
     if (!guilds || guilds.length === 0) {
         return [{ label: "Nenhum servidor encontrado", value: "null", description: "O bot não está em outros servidores." }];
     }
-
-    // 1. Ordenar por número de membros (maiores primeiro)
-    // 2. Limitar a 25 opções (Limite estrito do Discord)
-    const sortedGuilds = guilds.sort((a, b) => b.memberCount - a.memberCount).slice(0, 25);
-
-    return sortedGuilds.map(guild => ({
-        label: guild.name.substring(0, 100), // Limite de caracteres no label
+    return guilds.map(guild => ({
+        label: guild.name,
         value: guild.id,
-        description: `ID: ${guild.id} | Membros: ${guild.memberCount}`.substring(0, 100)
+        description: `ID: ${guild.id} | Membros: ${guild.memberCount}`
     }));
 }
 
@@ -28,13 +24,12 @@ async function getMembrosAdminHub(interaction) {
     let allGuilds = [];
 
     try {
+        // Esta chamada agora funciona
         const botGuilds = await getGuilds(client);
-        devGuilds = botGuilds.devGuilds || [];
-        allGuilds = botGuilds.allGuilds || [];
+        devGuilds = botGuilds.devGuilds;
+        allGuilds = botGuilds.allGuilds;
     } catch (e) {
         console.error("Erro ao buscar guilds no Hub de Admin de Membros:", e);
-        // Fallback para evitar crash se getGuilds falhar
-        allGuilds = [interaction.guild]; 
     }
 
     const devGuildOptions = await formatarGuilds(client, devGuilds);
@@ -67,6 +62,9 @@ async function getMembrosAdminHub(interaction) {
                     "custom_id": "membros_view_guild",
                     "emoji": { "name": "🔍" }
                 },
+                // ===================================================================
+                //  ⬇️  NOVO BOTÃO ADICIONADO AQUI (SUA SOLICITAÇÃO) ⬇️
+                // ===================================================================
                 {
                     "type": 2, // Button
                     "style": 2, // Secondary
@@ -74,6 +72,9 @@ async function getMembrosAdminHub(interaction) {
                     "custom_id": "membros_transfer_manual_id",
                     "emoji": { "name": "🆔" }
                 }
+                // ===================================================================
+                //  ⬆️  FIM DA ADIÇÃO  ⬆️
+                // ===================================================================
             ]
         },
         { "type": 14, "divider": true, "spacing": 2 },
@@ -83,15 +84,16 @@ async function getMembrosAdminHub(interaction) {
         },
         {
             "type": 10,
-            "content": "Selecione um servidor **DESTE PAINEL (DEV)** para transferir membros verificados para lá."
+            "content": "Selecione um servidor **DESTE PAINEL (DEV)** para transferir **TODOS** os membros verificados para lá."
         },
         {
             "type": 1, // Action Row
             "components": [
                 {
                     "type": 3, // Select Menu
+                    // ID CORRIGIDO (NÃO DUPLICADO)
                     "custom_id": "membros_mass_transfer_DEV",
-                    "placeholder": "Selecione uma Guilda de DEV...",
+                    "placeholder": "Selecione uma Guilda de DEV para enviar...",
                     "options": devGuildOptions
                 }
             ]
@@ -99,15 +101,16 @@ async function getMembrosAdminHub(interaction) {
         { "type": 14, "divider": true, "spacing": 1 },
         {
             "type": 10,
-            "content": "Selecione um servidor **(Top 25 Maiores)** para transferir membros verificados para lá."
+            "content": "Selecione um servidor **COMUM (TODOS)** para transferir **TODOS** os membros verificados para lá."
         },
         {
             "type": 1, // Action Row
             "components": [
                 {
                     "type": 3, // Select Menu
+                    // ID CORRIGIDO (NÃO DUPLICADO)
                     "custom_id": "membros_mass_transfer_ALL",
-                    "placeholder": "Selecione uma Guilda COMUM...",
+                    "placeholder": "Selecione uma Guilda COMUM para enviar...",
                     "options": allGuildOptions
                 }
             ]
