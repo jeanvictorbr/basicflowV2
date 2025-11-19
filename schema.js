@@ -655,16 +655,22 @@ automations_announcements: {
     // ⬇️⬇️⬇️ SUBSTITUA O BLOCO 'cloudflow_verified_users' POR ESTE ⬇️⬇️⬇️
     // =================================================================
 // --- TABELA ATUALIZADA PARA OAUTH2 ---
-    cloudflow_verified_users: {
-        user_id: { type: 'VARCHAR(255)', primaryKey: true },
-        guild_id: { type: 'VARCHAR(255)', primaryKey: true }, // Guild onde ele se verificou originalmente
-        access_token: { type: 'TEXT', notNull: true }, // Token criptografado
-        refresh_token: { type: 'TEXT', notNull: true }, // Token criptografado
-        expires_at: { type: 'BIGINT', notNull: true },
-        iv: { type: 'TEXT' }, // Para desencriptar
-        scopes: { type: 'TEXT' }, // 'identify guilds.join'
-        verified_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
-    },
+cloudflow_verified_users: {
+    user_id: { type: 'VARCHAR(255)', primaryKey: true },
+    guild_id: { type: 'VARCHAR(255)', primaryKey: true }, // Guild original
+    
+    // --- AQUI ESTÁ O SEGREDO ---
+    // Removemos o 'notNull: true'. 
+    // Agora o banco aceita salvar primeiro (pelo bot) e preencher o token depois (pelo site).
+    access_token: { type: 'TEXT' }, 
+    refresh_token: { type: 'TEXT' },
+    expires_at: { type: 'BIGINT' },
+    iv: { type: 'TEXT' },
+    scopes: { type: 'TEXT' },
+    
+    verified_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+},
+
 
  guild_aut_purge: {
         guild_id: { type: 'VARCHAR(255)', primaryKey: true },
