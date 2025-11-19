@@ -60,7 +60,7 @@ async function buildCloudFlowMenu(interaction) {
                         label: 'Gerenciar',
                         emoji: { name: '💾' }, 
                         custom_id: 'aut_cf_manage_backups',
-                        disabled: !hasCloudFlow
+                        disabled: true
                     },
                     components: [
                         { type: 10, content: "💾 Backups do Servidor" },
