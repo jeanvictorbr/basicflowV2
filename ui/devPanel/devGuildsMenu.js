@@ -1,5 +1,7 @@
 module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, sortType = 'default') {
-    const ITEMS_PER_PAGE = 5;
+    // Reduzido para 4 para evitar o erro COMPONENT_MAX_TOTAL_COMPONENTS_EXCEEDED
+    const ITEMS_PER_PAGE = 4; 
+    
     const totalPages = Math.ceil(guildsData.length / ITEMS_PER_PAGE);
     const start = page * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
@@ -16,7 +18,7 @@ module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, so
 
     // Gerar componentes para cada guilda da página atual
     for (const guild of currentGuilds) {
-        // --- CORREÇÃO AQUI: Tratamento seguro de dados ---
+        // Tratamento seguro de dados
         const memberCount = guild.memberCount ? guild.memberCount.toLocaleString('pt-BR') : 'N/A';
         
         let joinedDate = 'Data desconhecida';
@@ -33,31 +35,30 @@ module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, so
         if (guild.maintenance) statusIcons.push("🔧");
         const statusStr = statusIcons.length > 0 ? statusIcons.join(' ') : "Normal";
 
-        // Componentes da Guilda
+        // Componentes da Guilda OTIMIZADOS (Combinando Título e Info em um bloco)
         guildComponents.push(
             { type: 14, divider: true, spacing: 2 },
-            { 
-                type: 10, 
-                content: `### ${guild.name}` 
-            },
             {
                 type: 10,
-                content: `🆔 \`${guild.id}\`\n👥 **Membros:** ${memberCount} | 📅 **Entrou:** ${joinedDate}\n🔰 **Status:** ${statusStr}`
+                // Combinando Título e Detalhes para economizar componentes
+                content: `### ${guild.name}\n` +
+                         `🆔 \`${guild.id}\` • 👥 **${memberCount}** • 📅 **${joinedDate}**\n` +
+                         `🔰 **Status:** ${statusStr}`
             },
             {
-                type: 1,
+                type: 1, // Container de Botões
                 components: [
                     {
                         type: 2,
                         style: 1,
                         label: "Gerenciar",
-                        custom_id: `dev_guild_manage_select_${guild.id}`, // Botão direto para gerenciar
+                        custom_id: `dev_guild_manage_select_${guild.id}`,
                         disabled: false
                     },
                     {
                         type: 2,
                         style: 4, // Vermelho
-                        label: "Sair (Force Leave)",
+                        label: "Sair",
                         custom_id: `dev_guild_force_leave_${guild.id}`,
                         disabled: false
                     }
@@ -79,7 +80,7 @@ module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, so
             },
             {
                 type: 2,
-                style: 2, // Estilo neutro para o indicador
+                style: 2,
                 label: `Página ${page + 1}/${totalPages || 1}`,
                 custom_id: "dev_guilds_page_counter",
                 disabled: true
