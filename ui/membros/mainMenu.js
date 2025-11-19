@@ -6,6 +6,8 @@ function getMemberManagementMenu(members, total, page, scope, isDev) {
     const isGuildScope = scope === 'GUILD';
 
     const title = isGuildScope ? '## 👥 Gerenciador de Membros Verificados' : '## 🌎 Gerenciador Global de Usuários (DEV)';
+    
+    // Gera a descrição (aqui pode ter mais de 25 linhas, é apenas texto)
     const description = members.length
         ? members.map(m => `• <@${m.user_id}> (${m.username} - \`${m.user_id}\`)`).join('\n')
         : '> Nenhum membro encontrado.';
@@ -17,7 +19,7 @@ function getMemberManagementMenu(members, total, page, scope, isDev) {
         { "type": 10, "content": title },
         { "type": 10, "content": description },
         { "type": 14, "divider": true, "spacing": 1 },
-        { "type": 10, "content": `> ${footer}` }, // Footer como texto
+        { "type": 10, "content": `> ${footer}` },
         { "type": 14, "divider": true, "spacing": 2 },
     ];
     
@@ -32,10 +34,13 @@ function getMemberManagementMenu(members, total, page, scope, isDev) {
 
     // Menu de Seleção
     if (members.length > 0) {
-        const userSelectOptions = members.map(m => ({
-            label: m.username,
+        // --- CORREÇÃO AQUI ---
+        // A API do Discord limita Select Menus a 25 opções.
+        // Mesmo que 'members' tenha 50 itens, pegamos apenas os primeiros 25 para o menu.
+        const safeOptions = members.slice(0, 25).map(m => ({
+            label: (m.username || 'Sem Nome').substring(0, 100), // Limite de 100 caracteres
             value: m.user_id,
-            description: `ID: ${m.user_id}`,
+            description: `ID: ${m.user_id}`.substring(0, 100),
         }));
 
         v2_components.push({
@@ -45,14 +50,13 @@ function getMemberManagementMenu(members, total, page, scope, isDev) {
                     type: 3, // String Select
                     custom_id: `membros_select_user_${scope}`,
                     placeholder: 'Selecionar membro para gerenciar...',
-                    options: userSelectOptions,
+                    options: safeOptions, // Usamos a lista segura e cortada
                 },
             ],
         });
     }
 
     // Botões de Ação (Transferir e Voltar)
-    // Só mostramos o botão de transferir se houver membros para transferir
     if (members.length > 0) {
         v2_components.push({
             type: 1, // Action Row
@@ -62,8 +66,7 @@ function getMemberManagementMenu(members, total, page, scope, isDev) {
                     style: 1, // Primary
                     label: 'Transferir em Massa',
                     emoji: { name: '🚀' },
-                    custom_id: `membros_mass_transfer_${scope}`, // Apenas 'GUILD' por enquanto
-        
+                    custom_id: `membros_mass_transfer_${scope}`, 
                 }
             ],
         });
@@ -84,7 +87,7 @@ function getMemberManagementMenu(members, total, page, scope, isDev) {
         });
     }
 
-    // --- NOVO BOTÃO DE VOLTAR ADICIONADO ---
+    // Botão de Voltar
     v2_components.push({
         type: 1, // Action Row
         components: [
