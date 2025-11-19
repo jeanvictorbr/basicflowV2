@@ -622,126 +622,110 @@ async function checkPendingVerifications() {
 //  ⬆️  FIM DA CORREÇÃO DO ROTEADOR ⬆️
 // ===================================================================
 
-    // --- INÍCIO DA CORREÇÃO DO WEBHOOK E OAUTH2 UNIFICADOS ---
-    const server = http.createServer(async (req, res) => {
-        const reqUrl = url.parse(req.url, true);
+    // --- SERVIDOR OAUTH2 & WEBHOOK (CORRIGIDO) ---
+const server = http.createServer(async (req, res) => {
+    const reqUrl = url.parse(req.url, true);
 
-        // 1. Rota de Callback do OAuth2 (CloudFlow)
-        if (reqUrl.pathname === '/cloudflow/callback') {
-            const code = reqUrl.query.code;
-            const guildId = reqUrl.query.state; // O state carrega o ID da guilda
+    // 1. Rota de Callback do OAuth2
+    if (reqUrl.pathname === '/cloudflow/callback') {
+        const code = reqUrl.query.code;
+        // O state agora é o ID da guilda REAL (graças à correção no botão)
+        const guildId = reqUrl.query.state; 
 
-            if (!code) {
-                console.log('[OAuth] Erro: Código não fornecido.');
-                res.writeHead(400);
-                return res.end('Erro: Codigo de autorizacao nao encontrado.');
-            }
-
-            try {
-                // Troca do CODE pelo TOKEN usando AXIOS (Mais robusto que fetch em alguns ambientes)
-                const params = new URLSearchParams();
-                params.append('client_id', process.env.CLIENT_ID);
-                params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
-                params.append('grant_type', 'authorization_code');
-                params.append('code', code);
-                params.append('redirect_uri', process.env.REDIRECT_URI);
-                params.append('scope', 'identify guilds.join'); // Escopo necessário
-
-                console.log('[OAuth] Tentando trocar token...'); 
-                
-                const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                });
-
-                const tokenData = tokenResponse.data;
-                console.log('[OAuth] Token recebido com sucesso.'); 
-
-                // Buscar dados do usuário
-                const userResponse = await axios.get('https://discord.com/api/users/@me', {
-                    headers: { authorization: `${tokenData.token_type} ${tokenData.access_token}` }
-                });
-                const userData = userResponse.data;
-                console.log(`[OAuth] Usuário autenticado: ${userData.username} (${userData.id})`); 
-
-                // Criptografar tokens
-                const encAccess = encrypt(tokenData.access_token);
-                const encRefresh = encrypt(tokenData.refresh_token);
-                
-                if (!encAccess || !encRefresh) {
-                    throw new Error('Falha na criptografia dos tokens.');
-                }
-
-                const expiresAt = Date.now() + (tokenData.expires_in * 1000);
-
-                // Salvar no Banco de Dados
-                console.log('[OAuth] Salvando no banco de dados...');
-                
-                await db.query(`
-                    INSERT INTO cloudflow_verified_users 
-                    (user_id, guild_id, access_token, refresh_token, expires_at, iv, scopes)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    ON CONFLICT (user_id, guild_id) 
-                    DO UPDATE SET 
-                        access_token = EXCLUDED.access_token,
-                        refresh_token = EXCLUDED.refresh_token,
-                        expires_at = EXCLUDED.expires_at,
-                        iv = EXCLUDED.iv,
-                        scopes = EXCLUDED.scopes;
-                `, [
-                    userData.id, 
-                    guildId || 'global', 
-                    encAccess.content, 
-                    encRefresh.content, 
-                    expiresAt, 
-                    encAccess.iv, 
-                    tokenData.scope
-                ]);
-
-                // Tentar dar o cargo na guilda (se houver guildId válido)
-                if (guildId && guildId !== 'global') {
-                    try {
-                        const guild = await client.guilds.fetch(guildId).catch(() => null);
-                        if (guild) {
-                            const settings = await db.getGuildSettings(guildId);
-                            if (settings && settings.cloudflow_verify_role_id) {
-                                const member = await guild.members.fetch(userData.id).catch(() => null);
-                                if (member) {
-                                    await member.roles.add(settings.cloudflow_verify_role_id);
-                                    console.log(`[OAuth] Cargo adicionado para ${userData.username} na guild ${guildId}`);
-                                }
-                            }
-                        }
-                    } catch (roleError) {
-                        console.error(`[OAuth] Erro ao dar cargo:`, roleError.message);
-                    }
-                }
-
-                // Resposta de Sucesso HTML
-                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head><title>Verificado</title></head>
-                    <body style="background-color:#2b2d31; color:#fff; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
-                        <div style="text-align:center;">
-                            <h1 style="color:#57F287; font-size:40px;">✅ Sucesso!</h1>
-                            <p style="font-size:18px;">Sua conta <b>${userData.username}</b> foi verificada e vinculada com sucesso.</p>
-                            <p style="color:#aaa;">Você pode fechar esta janela e voltar ao Discord.</p>
-                        </div>
-                    </body>
-                    </html>
-                `);
-
-            } catch (error) {
-                console.error('[CloudFlow OAuth] ❌ Erro Fatal:', error.message);
-                if (error.response) console.error('Dados do Erro:', error.response.data); 
-                
-                res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(`<h1>❌ Erro na Verificação</h1><p>Ocorreu um erro interno: ${error.message}</p><p>Verifique se o CLIENT_SECRET e REDIRECT_URI estão corretos no painel do bot.</p>`);
-            }
-            return;
+        if (!code) {
+            res.writeHead(400);
+            return res.end('Erro: Codigo nao fornecido.');
         }
 
+        try {
+            // Troca CODE por TOKEN
+            const params = new URLSearchParams();
+            params.append('client_id', process.env.CLIENT_ID);
+            params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
+            params.append('grant_type', 'authorization_code');
+            params.append('code', code);
+            params.append('redirect_uri', process.env.REDIRECT_URI);
+            params.append('scope', 'identify guilds.join');
+
+            const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
+
+            const { access_token, refresh_token, expires_in, scope } = tokenResponse.data;
+
+            // Pega dados do usuário
+            const userResponse = await axios.get('https://discord.com/api/users/@me', {
+                headers: { authorization: `Bearer ${access_token}` }
+            });
+            const userData = userResponse.data;
+
+            // Criptografa para segurança
+            const encAccess = encrypt(access_token);
+            const encRefresh = encrypt(refresh_token);
+            const expiresAt = Date.now() + (expires_in * 1000);
+
+            console.log(`[OAuth] 🔄 Salvando tokens para ${userData.username} (Guild: ${guildId})...`);
+
+            // --- A MÁGICA ACONTECE AQUI ---
+            // Insere ou Atualiza. Se o usuário já existe (veio do Captcha), isso ADICIONA o token nele.
+            await db.query(`
+                INSERT INTO cloudflow_verified_users 
+                (user_id, guild_id, access_token, refresh_token, expires_at, iv, scopes)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (user_id, guild_id) 
+                DO UPDATE SET 
+                    access_token = EXCLUDED.access_token,
+                    refresh_token = EXCLUDED.refresh_token,
+                    expires_at = EXCLUDED.expires_at,
+                    iv = EXCLUDED.iv,
+                    scopes = EXCLUDED.scopes,
+                    verified_at = NOW();
+            `, [
+                userData.id, 
+                guildId, // ID Correto da Guilda
+                encAccess.content, 
+                encRefresh.content, 
+                expiresAt, 
+                encAccess.iv, 
+                scope
+            ]);
+
+            console.log(`[OAuth] ✅ SUCESSO! Token salvo. Force Join habilitado para ${userData.username}.`);
+
+            // Tentar dar o cargo imediatamente
+            if (guildId && guildId !== 'null') {
+                try {
+                    const guild = await client.guilds.fetch(guildId).catch(() => null);
+                    if (guild) {
+                        const settings = await db.getGuildSettings(guildId);
+                        if (settings && settings.cloudflow_verify_role_id) {
+                            const member = await guild.members.fetch(userData.id).catch(() => null);
+                            if (member) await member.roles.add(settings.cloudflow_verify_role_id);
+                        }
+                    }
+                } catch (e) {
+                    console.error('[OAuth] Erro ao dar cargo automático:', e.message);
+                }
+            }
+
+            // Página de Sucesso
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(`
+                <body style="background:#2b2d31;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;">
+                    <div style="text-align:center">
+                        <h1 style="color:#57F287">✅ Verificado com Sucesso!</h1>
+                        <p>Você pode fechar esta janela e voltar ao Discord.</p>
+                    </div>
+                </body>
+            `);
+
+        } catch (error) {
+            console.error('[OAuth] ❌ Erro:', error.message);
+            res.writeHead(500);
+            res.end('Erro interno na verificacao.');
+        }
+        return;
+    }
         // 2. Rota do Webhook Mercado Pago
         if (req.method === 'POST' && req.url === '/mp-webhook') {
             let body = '';
