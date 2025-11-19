@@ -1,4 +1,7 @@
+// Local: handlers/buttons/cloudflow_start_verification.js
 const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants');
+// Importa a nova função de criptografia
+const { encrypt } = require('../../utils/encryption'); 
 
 module.exports = {
     customId: 'cloudflow_start_verification',
@@ -6,17 +9,18 @@ module.exports = {
         const clientId = process.env.CLIENT_ID;
         const redirectUri = process.env.REDIRECT_URI;
         
-        // --- CORREÇÃO CIRÚRGICA ---
-        // Enviamos o ID da guilda PURO. Sem criptografia.
-        // Isso garante que o index.js receba "123456" e não "[object Object]".
-        const state = interaction.guild.id; 
+        // --- CORREÇÃO AQUI ---
+        // Criptografa o ID da guilda antes de enviar no 'state'
+        // Isso impede o erro "Invalid initialization vector" no site
+        const stateRaw = interaction.guild.id;
+        const stateEncrypted = encrypt(stateRaw);
 
         if (!clientId || !redirectUri) {
             return interaction.reply({ content: '❌ Configuração ausente (.env)', flags: EPHEMERAL_FLAG });
         }
 
-        // Monta a URL com o state correto
-        const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=identify+guilds.join&state=${encodeURIComponent(state)}`;
+        // Usa o state criptografado na URL
+        const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&scope=identify+guilds.join&state=${encodeURIComponent(stateEncrypted)}`;
 
         await interaction.reply({
             components: [
@@ -25,7 +29,7 @@ module.exports = {
                     components: [
                         {
                             type: 10,
-                            content: '🔐 **Verificação Segura**\nClique no botão abaixo para autorizar e verificar sua conta.'
+                            content: '🔐 **Verificação Segura CloudFlow**\nClique no botão abaixo para autorizar e verificar sua conta.'
                         },
                         { type: 14, divider: true, spacing: 2 },
                         {
@@ -33,7 +37,7 @@ module.exports = {
                             components: [
                                 {
                                     type: 2,
-                                    style: 5, // Link Button
+                                    style: 5, // Link
                                     label: 'Verificar Agora',
                                     url: oauthUrl,
                                     emoji: { name: '☁️' }
