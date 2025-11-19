@@ -1,24 +1,19 @@
-// File: utils/devPanelUtils.js
-// CONTEÚDO COMPLETO E CORRIGIDO (Com getAndPrepareGuildData)
-
 const db = require('../database.js');
 const { V2_FLAG, EPHEMERAL_FLAG } = require('./constants.js');
 
 // Função para buscar o status do bot
 async function getBotStatus() {
-    const status = await db.query('SELECT * FROM bot_status');
+    const status = await db.query("SELECT * FROM bot_status WHERE status_key = 'main'");
     return status.rows[0];
 }
 
-// --- FUNÇÃO QUE FALTAVA ---
 // Busca dados do Discord + Banco de Dados para o painel de gerenciamento
 async function getAndPrepareGuildData(client) {
     // 1. Buscar configurações salvas no DB
     const { rows: dbGuilds } = await db.query('SELECT * FROM guild_settings');
     const dbGuildsMap = new Map(dbGuilds.map(g => [g.guild_id, g]));
 
-    // 2. Buscar guildas onde o bot está (Cache é mais rápido que fetch, mas fetch garante dados atualizados)
-    // Vamos usar cache para velocidade, assumindo que o bot está com intents corretas
+    // 2. Buscar guildas onde o bot está (Cache é mais rápido que fetch)
     const currentGuilds = client.guilds.cache; 
     
     const allGuildData = [];
@@ -35,7 +30,7 @@ async function getAndPrepareGuildData(client) {
         // Contabilizar estatísticas
         totals.active++;
         if (settings.maintenance_mode) totals.maintenance++;
-        // Verifica se é premium (seja por flag booleana ou tier > 0)
+        // Verifica se é premium
         if (settings.is_premium || (settings.premium_tier && settings.premium_tier > 0)) totals.premium++;
 
         allGuildData.push({
@@ -47,7 +42,7 @@ async function getAndPrepareGuildData(client) {
             // Dados do DB
             isPremium: !!(settings.is_premium || (settings.premium_tier && settings.premium_tier > 0)),
             maintenance: !!settings.maintenance_mode,
-            settings: settings // Mantém settings originais para uso futuro se precisar
+            settings: settings 
         });
     }
 
@@ -59,7 +54,7 @@ async function getAndPrepareGuildData(client) {
 
 // Função para buscar e separar as guilds (Usada no seletor de transferência)
 async function getGuilds(client) {
-    const guilds = client.guilds.cache; // Usa cache para ser síncrono/rápido onde possível
+    const guilds = client.guilds.cache;
     const devGuilds = [];
     const allGuilds = [];
     const devGuildId = process.env.DEV_GUILD_ID;
@@ -105,7 +100,7 @@ async function formatGuilds(client) {
 
 module.exports = {
     getBotStatus,
-    getAndPrepareGuildData, // <--- AGORA ESTÁ AQUI!
+    getAndPrepareGuildData,
     getGuilds,
     formatGuilds
 };
