@@ -123,7 +123,7 @@ async function startVerificationLoop(client) {
                 } catch (e) { /* ignora erro de release */ }
             }
         }
-    }, 15 * 1000); // 15 Segundos
+    }, 5 * 1000); // 15 Segundos
 }
 
 module.exports = { startVerificationLoop };
