@@ -43,11 +43,11 @@ async function buildCloudFlowMenu(interaction) {
                         label: 'Configurar',
                         emoji: { name: '🔐' }, 
                         custom_id: 'aut_cf_manage_oauth',
-                        disabled: !hasCloudFlow
+                        disabled: true
                     },
                     components: [
                         { type: 10, content: "🔐 Verificação OAuth2" },
-                        { type: 10, content: `Sistema de autenticação de membros. Verificados: \`${verifiedCount}\`` }
+                        { type: 10, content: `ACESSE PELO MODULO DE REGISTROS \`${verifiedCount}\`` }
                     ]
                 },
 
