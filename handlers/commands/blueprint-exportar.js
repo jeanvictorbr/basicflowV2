@@ -3,18 +3,26 @@ const db = require('../../database.js');
 const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants');
 const { exportGuildBlueprint } = require('../../utils/guildBlueprintManager.js');
 
+// SEU ID DE DESENVOLVEDOR (Segurança)
+const DEVELOPER_ID = process.env.OWNER_ID || '140867979578576916';
+
 module.exports = {
     data: {
         name: 'blueprint-exportar'
     },
     v2: V2_FLAG,
     devOnly: true, 
-    /**
-     * CORREÇÃO: Adicionado 'const client = interaction.client;'
-     * para garantir que o objeto client esteja definido.
-     */
-    execute: async (interaction, _client_arg) => { // Renomeamos o argumento para evitar conflito
-        const client = interaction.client; // <-- ESTA É A CORREÇÃO
+    execute: async (interaction, _client_arg) => { 
+        const client = interaction.client;
+
+        // --- 🔒 BLOQUEIO DE SEGURANÇA (DEV ONLY) ---
+        if (interaction.user.id !== DEVELOPER_ID) {
+            return interaction.reply({
+                content: '🔒 **Acesso Negado:** Este comando é restrito ao desenvolvedor do bot.',
+                flags: EPHEMERAL_FLAG
+            });
+        }
+        // ------------------------------------------
 
         const templateName = interaction.options.getString('nome');
         const guild = interaction.guild;
@@ -43,7 +51,7 @@ module.exports = {
                         allow: [PermissionsBitField.Flags.ViewChannel],
                     },
                     {
-                        id: client.user.id, // Agora 'client' está 100% definido
+                        id: client.user.id,
                         allow: [PermissionsBitField.Flags.ViewChannel],
                     },
                 ],
