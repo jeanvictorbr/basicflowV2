@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js'); // Adicionado
+const { EmbedBuilder } = require('discord.js');
 const axios = require('axios');
 
 // SEU ID DE DEVELOPER
@@ -23,10 +23,11 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
     authUrl = authUrl.replace('/auth/callback', ''); 
 
     if (!authUrl) {
-        const embed = new EmbedBuilder()
-            .setColor('Red')
-            .setDescription("❌ **Erro:** `AUTH_SYSTEM_URL` não configurada no .env.");
-        return interaction.editReply({ content: null, embeds: [embed], components: [] });
+        return interaction.editReply({ 
+            content: "❌ **Erro de Configuração:** URL do Site não definida no .env", 
+            embeds: [], 
+            components: [] 
+        });
     }
     
     try {
@@ -45,12 +46,12 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
 
         // Lista de Usuários
         if (!users || users.length === 0) {
-            descriptionText += "🔒 **Nenhum usuário encontrado.**";
+            descriptionText += "🔒 **Nenhum usuário encontrado.**\n*Seus membros precisam se verificar no site para aparecerem aqui.*";
         } else {
             for (const user of users) {
                 let originInfo = user.origin_guild === guildId ? '✅ Local' : (isGlobal ? `🆔 ${user.origin_guild?.slice(0,15)}...` : '⚠️ Outro');
                 
-                // Adiciona linha no texto do Embed em vez de componente separado para evitar poluição
+                // Adiciona user na descrição do Embed
                 descriptionText += `**👤 ${user.username}**\nID: \`${user.id}\` • ${originInfo}\n`;
                 
                 // Adiciona botão de ação individual
@@ -58,7 +59,7 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
                     "type": 1,
                     "components": [{ 
                         "type": 2, 
-                        "style": 1, 
+                        "style": 1, // Roxo (Blurple)
                         "label": `Puxar ${user.username.slice(0, 10)}`, 
                         "emoji": { "name": "🚀" }, 
                         "custom_id": `oauth_ask_${user.id}` 
@@ -70,8 +71,8 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
         const mainEmbed = new EmbedBuilder()
             .setTitle(title)
             .setDescription(descriptionText)
-            .setColor(isGlobal ? 0x5865F2 : 0x57F287) // Azul ou Verde
-            .setFooter({ text: `Página ${page} de ${totalPages || 1}` });
+            .setColor(isGlobal ? 0x5865F2 : 0x57F287)
+            .setFooter({ text: `Página ${page} de ${totalPages || 1} • Sistema CloudFlow` });
 
         // --- BOTÕES DE AÇÃO (LINHA DE CONTROLE) ---
         const actionRow = { "type": 1, "components": [] };
@@ -84,17 +85,16 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
             "custom_id": isGlobal ? "aut_oauth_mass_transfer_global_start" : "aut_oauth_mass_transfer_start" 
         });
 
-        // Botão de Troca de Modo
+        // Botão de Troca de Modo (Developer)
         if (interaction.user.id === DEVELOPER_ID || interaction.user.id === interaction.guild.ownerId) {
             if (!isGlobal) {
-                actionRow.components.push({ "type": 2, "style": 4, "label": "Global", "emoji": { "name": "🌎" }, "custom_id": "aut_oauth_global_view" });
+                actionRow.components.push({ "type": 2, "style": 4, "label": "Global View", "emoji": { "name": "🌎" }, "custom_id": "aut_oauth_global_view" });
             } else {
                 actionRow.components.push({ "type": 2, "style": 2, "label": "Voltar Local", "emoji": { "name": "🏠" }, "custom_id": "aut_oauth_manage_members" });
             }
         }
         
-        // Adiciona a linha de ação no topo dos componentes
-        components.unshift(actionRow);
+        components.unshift(actionRow); // Adiciona no topo
 
         // Paginação
         const modePrefix = isGlobal ? 'oauth_global_page_' : 'oauth_page_';
@@ -107,9 +107,10 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
             ]
         });
 
-        // ENVIA A RESPOSTA (USANDO EMBEDS E SEM CONTENT)
+        // ENVIA A RESPOSTA BLINDADA
+        // Truque: content com espaço vazio " " limpa a mensagem antiga sem quebrar a API v2
         await interaction.editReply({ 
-            content: null, // Importante: nulo para não dar erro de legado
+            content: " ", 
             embeds: [mainEmbed], 
             components: components,
             files: [] 
@@ -118,25 +119,25 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
     } catch (error) {
         console.error("[OAuth Error]", error.message);
         
-        let errorDesc = "Erro de conexão com a API de Autenticação.";
+        let errorDesc = "Erro desconhecido ao conectar com o Site.";
         if (error.response && error.response.status === 404) {
-            errorDesc = "**Erro 404:** O Site de Auth está online mas a rota `/api/users` não foi encontrada.\n\n**Solução:** Reinicie o site `jvverify` na Discloud (Restart) para carregar o código novo.";
+            errorDesc = "⚠️ **Erro 404:** O Site está online, mas a API não foi encontrada.\n\n**Solução:** Reinicie o site `jvverify` na Discloud (Restart) para carregar a nova atualização.";
         } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-             errorDesc = "**Erro de Conexão:** O bot não conseguiu achar o site. Verifique se o link no `.env` está correto e o site online.";
+             errorDesc = "❌ **Offline:** O bot não conseguiu conectar ao site.\nVerifique se o site está online na Discloud.";
         }
 
         const errorEmbed = new EmbedBuilder()
-            .setTitle("❌ Falha na Conexão")
+            .setTitle("❌ Erro de Conexão")
             .setDescription(errorDesc)
             .setColor('Red');
 
-        // CORREÇÃO NO CATCH: Usa Embed e content: null
+        // Resposta de erro segura
         await interaction.editReply({ 
-            content: null, 
+            content: " ", 
             embeds: [errorEmbed], 
             components: [], 
             files: [] 
-        }).catch(e => console.error("Erro fatal (catch):", e.message));
+        }).catch(e => console.error("Erro fatal no catch:", e.message));
     }
 }
 
