@@ -369,7 +369,7 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
     setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
     setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000);
-    setInterval(checkPendingVerifications, 7000);
+    
     setInterval(() => syncUsedKeys(client), 60 * 1000);
     setInterval(() => updateModuleStatusCache(client), 15 * 60 * 1000);
     setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
