@@ -1,68 +1,71 @@
 const { EmbedBuilder } = require('discord.js');
-const database = require('../database'); // Importa o seu módulo database.js
+const database = require('../database');
 
 async function startVerificationLoop(client) {
-    console.log('[Verification Loop] Iniciado. Verificando novos usuários...');
+    console.log('[Verification Loop] Sistema iniciado. Aguardando novos usuários...');
 
-    // 1. Migração Automática: Garante que a coluna de controle existe
+    // 1. Garante a coluna de controle
     try {
-        // CORREÇÃO: Usa .getClient() em vez de pool.connect()
         const db = await database.getClient();
         await db.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS processed BOOLEAN DEFAULT FALSE");
-        db.release(); // Solta a conexão
+        db.release();
     } catch (e) { 
-        console.error("[Verification Loop] Erro ao verificar coluna 'processed':", e.message); 
+        console.error("[Verification Loop] Erro inicial DB:", e.message); 
     }
 
-    // 2. O Loop (Roda a cada 15 segundos)
+    // 2. Loop Principal (15s)
     setInterval(async () => {
         try {
-            // CORREÇÃO: Usa .getClient() aqui também
             const db = await database.getClient();
             
-            // Busca usuários que logaram (têm origin_guild) mas ainda não foram processados pelo bot
-            const res = await db.query("SELECT * FROM users WHERE origin_guild IS NOT NULL AND processed = FALSE LIMIT 10");
+            // Busca pendentes
+            const res = await db.query("SELECT * FROM users WHERE origin_guild IS NOT NULL AND processed = FALSE LIMIT 5");
+
+            if (res.rows.length > 0) {
+                console.log(`[Verification] Processando ${res.rows.length} novos usuários...`);
+            }
 
             for (const userRow of res.rows) {
                 const { id, origin_guild, username } = userRow;
 
                 try {
-                    // A. Verifica se o Bot está na Guilda
                     const guild = client.guilds.cache.get(origin_guild);
+                    
+                    // Se o bot não estiver na guilda, marca como processado para não travar
                     if (!guild) {
-                        // Bot não está na guilda ou guilda inválida, ignora por enquanto
+                        console.log(`[Verification] Bot fora da guilda ${origin_guild}. Pulando user ${username}.`);
+                        await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                         continue; 
                     }
 
-                    // B. Pega a configuração do Cargo
-                    // Note: Aqui usamos o próprio client (db) para a query
+                    // Busca configuração de cargo
                     const settingsRes = await db.query("SELECT cloudflow_verify_role_id FROM guild_settings WHERE guild_id = $1", [origin_guild]);
                     
+                    // Se não tiver cargo configurado, finaliza
                     if (settingsRes.rows.length === 0 || !settingsRes.rows[0].cloudflow_verify_role_id) {
-                        // Se não tem cargo configurado, marca como processado para não travar a fila
                         await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                         continue;
                     }
+                    
                     const roleId = settingsRes.rows[0].cloudflow_verify_role_id;
 
-                    // C. Busca o Membro
+                    // Tenta achar o membro
                     let member;
                     try {
                         member = await guild.members.fetch(id);
                     } catch (e) {
-                        // Usuário ainda não entrou no servidor
+                        // Usuário não está no servidor ainda. Ignora neste ciclo.
                         continue; 
                     }
 
-                    // D. Dá o Cargo e Manda DM
                     if (member) {
-                        // Adiciona Cargo
+                        // --- 1. TENTA DAR O CARGO ---
                         if (!member.roles.cache.has(roleId)) {
-                            await member.roles.add(roleId).catch(err => console.error(`[Erro Cargo] ${err.message}`));
-                            console.log(`[Verification] Cargo entregue para ${username} em ${guild.name}`);
+                            await member.roles.add(roleId).catch(err => console.error(`[Erro Cargo] Não consegui dar cargo para ${username}: ${err.message}`));
+                            console.log(`[Verification] ✅ Cargo entregue para ${username} (${guild.name})`);
                         }
 
-                        // Envia DM Rica
+                        // --- 2. TENTA ENVIAR A DM ---
                         try {
                             const embed = new EmbedBuilder()
                                 .setTitle("🔐 Verificação Concluída!")
@@ -70,27 +73,37 @@ async function startVerificationLoop(client) {
                                 .setColor(0x57F287) // Verde Neon
                                 .setThumbnail(guild.iconURL({ dynamic: true }) || client.user.displayAvatarURL())
                                 .addFields(
-                                    { name: "👤 Usuário", value: `<@${id}>\n(\`${id}\`)`, inline: true },
-                                    { name: "📅 Data da Verificação", value: `<t:${Math.floor(Date.now() / 1000)}:f>`, inline: true },
-                                    { name: "🛡️ Status", value: "✅ **Acesso Liberado**", inline: false }
+                                    { name: "👤 Usuário", value: `<@${id}>`, inline: true },
+                                    { name: "🆔 ID", value: `\`${id}\``, inline: true },
+                                    { name: "📅 Data", value: `<t:${Math.floor(Date.now() / 1000)}:f>`, inline: true }
                                 )
                                 .setFooter({ text: "Sistema de Segurança • CloudFlow", iconURL: client.user.displayAvatarURL() })
                                 .setTimestamp();
 
                             await member.send({ embeds: [embed] });
-                            console.log(`[Verification] DM enviada para ${username}`);
+                            console.log(`[Verification] 📩 DM enviada para ${username}`);
+                            
                         } catch (dmErr) {
-                            console.log(`[Verification] DM fechada para ${username}, mas cargo foi entregue.`);
+                            // Logs específicos para saber POR QUE falhou
+                            if (dmErr.code === 50007) {
+                                console.log(`[Verification] ⚠️ DM falhou para ${username}: Usuário tem DMs fechadas.`);
+                            } else {
+                                console.error(`[Verification] ❌ Erro ao enviar DM para ${username}:`, dmErr.message);
+                            }
                         }
 
-                        // E. Marca como Processado no Banco (FIM)
+                        // --- 3. MARCA COMO CONCLUÍDO NO BANCO ---
+                        // Importante: Isso roda mesmo se a DM falhar, para não travar a fila
                         await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                     }
+
                 } catch (innerErr) {
-                    console.error(`[Verification] Erro pontual no user ${id}:`, innerErr.message);
+                    console.error(`[Verification] Erro processando ${username}:`, innerErr.message);
+                    // Se for erro grave, marca como processado para não travar o loop infinito
+                    await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                 }
             }
-            db.release(); // IMPORTANTE: Soltar a conexão no final do loop
+            db.release();
         } catch (err) {
             console.error("[Verification Loop] Erro Geral:", err.message);
         }
