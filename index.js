@@ -22,6 +22,7 @@ const MODULES = require('./config/modules.js');
 const { updateModuleStatusCache } = require('./utils/moduleStatusCache.js');
 const { splitMessage } = require('./utils/messageSplitter'); //
 require('dotenv').config();
+const { startVerificationLoop } = require('./utils/verificationLoop'); // <--- ADICIONE IS
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
 const http = require('http');
@@ -334,6 +335,7 @@ console.log('--- Handlers Carregados ---');
 
 client.once(Events.ClientReady, async () => {
     startGiveawayMonitor(client);
+    startVerificationLoop(client);
     await db.synchronizeDatabase();
     try {
         startPurgeMonitor(client, db); // Inicia o cronjob

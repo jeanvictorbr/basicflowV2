@@ -43,7 +43,7 @@ async function buildCloudFlowMenu(interaction) {
                         label: 'Configurar',
                         emoji: { name: '🔐' }, 
                         custom_id: 'aut_cf_manage_oauth',
-                        disabled: true
+                        disabled: !hasCloudFlow
                     },
                     components: [
                         { type: 10, content: "🔐 Verificação OAuth2" },

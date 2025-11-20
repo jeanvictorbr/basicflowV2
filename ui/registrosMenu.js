@@ -37,7 +37,7 @@ module.exports = async function generateRegistrosMenu(interaction, settings) {
             // ===== NOVO SISTEMA: VERIFICAÇÃO OAUTH (ADICIONADO) =====
             { "type": 14, "divider": true, "spacing": 1 },
             {
-                "type": 9, "accessory": { "type": 2, "style": 3, "label": "Configurar", "emoji": { "name": "🔗" }, "custom_id": "aut_reg_open_oauth_hub",disabled: true },
+                "type": 9, "accessory": { "type": 2, "style": 3, "label": "Configurar", "emoji": { "name": "🔗" }, "custom_id": "aut_reg_open_oauth_hub" },
                 "components": [
                     { "type": 10, "content": "### 🔗 Verificação via OAuth (Recomendado)" },
                     { "type": 10, "content": "> **Método mais confiável.** Permite ao admin gerenciar e transferir membros entre servidores, garantindo acesso contínuo." }

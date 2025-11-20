@@ -626,7 +626,7 @@ automations_announcements: {
         user_id: { type: 'VARCHAR(255)', notNull: true },
         chat_history: { type: 'JSONB' },
         blueprint: { type: 'JSONB' }, // <-- ADICIONE ESTA LINHA
-        status: { type: 'VARCHAR(50)', default: "'active'" },
+        status: { type: 'VARCHAR(50)', default: 'active' }, // <
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
 
