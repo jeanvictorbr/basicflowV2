@@ -20,10 +20,7 @@ module.exports = async function generateStoreMenu(interaction, settings) {
                 { "type": 10, "content": `## 🏪 StoreFlow V4 - Painel de Controle` },
                 { "type": 10, "content": `> Status da Loja: **${statusText}**` },
                 { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 9, "accessory": { "type": 2, "style": toggleCategoriesButton.style, "label": toggleCategoriesButton.label, "custom_id": "store_toggle_categories" },
-                    "components": [{ "type": 10, "content": `**Sistema de Categorias**\n> Status: ${categoriesStatusText}` }]
-                },
+
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Gerenciar Produtos", "custom_id": "store_manage_products" },

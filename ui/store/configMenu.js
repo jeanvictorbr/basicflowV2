@@ -19,11 +19,7 @@ module.exports = function generateConfigMenu(settings) {
                     "type": 9, "accessory": { "type": 2, "style": 2, "label": "Definir", "custom_id": "store_set_category" },
                     "components": [{ "type": 10, "content": `**Categoria dos Carrinhos**\n> ${category}` }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 9, "accessory": { "type": 2, "style": 2, "label": "Definir", "custom_id": "store_set_vitrine_channel" },
-                    "components": [{ "type": 10, "content": `**Canal da Vitrine**\n> ${vitrineChannel}` }]
-                },
+
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 2, "label": "Definir", "custom_id": "store_set_log_channel" },
