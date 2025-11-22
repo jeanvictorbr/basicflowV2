@@ -37,6 +37,30 @@ module.exports = {
             );
 
             await client.query('COMMIT');
+            // --- LÓGICA DE NOTIFICAÇÃO ---
+            // Busca usuários esperando por este produto
+            const notifications = await client.query('SELECT user_id FROM store_stock_notifications WHERE product_id = $1', [productId]);
+            
+            if (notifications.rows.length > 0) {
+                const productInfo = (await client.query('SELECT name, price FROM store_products WHERE id = $1', [productId])).rows[0];
+                const price = parseFloat(productInfo.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                // Dispara DMs (sem await para não travar a resposta do modal)
+                notifications.rows.forEach(async (row) => {
+                    try {
+                        const user = await interaction.client.users.fetch(row.user_id).catch(() => null);
+                        if (user) {
+                            await user.send({
+                                content: `🔔 **Novidades na Loja!**\n\nO produto **${productInfo.name}** (${price}) que você estava esperando acabou de receber novo estoque!\nCorra para garantir o seu no servidor **${interaction.guild.name}**.`
+                            });
+                        }
+                    } catch (e) {} // Ignora erros de DM fechada
+                });
+
+                // Limpa as notificações processadas
+                await client.query('DELETE FROM store_stock_notifications WHERE product_id = $1', [productId]);
+            }
+            // -----------------------------
 
             const product = (await db.query('SELECT * FROM store_products WHERE id = $1', [productId])).rows[0];
             const stockItems = (await db.query('SELECT COUNT(*) as count FROM store_stock WHERE product_id = $1 AND is_claimed = false', [productId])).rows[0];
@@ -48,6 +72,10 @@ module.exports = {
 
             await interaction.followUp({ content: `✅ ${items.length} item(ns) adicionado(s) ao estoque com sucesso!`, ephemeral: true });
             
+            // ATUALIZA A VITRINE DA CATEGORIA ESPECÍFICA
+            if (product && product.category_id) {
+                await updateStoreVitrine(interaction.client, interaction.guild.id, product.category_id);
+            }
             // CHAMA A FUNÇÃO PARA ATUALIZAR A VITRINE
             await updateStoreVitrine(interaction.client, interaction.guild.id);
 

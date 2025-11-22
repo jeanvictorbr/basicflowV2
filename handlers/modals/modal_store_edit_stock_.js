@@ -36,6 +36,32 @@ module.exports = {
             );
 
             await client.query('COMMIT');
+            // --- LÓGICA DE NOTIFICAÇÃO ---
+            // Só notifica se o novo estoque for maior que 0
+            let notifiedCount = 0;
+            if (newItems.length > 0) {
+                const notifications = await client.query('SELECT user_id FROM store_stock_notifications WHERE product_id = $1', [productId]);
+                
+                if (notifications.rows.length > 0) {
+                    notifiedCount = notifications.rows.length;
+                    const productInfo = (await client.query('SELECT name, price FROM store_products WHERE id = $1', [productId])).rows[0];
+                    const price = parseFloat(productInfo.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+                    notifications.rows.forEach(async (row) => {
+                        try {
+                            const user = await interaction.client.users.fetch(row.user_id).catch(() => null);
+                            if (user) {
+                                await user.send({
+                                    content: `🔔 **Novidades na Loja!**\n\nO produto **${productInfo.name}** (${price}) que você estava esperando acabou de ter seu estoque renovado!\nCorra para garantir o seu no servidor **${interaction.guild.name}**.`
+                                });
+                            }
+                        } catch (e) {}
+                    });
+
+                    await client.query('DELETE FROM store_stock_notifications WHERE product_id = $1', [productId]);
+                }
+            }
+            // -----------------------------
 
             const product = (await db.query('SELECT * FROM store_products WHERE id = $1', [productId])).rows[0];
             
@@ -45,7 +71,10 @@ module.exports = {
             });
 
             await interaction.followUp({ content: `✅ Estoque atualizado com sucesso para ${newItems.length} item(ns)!`, ephemeral: true });
-            
+            // ATUALIZA A VITRINE DA CATEGORIA ESPECÍFICA
+            if (product && product.category_id) {
+                await updateStoreVitrine(interaction.client, interaction.guild.id, product.category_id);
+            }
             await updateStoreVitrine(interaction.client, interaction.guild.id);
 
         } catch (error) {

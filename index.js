@@ -1,6 +1,6 @@
 // File: index.js
 // CONTEÚDO COMPLETO E CORRIGIDO
-
+require('dotenv').config();
 const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const { startPurgeMonitor } = require('./utils/purgeMonitor');
@@ -21,7 +21,7 @@ const { logInteraction } = require('./utils/analyticsUtils.js');
 const MODULES = require('./config/modules.js');
 const { updateModuleStatusCache } = require('./utils/moduleStatusCache.js');
 const { splitMessage } = require('./utils/messageSplitter'); //
-require('dotenv').config();
+
 const { startVerificationLoop } = require('./utils/verificationLoop'); // <--- ADICIONE IS
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');

@@ -1,63 +1,70 @@
-// Substitua o conteúdo em: handlers/buttons/store_verify_mp_payment.js
-const { approvePurchase } = require('../../utils/approvePurchase.js');
-const { getPaymentStatus } = require('../../utils/mercadoPago.js');
+// File: handlers/buttons/store_verify_mp_payment.js
 const db = require('../../database.js');
+const { getPaymentStatus } = require('../../utils/mercadoPago.js');
+const { approvePurchase } = require('../../utils/approvePurchase.js');
+const { EPHEMERAL_FLAG } = require('../../utils/constants.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
-    customId: 'store_verify_mp_payment_',
+    customId: 'store_verify_mp_payment',
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
 
-        const parts = interaction.customId.split('_');
-        let guildId = interaction.guild?.id; // Pega o ID da guild como padrão
-        let paymentId = null;
-
-        // --- LÓGICA DE EXTRAÇÃO CORRIGIDA ---
-
-        // FLUXO PADRÃO (Canal): store_verify_mp_payment_PAYMENTID
-        // split -> ['store', 'verify', 'mp', 'payment', 'PAYMENTID'] -> length = 5
-        if (parts.length === 5) {
-            paymentId = parts[4]; // Índice correto
-        } 
-        // FLUXO DM: store_verify_mp_payment_GUILDID_PAYMENTID
-        // split -> ['store', 'verify', 'mp', 'payment', 'GUILDID', 'PAYMENTID'] -> length = 6
-        else if (parts.length === 6) {
-            paymentId = parts[5]; // Índice correto
-            guildId = parts[4];   // Índice correto
-        }
-
-        // Validação de segurança
-        if (!paymentId || paymentId.includes('FAIL')) {
-            return interaction.editReply({
-                content: '❌ **Erro de Extração de ID!** As informações de pagamento do botão estão incompletas ou danificadas. Por favor, gere um novo QR Code. [Cód: VMP-502]'
-            });
-        }
-        
         try {
-            // Executa a verificação com os IDs corretos
-            const paymentInfo = await getPaymentStatus(guildId, paymentId);
-            const cartId = paymentInfo.external_reference;
+            const cartId = interaction.channel.id;
+            const cartResult = await db.query("SELECT * FROM store_carts WHERE channel_id = $1", [cartId]);
+            const cart = cartResult.rows[0];
 
-            if (paymentInfo.status === 'approved') {
-                await interaction.editReply({ content: '✅ Pagamento confirmado! Iniciando a entrega dos seus produtos...' });
-                await approvePurchase(interaction.client, guildId, cartId);
-            } else if (paymentInfo.status === 'pending') {
-                await interaction.editReply({ content: '⏳ Seu pagamento ainda está pendente. Por favor, aguarde alguns instantes após pagar e tente novamente.' });
+            if (!cart) return interaction.editReply({ content: '❌ Carrinho não encontrado.' });
+            if (!cart.payment_id) return interaction.editReply({ content: '⚠️ Nenhum pagamento identificado.' });
+
+            console.log(`[MP Verify] Verificando ID: ${cart.payment_id}`);
+            const paymentInfo = await getPaymentStatus(interaction.guild.id, cart.payment_id);
+
+            if (!paymentInfo) {
+                return interaction.editReply({ content: '❌ Não foi possível conectar ao Mercado Pago. Tente novamente em instantes.' });
+            }
+
+            const status = paymentInfo.status;
+            const statusDetail = paymentInfo.status_detail;
+
+            // Botão de emergência para Staff
+            const staffRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('store_staff_approve_payment')
+                    .setLabel('Staff: Forçar Aprovação')
+                    .setStyle(ButtonStyle.Danger)
+                    .setEmoji('🛡️')
+            );
+
+            if (status === 'approved') {
+                await interaction.editReply({ content: '✅ **Pagamento Aprovado!** Processando sua entrega...' });
+                try {
+                    await approvePurchase(interaction.client, interaction.guild.id, cartId, interaction);
+                } catch (deliveryError) {
+                    console.error('[MP Verify] Erro na entrega:', deliveryError);
+                    await interaction.followUp({ content: '⚠️ Erro na entrega automática. Staff notificada.', flags: EPHEMERAL_FLAG });
+                }
+            } else if (status === 'pending' || status === 'in_process') {
+                return interaction.editReply({ 
+                    content: '⏳ **Pagamento Pendente.**\nO banco ainda está processando seu Pix. Aguarde alguns segundos.',
+                    components: [staffRow] // Mostra opção para staff
+                });
+            } else if (status === 'rejected') {
+                 return interaction.editReply({ 
+                     content: `❌ **Pagamento Rejeitado.** Motivo: ${statusDetail}.`,
+                     components: [staffRow]
+                });
             } else {
-                 await interaction.editReply({ content: `❌ Seu pagamento foi **${paymentInfo.status}**. Por favor, gere um novo QR Code para tentar novamente.` });
-                 // Limpa o ID de pagamento do carrinho para evitar conflitos
-                 await db.query("UPDATE store_carts SET payment_id = NULL WHERE payment_id = $1", [paymentId]);
+                return interaction.editReply({ 
+                    content: `ℹ️ Status atual: **${status}**.`,
+                    components: [staffRow]
+                });
             }
+
         } catch (error) {
-            console.error(`[MP Verify Fail] Guild: ${guildId}, Payment: ${paymentId}`, error);
-            let errorMessage = 'Ocorreu um erro desconhecido.';
-            if (error.message.includes('não está configurado')) {
-                 errorMessage = "O token do Mercado Pago está configurado incorretamente. Contacte um administrador.";
-            } else if (error.message.includes('Falha ao buscar informações')) {
-                 errorMessage = "Não foi possível conectar com a API do Mercado Pago. Tente novamente em alguns instantes.";
-            }
-            
-            await interaction.editReply({ content: `❌ Ocorreu um erro ao verificar seu pagamento: ${errorMessage}` });
+            console.error('[MP Verify] Erro Crítico:', error);
+            await interaction.editReply({ content: '❌ Ocorreu um erro interno.' });
         }
     }
 };

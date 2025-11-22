@@ -17,7 +17,7 @@ module.exports = async function generateStoreMenu(interaction, settings) {
         {
             "type": 17, "accent_color": 15105570,
             "components": [
-                { "type": 10, "content": `## 🏪 StoreFlow V3 - Painel de Controle` },
+                { "type": 10, "content": `## 🏪 StoreFlow V4 - Painel de Controle` },
                 { "type": 10, "content": `> Status da Loja: **${statusText}**` },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
@@ -44,11 +44,7 @@ module.exports = async function generateStoreMenu(interaction, settings) {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Configurar", "custom_id": "store_config_main" },
                     "components": [{ "type": 10, "content": `**Configurações Essenciais**` }]
                 },
-                { "type": 14, "divider": true, "spacing": 1 },
-                {
-                    "type": 9, "accessory": { "type": 2, "style": 1, "label": "Personalizar", "custom_id": "store_customize_vitrine", "disabled": !hasStorePremium, "emoji": { "name": "🎨" } },
-                    "components": [{ "type": 10, "content": `**Aparência da Vitrine (Premium)**` }]
-                },
+
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9, "accessory": { "type": 2, "style": 1, "label": "Analisar", "custom_id": "store_open_analytics", "disabled": !hasStorePremium, "emoji": { "name": "📈" } },

@@ -1,69 +1,96 @@
-// Substitua o conteúdo em: handlers/buttons/store_pay_mercado_pago.js
+// File: handlers/buttons/store_pay_mercado_pago.js
 const { createPixPayment } = require('../../utils/mercadoPago.js');
 const db = require('../../database.js');
 const { EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
-const { getCartSummary } = require('../../ui/store/dmConversationalFlow.js');
-const generatePaymentMenu = require('../../ui/store/paymentMenu.js'); 
 
 module.exports = {
     customId: 'store_pay_mercado_pago',
     async execute(interaction) {
-        await interaction.deferUpdate();
-
-        const cartId = interaction.channel.id;
-        const cart = (await db.query('SELECT * FROM store_carts WHERE channel_id = $1', [cartId])).rows[0];
-        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
-        
-        const products = cart.products_json || [];
-        const coupon = cart.coupon_id ? (await db.query('SELECT * FROM store_coupons WHERE id = $1', [cart.coupon_id])).rows[0] : null;
+        // Usa deferReply EPHEMERAL para não expor dados
+        await interaction.deferReply({ ephemeral: true });
 
         try {
+            const cartId = interaction.channel.id;
+            
+            // 1. Busca dados vitais
+            const cartQuery = await db.query('SELECT * FROM store_carts WHERE channel_id = $1', [cartId]);
+            const cart = cartQuery.rows[0];
+            
+            if (!cart) return interaction.editReply("❌ Carrinho não encontrado.");
+
+            // 2. RECÁLCULO DE SEGURANÇA
+            const products = cart.products_json || [];
+            let calculatedTotal = 0;
+            
+            products.forEach(p => {
+                calculatedTotal += parseFloat(p.price) * (p.quantity || 1);
+            });
+
+            // Aplica cupom se existir
+            let couponCode = "Nenhum";
+            if (cart.coupon_id) {
+                const couponRes = await db.query('SELECT * FROM store_coupons WHERE id = $1', [cart.coupon_id]);
+                const coupon = couponRes.rows[0];
+                if (coupon) {
+                    const discount = calculatedTotal * (coupon.discount_percent / 100);
+                    calculatedTotal -= discount;
+                    couponCode = coupon.code;
+                }
+            }
+
+            calculatedTotal = parseFloat(calculatedTotal.toFixed(2));
+
+            // 3. SALVA O PREÇO NO BANCO
+            await db.query('UPDATE store_carts SET total_price = $1 WHERE channel_id = $2', [calculatedTotal, cartId]);
+            cart.total_price = calculatedTotal;
+
+            console.log(`[Debug Pagamento] Total Calculado: ${calculatedTotal} | Produtos: ${products.length}`);
+
+            if (calculatedTotal <= 0) {
+                return interaction.editReply("⚠️ O valor total do carrinho é R$ 0,00 ou inválido. Adicione produtos antes de pagar.");
+            }
+
+            // 4. Gera o Pagamento
             const paymentData = await createPixPayment(interaction.guild.id, cart, products);
             
             const qrCodeBuffer = Buffer.from(paymentData.qrCode, 'base64');
-            const attachmentName = `qrcode-pix-${cartId}.png`;
+            const attachmentName = `qrcode-pix.png`;
 
-            const { priceString } = getCartSummary(cart, coupon); 
-            
             const embed = new EmbedBuilder()
-                .setColor('Green')
-                .setTitle('💳 Pagamento Automático via PIX')
-                // INSTRUÇÃO ADICIONADA AQUI
-                .setDescription(`Seu pagamento foi gerado. Escaneie o QR Code ou use o código Copia e Cola para pagar o valor de ${priceString}.\n\n**Após o pagamento, clique em "✔️ Verificar Pagamento" para receber seus produtos.**`)
+                .setColor('#2ECC71') 
+                .setTitle('💠 Pagamento Pix Gerado!')
+                .setDescription(`**Valor Final:** R$ ${calculatedTotal.toFixed(2).replace('.', ',')}\n**Cupom:** ${couponCode}\n\n1️⃣ Abra o app do seu banco.\n2️⃣ Escolha **Pix** > **Ler QR Code**.\n3️⃣ Aponte a câmera ou use o código abaixo.`)
                 .addFields(
-                    { name: 'Código PIX (Copia e Cola)', value: `\`\`\`${paymentData.qrCodeCopy}\`\`\`` }
+                    { name: '👇 Pix Copia e Cola', value: `\`\`\`${paymentData.qrCodeCopy}\`\`\`` }
                 )
                 .setImage(`attachment://${attachmentName}`)
-                .setFooter({ text: `Aguardando pagamento... | ID: ${paymentData.paymentId}` })
+                .setFooter({ text: `ID do Pagamento: ${paymentData.paymentId}` })
                 .setTimestamp();
                 
             const actionRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
-                    .setCustomId(`store_verify_mp_payment_${paymentData.paymentId}`)
-                    .setLabel('Verificar Pagamento')
+                    .setCustomId(`store_verify_mp_payment`)
+                    .setLabel('Já paguei! Verificar')
                     .setStyle(ButtonStyle.Success)
                     .setEmoji('✔️'),
+                // --- BOTAO DE STAFF ADICIONADO AQUI ---
                 new ButtonBuilder()
-                    .setCustomId('store_payment_return_to_cart')
-                    .setLabel('Voltar ao Carrinho')
+                    .setCustomId('store_staff_approve_payment')
+                    .setLabel('Staff: Aprovar Manualmente')
                     .setStyle(ButtonStyle.Secondary)
+                    .setEmoji('🛡️')
             );
             
             await interaction.editReply({
                 embeds: [embed],
                 components: [actionRow],
-                files: [{ attachment: qrCodeBuffer, name: attachmentName }],
-                content: `Olá, ${interaction.user}! O seu pagamento via Mercado Pago está pronto.`,
+                files: [{ attachment: qrCodeBuffer, name: attachmentName }]
             });
 
         } catch (error) {
-            console.error('[Store] Erro ao gerar pagamento com Mercado Pago:', error);
-            const paymentMenuPayload = await generatePaymentMenu(cart, settings, coupon, interaction.guild); 
+            console.error('[Store] Erro MP:', error);
             await interaction.editReply({ 
-                content: `❌ **Ocorreu um erro ao gerar o pagamento automático:** ${error.message}. Voltando para o pagamento manual.`,
-                embeds: paymentMenuPayload.embeds,
-                components: paymentMenuPayload.components,
-                files: []
+                content: `❌ **Erro ao gerar Pix:** ${error.message}`
             });
         }
     }

@@ -1,54 +1,38 @@
-// Substitua o conteúdo em: handlers/buttons/store_pay_manual.js
+// File: handlers/buttons/store_pay_manual.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
 
 module.exports = {
     customId: 'store_pay_manual',
     async execute(interaction) {
-        await interaction.deferUpdate();
+        // Cria uma nova mensagem efêmera para evitar conflito com a interface V2 anterior
+        await interaction.deferReply({ ephemeral: true });
 
         const cart = (await db.query('SELECT * FROM store_carts WHERE channel_id = $1', [interaction.channel.id])).rows[0];
         const settings = (await db.query('SELECT store_pix_key FROM guild_settings WHERE guild_id = $1', [cart.guild_id])).rows[0];
         const pixKey = settings?.store_pix_key || "CHAVE PIX NÃO CONFIGURADA";
 
-        const instructionsEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        // Cria um novo Embed do zero (mais seguro que .from)
+        const instructionsEmbed = new EmbedBuilder()
             .setColor('#F1C40F')
             .setTitle('📄 Pagamento Manual via PIX')
             .setDescription('**1.** Realize o pagamento para a chave PIX abaixo.\n**2.** Tire um print do comprovante.\n**3.** Clique no botão "Anexar Comprovante" e envie a imagem aqui no canal.')
-            .setFields(
+            .addFields(
                 { name: 'Chave PIX (Copia e Cola)', value: `\`${pixKey}\`` },
                 { name: 'Status', value: 'Aguardando comprovante...' }
             );
 
-        // Botões para o usuário (Primeira fileira)
         const userButtons = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId(`store_attach_receipt`)
                 .setLabel('Anexar Comprovante')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('📎'),
-            new ButtonBuilder()
-                .setCustomId(`store_payment_return_to_cart`) 
-                .setLabel('Voltar')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('↩️')
+            // Removemos o botão "Voltar" pois agora é uma nova mensagem efêmera. 
+            // O usuário pode apenas fechar ("Ignorar") esta mensagem.
         );
 
-        // Botões para a staff (Segunda fileira)
-        const staffButtons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('store_staff_approve_payment')
-                .setLabel('Marcar como Pago (Staff)')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('✅'),
-            new ButtonBuilder()
-                .setCustomId('store_staff_deny_payment')
-                .setLabel('Cancelar Compra (Staff)')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
-        );
-
-        // Envia a mensagem com as duas fileiras de botões
-        await interaction.editReply({ embeds: [instructionsEmbed], components: [userButtons, staffButtons] });
+        // Enviamos SEM a flag V2, permitindo Embeds.
+        await interaction.editReply({ embeds: [instructionsEmbed], components: [userButtons] });
     }
 };

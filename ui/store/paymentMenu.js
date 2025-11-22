@@ -1,64 +1,49 @@
-// Substitua completamente o conteúdo de: ui/store/paymentMenu.js
-
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const hasFeature = require('../../utils/featureCheck.js');
-// Importa o utilitário necessário
-const { getCartSummary } = require('./dmConversationalFlow.js'); // << IMPORT CORRETA
-
-// CRÍTICO: Função AGORA recebe a guilda para checagem de feature e lógica de sumário.
-module.exports = async function generatePaymentMenu(cart, settings, coupon, guild) {
-    // Adicionamos uma checagem de segurança, embora o handler de chamada deva garantir isso.
-    if (!guild || !guild.id) {
-        throw new Error("Objeto Guild inválido passado para generatePaymentMenu.");
-    }
+// File: ui/store/paymentMenu.js
+module.exports = function generatePaymentMenu(cart, settings, coupon, guild) {
     
-    // Agora usa guild.id (e não guild, que pode ser undefined se o handler for chamado incorretamente)
-    const hasAutomation = await hasFeature(guild.id, 'STORE_AUTOMATION'); 
-    
-    const manualPayEnabled = settings.store_pix_key ? true : false;
-    
-    // Usa a função importada corretamente
-    const { priceString } = getCartSummary(cart, coupon); 
+    const hasMpToken = !!settings.store_mp_token;
+    const hasPixKey = !!settings.store_pix_key;
+    const totalPrice = cart.total_price;
 
-    const embed = new EmbedBuilder()
-        .setColor('#F1C40F')
-        .setTitle('💰 Finalizar Compra: Seleção de Pagamento')
-        .setDescription(`**Total a Pagar:** ${priceString}`)
-        .setFooter({ text: 'Selecione uma opção de pagamento abaixo.'})
-        .setTimestamp();
-        
-    const buttons = new ActionRowBuilder();
+    const paymentButtons = [];
 
-    // Opção de Pagamento Automático (Mercado Pago)
-    if (hasAutomation && settings.store_mp_token) {
-        embed.addFields({ name: 'Opção 1: PIX Automático (Recomendado)', value: 'Pague e receba instantaneamente.' });
-        buttons.addComponents(
-            new ButtonBuilder()
-                .setCustomId('store_pay_mercado_pago') // Formato curto
-                .setLabel('PIX Automático')
-                .setStyle(ButtonStyle.Success)
-                .setDisabled(false)
-        );
+    if (hasMpToken) {
+        paymentButtons.push({
+            type: 2, style: 3, label: "Pagar com Pix Automático",
+            emoji: { name: "💠" }, custom_id: "store_pay_mercado_pago"
+        });
     }
 
-    // Opção de Pagamento Manual (PIX com Comprovante)
-    if (manualPayEnabled) {
-        embed.addFields({ name: 'Opção 2: PIX Manual', value: 'Pague e aguarde a aprovação da Staff.' });
-        buttons.addComponents(
-            new ButtonBuilder()
-                .setCustomId('store_pay_manual')
-                .setLabel('PIX Manual')
-                .setStyle(ButtonStyle.Primary)
-                .setDisabled(false)
-        );
+    if (hasPixKey) {
+        paymentButtons.push({
+            type: 2, style: 1, label: "Pix Manual (Comprovante)",
+            emoji: { name: "📄" }, custom_id: "store_pay_manual"
+        });
     }
-    
-    buttons.addComponents(
-        new ButtonBuilder()
-            .setCustomId('store_cart_cancel')
-            .setLabel('Cancelar Compra')
-            .setStyle(ButtonStyle.Danger)
-    );
 
-    return { embeds: [embed], components: [buttons] };
+    paymentButtons.push({
+        type: 2, style: 4, label: "Cancelar Compra", custom_id: "store_cart_cancel"
+    });
+
+    return [
+        {
+            type: 17,
+            components: [
+                {
+                    type: 10,
+                    content: `## 🛒 Finalizar Compra\nConfira os valores e escolha como pagar.\n\n> 🏷️ **Cupom:** ${coupon ? coupon.code : 'Nenhum'}\n> 💰 **TOTAL A PAGAR:** **R$ ${totalPrice}**`
+                },
+                { type: 14, divider: true, spacing: 2 },
+                {
+                    type: 1,
+                    components: paymentButtons.length > 0 ? paymentButtons : [{ type: 2, style: 2, label: "Sem métodos de pagamento", disabled: true, custom_id: "no_method" }]
+                },
+                { type: 14, divider: true, spacing: 1 },
+                {
+                    type: 1,
+                    components: [{ type: 2, style: 2, label: "Voltar ao Carrinho", emoji: { name: "↩️" }, custom_id: "store_payment_return_to_cart" }]
+                }
+            ]
+        }
+    ];
 };

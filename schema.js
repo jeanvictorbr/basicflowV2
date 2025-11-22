@@ -26,6 +26,15 @@ const schema = {
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
         _unique: { type: 'UNIQUE', columns: ['created_by', 'template_name'] }
     },
+    // ... (outras tabelas)
+    store_stock_notifications: {
+        id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        user_id: { type: 'VARCHAR(255)', notNull: true },
+        product_id: { type: 'INTEGER', notNull: true },
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        _unique: { type: 'UNIQUE', columns: ['user_id', 'product_id'] }
+    },
 automations_announcements: {
 		announcement_id: { type: 'SERIAL', primaryKey: true },
 		guild_id: { type: 'VARCHAR(255)', notNull: true },
@@ -276,8 +285,17 @@ automations_announcements: {
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },
         description: { type: 'TEXT' },
-        _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] }
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'name'] },
+                // --- Configurações da Vitrine Personalizada ---
+        vitrine_title: { type: 'VARCHAR(255)' },
+        vitrine_desc: { type: 'TEXT' },
+        vitrine_image: { type: 'TEXT' },
+        vitrine_thumbnail: { type: 'TEXT' },
+        vitrine_color: { type: 'VARCHAR(20)', default: '#2b2d31' },
+        vitrine_channel_id: { type: 'VARCHAR(255)' },
+        vitrine_message_id: { type: 'VARCHAR(255)' },
     },
+    
     store_carts: {
         channel_id: { type: 'VARCHAR(255)', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },

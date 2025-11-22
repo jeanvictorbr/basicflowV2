@@ -34,6 +34,10 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
         let deliveredRoles = []; // Para DMs de 'role'
         let productDetailsForLog = []; // Para o log final
 
+        // --- NOVA ADIÇÃO: Rastrear categorias afetadas para atualizar vitrine ---
+        const affectedCategories = new Set();
+        // -----------------------------------------------------------------------
+
         // --- INÍCIO DA LÓGICA DE DURAÇÃO (PARA O CARGO DE CLIENTE) ---
         let maxDuration = 0;
         let hasPermanentProductRole = false;
@@ -47,12 +51,25 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
 
         for (const [productId, quantity] of productSummary.entries()) {
             const product = (await client_db.query('SELECT * FROM store_products WHERE id = $1', [productId])).rows[0];
+            
+            // [MODIFICAÇÃO] Criamos o objeto antes para poder popular o 'delivered_content' depois
+            let logItem = { 
+                name: product ? product.name : `[Produto Deletado ID: ${productId}]`, 
+                quantity: quantity, 
+                price: product ? product.price : 0,
+                delivered_content: [] // <-- AQUI SERÃO SALVAS AS KEYS
+            };
+
             if (!product) {
-                productDetailsForLog.push({ name: `[Produto Deletado ID: ${productId}]`, quantity: quantity });
+                productDetailsForLog.push(logItem);
                 continue;
             }
 
-            productDetailsForLog.push({ name: product.name, quantity: quantity, price: product.price });
+            // Adiciona categoria à lista de atualização
+            if (product.category_id) affectedCategories.add(product.category_id);
+
+            // Adicionamos o objeto (referência) ao array principal
+            productDetailsForLog.push(logItem);
 
             // 1. Entrega de Cargo
             if (product.role_id_to_grant) {
@@ -94,7 +111,11 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
                     let deliveredContent = [];
                     for (const stockItem of stockItems) {
                         await client_db.query('UPDATE store_stock SET is_claimed = true, claimed_by_user_id = $1, claimed_at = NOW() WHERE id = $2', [member.id, stockItem.id]);
+                        
                         deliveredContent.push(stockItem.content);
+                        
+                        // [MODIFICAÇÃO] Salva a key também no log para recuperação futura
+                        logItem.delivered_content.push(stockItem.content);
                     }
                     deliveredItemsContent.push(`**${product.name} (x${quantity})**:\n\`\`\`\n${deliveredContent.join('\n')}\n\`\`\``);
                     
@@ -180,12 +201,21 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
 
         await client_db.query('COMMIT');
 
-        // 8. Atualiza a vitrine após a compra ser confirmada
-        try {
-            await updateStoreVitrine(client, guildId);
-        } catch (vitrineError) {
-            console.error(`[ApprovePurchase] Falha ao atualizar a vitrine para a guild ${guildId}:`, vitrineError);
-            if (logChannel) await logChannel.send(`⚠️ **Alerta:** A venda foi concluída, mas falhei ao atualizar a vitrine principal. Pode ser necessário publicá-la novamente.`);
+        // 8. ATUALIZAR AS VITRINES DAS CATEGORIAS AFETADAS
+        // Agora percorremos o Set de IDs e atualizamos apenas as necessárias
+        if (affectedCategories.size > 0) {
+            for (const catId of affectedCategories) {
+                try {
+                    await updateStoreVitrine(client, guildId, catId);
+                } catch (vitrineError) {
+                    console.error(`[ApprovePurchase] Falha ao atualizar a vitrine da categoria ${catId}:`, vitrineError);
+                }
+            }
+        } else {
+            // Fallback para vitrine global se nenhuma categoria específica for detectada (compatibilidade)
+            try {
+                await updateStoreVitrine(client, guildId);
+            } catch (e) {}
         }
 
         return { success: true };

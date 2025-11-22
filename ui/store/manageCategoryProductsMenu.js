@@ -1,52 +1,54 @@
-// Substitua o conteúdo em: ui/store/manageCategoryProductsMenu.js
+// File: ui/store/manageCategoryProductsMenu.js
 const { StringSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function generateManageCategoryProductsMenu(category, assignedProducts = [], unassignedProducts = []) {
 
     const assignedOptions = assignedProducts.map(p => ({
         label: p.name,
-        description: `ID do Produto: ${p.id}`,
-        value: p.id.toString()
+        description: `ID: ${p.id} | R$ ${p.price || '?'},00`,
+        value: p.id.toString(),
+        emoji: { name: "❌" }
     }));
 
     const unassignedOptions = unassignedProducts.map(p => ({
         label: p.name,
-        description: `ID do Produto: ${p.id}`,
-        value: p.id.toString()
+        description: `ID: ${p.id} | R$ ${p.price || '?'},00`,
+        value: p.id.toString(),
+        emoji: { name: "➕" }
     }));
 
-    // CORREÇÃO: Garante que o valor máximo de seleção seja sempre 1 ou mais.
-    const maxRemoveValues = Math.max(1, Math.min(25, assignedOptions.length));
-    const maxAddValues = Math.max(1, Math.min(25, unassignedOptions.length));
-
+    // --- CORREÇÃO: Seleção Única (1 por vez) para atualização imediata ---
     const removeSelect = new StringSelectMenuBuilder()
-        .setCustomId(`select_store_remove_product_from_category_${category.id}`)
-        .setPlaceholder('Selecione produtos para REMOVER desta categoria')
+        .setCustomId(`select_store_cat_unlink_${category.id}`) 
+        .setPlaceholder('Selecione 1 produto para REMOVER')
         .addOptions(assignedOptions.length > 0 ? assignedOptions : [{ label: 'Nenhum produto para remover.', value: 'none' }])
         .setDisabled(assignedOptions.length === 0)
         .setMinValues(1)
-        .setMaxValues(maxRemoveValues);
+        .setMaxValues(1); // <--- MUDOU PARA 1
 
     const addSelect = new StringSelectMenuBuilder()
         .setCustomId(`select_store_add_product_to_category_${category.id}`)
-        .setPlaceholder('Selecione produtos para ADICIONAR a esta categoria')
+        .setPlaceholder('Selecione 1 produto para ADICIONAR')
         .addOptions(unassignedOptions.length > 0 ? unassignedOptions : [{ label: 'Nenhum produto sem categoria.', value: 'none' }])
         .setDisabled(unassignedOptions.length === 0)
         .setMinValues(1)
-        .setMaxValues(maxAddValues);
+        .setMaxValues(1); // <--- MUDOU PARA 1
 
     return [
         {
             "type": 17, "accent_color": 15105570,
             "components": [
                 { "type": 10, "content": `## 📂 Gerenciando Categoria: ${category.name}` },
-                { "type": 10, "content": `> Use os menus abaixo para adicionar produtos sem categoria ou remover produtos que já estão aqui.` },
+                { "type": 10, "content": `> Ações de adicionar/remover atualizam a vitrine automaticamente.` },
+                
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": "### Adicionar Produtos (Sem Categoria):" },
+                { "type": 10, "content": "### 📥 Adicionar à Categoria:" },
                 new ActionRowBuilder().addComponents(addSelect).toJSON(),
+                
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": "### Remover Produtos (Desta Categoria):" },
+                { "type": 10, "content": "### 📤 Remover da Categoria (Desvincular):" },
                 new ActionRowBuilder().addComponents(removeSelect).toJSON(),
+                
                 { "type": 14, "divider": true, "spacing": 2 },
                 {
                     "type": 1, "components": [

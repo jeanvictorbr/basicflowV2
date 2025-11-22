@@ -113,7 +113,18 @@ module.exports = {
 
         await interaction.followUp({ content: '✅ Produto atualizado com sucesso!', ephemeral: true });
         
-        // 5. Atualiza a vitrine (assíncrono)
-        await updateStoreVitrine(interaction.client, interaction.guild.id);
+        // 5. Atualiza a vitrine (ADIÇÃO INTELIGENTE)
+        // Verifica a categoria do produto para atualizar a vitrine correta
+        try {
+            if (oldProduct.category_id) {
+                // Se tem categoria, atualiza a vitrine específica
+                await updateStoreVitrine(interaction.client, interaction.guild.id, oldProduct.category_id);
+            } else {
+                // Se não tem, atualiza a vitrine global/principal
+                await updateStoreVitrine(interaction.client, interaction.guild.id);
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar vitrine após edição:', error);
+        }
     }
 };
