@@ -36,7 +36,7 @@ module.exports = function generateCartPanel(cart, productsInCart, settings, coup
         // Garante que o preço no carrinho seja atualizado
         cart.total_price = finalPrice.toFixed(2);
     } else {
-        embed.addFields({ name: '💸 Valor Total', value: `**\`R$ ${originalPrice.toFixed(2)}\`**` });
+        embed.addFields({ name: '💸 Valor Total da Compra', value: `**\`R$ ${originalPrice.toFixed(2)}\`**` });
         cart.total_price = originalPrice.toFixed(2);
     }
     
@@ -47,7 +47,8 @@ module.exports = function generateCartPanel(cart, productsInCart, settings, coup
     );
 
     const cancelRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('store_cart_cancel').setLabel('Cancelar e Excluir Carrinho').setStyle(ButtonStyle.Danger).setEmoji('✖️')
+        new ButtonBuilder().setCustomId('store_cart_cancel').setLabel('Cancelar e Excluir Carrinho').setStyle(ButtonStyle.Danger).setEmoji('✖️'),
+        new ButtonBuilder().setCustomId('store_staff_approve_payment').setLabel('Staff: Aprovar').setStyle(ButtonStyle.Secondary).setEmoji('🛡️').setDisabled(productsInCart.length === 0)
     );
 
     return { embeds: [embed], components: [userButtons, cancelRow] };
