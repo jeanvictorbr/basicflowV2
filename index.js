@@ -8,7 +8,7 @@ const { checkTokenUsage } = require('./utils/tokenMonitor.js');
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
 const { EPHEMERAL_FLAG } = require('./utils/constants');
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder, PermissionsBitField, ActivityType } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
@@ -364,6 +364,27 @@ client.once(Events.ClientReady, async () => {
         console.error('[CMD] Erro ao registar comandos:', error);
     }
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
+
+    // --- INÍCIO DA ALTERAÇÃO DO STATUS EM TEMPO REAL ---
+    const updateBotStatus = () => {
+        // Calcula o total de membros em todos os servidores onde o bot está
+        const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+        
+        // Define o status
+        client.user.setPresence({
+            activities: [{ 
+                name: `Atendendo ${totalMembers.toLocaleString('pt-BR')} usuários`, 
+                type: ActivityType.Playing // Exibirá: "Jogando Atendendo X usuários"
+            }],
+            status: 'online'
+        });
+        // console.log(`[Status] Atualizado para: Atendendo ${totalMembers} usuários`);
+    };
+
+    // Atualiza imediatamente e agenda para rodar a cada 10 minutos
+    updateBotStatus();
+    setInterval(updateBotStatus, 5 * 60 * 1000);
+    // --- FIM DA ALTERAÇÃO DO STATUS ---
     setInterval(() => checkAndCloseInactiveTickets(client), 5 * 60 * 1000);
     setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
     setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
