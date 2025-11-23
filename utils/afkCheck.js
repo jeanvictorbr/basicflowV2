@@ -1,4 +1,4 @@
-// Crie em: utils/afkCheck.js
+// Substitua o conteúdo em: utils/afkCheck.js
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../database.js');
 const pontoEndServiceHandler = require('../handlers/buttons/ponto_end_service.js');
@@ -26,20 +26,27 @@ async function performAfkCheck(client, guildId, userId) {
             console.log(`[AFK Check] Usuário ${userId} não respondeu a tempo. Finalizando ponto.`);
             client.afkToleranceTimers.delete(userId); // Limpa o próprio timer
 
-            // Simula uma interação para chamar o handler de finalizar ponto
-            const guild = await client.guilds.fetch(guildId);
-            const member = await guild.members.fetch(userId);
+            const guild = await client.guilds.fetch(guildId).catch(() => null);
+            if (!guild) return;
             
-            // Envia uma "interação fantasma" para o handler de finalizar serviço
-            // Isso garante que toda a lógica de finalização (logs, ranking, etc.) seja executada
+            const member = await guild.members.fetch(userId).catch(() => null);
+            
+            // Simula uma interação COMPLETA para o handler de finalizar serviço
             await pontoEndServiceHandler.execute({ 
                 user: user, 
-                member: member,
+                member: member, // Pode ser null se o user saiu
                 guild: guild,
                 client: client,
-                // Funções simuladas
-                deferReply: () => Promise.resolve(),
-                editReply: (options) => user.send(`Seu ponto foi finalizado automaticamente por inatividade. Detalhes: \`${options.content}\``),
+                // Propriedades falsas cruciais para evitar o crash
+                deferred: true, // Diz ao handler que já foi deferido
+                deferUpdate: () => Promise.resolve(), // Função vazia para satisfazer chamada
+                editReply: async (options) => {
+                    // Redireciona o editReply para uma DM ao usuário
+                    try { await user.send(`⚠️ Seu ponto foi finalizado automaticamente por inatividade.\n${options.content || ''}`); } catch (e) {}
+                },
+                followUp: async (options) => {
+                     try { await user.send(`⚠️ ${options.content}`); } catch (e) {}
+                }
              });
 
         }, 15 * 60 * 1000); // 15 minutos
@@ -48,12 +55,10 @@ async function performAfkCheck(client, guildId, userId) {
 
     } catch (error) {
         console.error(`[AFK Check] Falha ao enviar DM para ${userId}. O usuário pode ter DMs desativadas.`, error);
-        // Opcional: registrar essa falha em um canal de logs de admin.
     }
 }
 
 function scheduleAfkCheck(client, guildId, userId, intervalMinutes) {
-    // Cancela qualquer check antigo antes de agendar um novo
     if (client.afkCheckTimers.has(userId)) {
         clearTimeout(client.afkCheckTimers.get(userId));
     }

@@ -124,6 +124,11 @@ async function processConflictDetection(message, settings) {
 }
 
 async function processMessageForGuardian(message) {
+    // --- CORREÇÃO ADICIONADA AQUI ---
+    // Se a mensagem for em DM (guild null) ou autor não existir ou for bot, ignora.
+    if (!message.guild || !message.author || message.author.bot) return;
+    // ---------------------------------
+
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
     if (!settings?.guardian_ai_enabled) return;
 
