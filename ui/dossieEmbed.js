@@ -1,8 +1,20 @@
-// Substitua o conteúdo em: ui/dossieEmbed.js
+// ui/dossieEmbed.js
 const hasFeature = require('../utils/featureCheck.js');
 const ITEMS_PER_PAGE = 3; 
 
 module.exports = async function generateDossieEmbed(interaction, member, history, notes, page = 0, options = {}) {
+    // PROTEÇÃO CONTRA OBJETO NULO
+    if (!member || !member.user) {
+        console.error("[UI Dossie] Objeto member inválido fornecido.");
+        return {
+            components: [{
+                "type": 17, "components": [
+                    { "type": 10, "content": "⚠️ Erro: Dados do membro indisponíveis para exibição." }
+                ]
+            }]
+        };
+    }
+
     const targetUser = member.user;
 
     // 1. Resumo de Punições
@@ -14,11 +26,14 @@ module.exports = async function generateDossieEmbed(interaction, member, history
     });
     const summaryText = `> Avisos: \`${summary.WARN}\` | Silenciamentos: \`${summary.TIMEOUT}\` | Expulsões: \`${summary.KICK}\` | Banimentos: \`${summary.BAN}\``;
 
-    // 2. Lista de Cargos
-    const rolesText = member.roles.cache
-        .filter(role => role.name !== '@everyone')
-        .map(role => `<@&${role.id}>`)
-        .join(', ') || '> Nenhum cargo específico.';
+    // 2. Lista de Cargos (Com proteção de .roles)
+    let rolesText = '> Informação de cargos indisponível.';
+    if (member.roles && member.roles.cache) {
+        rolesText = member.roles.cache
+            .filter(role => role.name !== '@everyone')
+            .map(role => `<@&${role.id}>`)
+            .join(', ') || '> Nenhum cargo específico.';
+    }
 
     // 3. Paginação e Textos
     const totalPages = Math.ceil(history.length / ITEMS_PER_PAGE);
@@ -82,12 +97,12 @@ module.exports = async function generateDossieEmbed(interaction, member, history
                         { "type": 10, "content": `> **ID:** \`${targetUser.id}\`` }
                     ]
                 },
-                { "type": 10, "content": `> **No Servidor desde:** <t:${Math.floor(member.joinedTimestamp / 1000)}:D>` },
+                { "type": 10, "content": `> **No Servidor desde:** ${member.joinedTimestamp ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:D>` : 'Data desconhecida'}` },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": `### Resumo de Punições`},
                 { "type": 10, "content": summaryText },
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": `### Cargos (${member.roles.cache.size - 1})`},
+                { "type": 10, "content": `### Cargos (${member.roles && member.roles.cache ? member.roles.cache.size - 1 : 0})`},
                 { "type": 10, "content": rolesText },
                 { "type": 14, "divider": true, "spacing": 2 },
                 { "type": 10, "content": "### 📋 Histórico de Punições" },
