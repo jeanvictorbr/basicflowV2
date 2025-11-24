@@ -19,18 +19,23 @@ module.exports = {
             let countQuery, productsQuery;
             let queryParams, countParams;
 
+            // --- CORREÇÃO CRÍTICA DE SEGURANÇA: ADICIONADO guild_id ---
+
             if (mode === 'add') {
-                // Produtos SEM categoria
-                countQuery = 'SELECT COUNT(*) FROM store_products WHERE category_id IS NULL';
-                productsQuery = 'SELECT id, name, price FROM store_products WHERE category_id IS NULL ORDER BY id ASC LIMIT $1 OFFSET 0';
-                countParams = [];
-                queryParams = [ITEMS_PER_PAGE];
+                // Adicionar: Produtos da Guilda SEM Categoria
+                countQuery = 'SELECT COUNT(*) FROM store_products WHERE guild_id = $1 AND category_id IS NULL';
+                productsQuery = 'SELECT id, name, price FROM store_products WHERE guild_id = $1 AND category_id IS NULL ORDER BY id ASC LIMIT $2 OFFSET 0';
+                
+                countParams = [interaction.guild.id];
+                queryParams = [interaction.guild.id, ITEMS_PER_PAGE];
             } else {
-                // Modo 'remove' OU 'edit' (Produtos DESTA categoria)
-                countQuery = 'SELECT COUNT(*) FROM store_products WHERE category_id = $1';
-                productsQuery = 'SELECT id, name, price FROM store_products WHERE category_id = $1 ORDER BY id ASC LIMIT $2 OFFSET 0';
-                countParams = [categoryId];
-                queryParams = [categoryId, ITEMS_PER_PAGE];
+                // Remover/Editar: Produtos da Guilda E desta Categoria
+                // (Aqui já estava implícito pelo category_id ser único, mas reforçamos a segurança)
+                countQuery = 'SELECT COUNT(*) FROM store_products WHERE guild_id = $1 AND category_id = $2';
+                productsQuery = 'SELECT id, name, price FROM store_products WHERE guild_id = $1 AND category_id = $2 ORDER BY id ASC LIMIT $3 OFFSET 0';
+                
+                countParams = [interaction.guild.id, categoryId];
+                queryParams = [interaction.guild.id, categoryId, ITEMS_PER_PAGE];
             }
             
             const countRes = await db.query(countQuery, countParams);
@@ -40,6 +45,12 @@ module.exports = {
             const products = (await db.query(productsQuery, queryParams)).rows;
 
             const uiComponents = generateCategoryProductSelect(products, 0, totalPages, mode, categoryId);
+
+            if (mode === 'add' && products.length === 0) {
+                if (uiComponents[0] && uiComponents[0].components && uiComponents[0].components[0]) {
+                    uiComponents[0].components[0].content = `> ⚠️ **Atenção:** Não há produtos "sem categoria" disponíveis para adicionar.\n> Crie novos produtos ou remova-os de outras categorias primeiro.`;
+                }
+            }
 
             await interaction.editReply({
                 components: uiComponents,

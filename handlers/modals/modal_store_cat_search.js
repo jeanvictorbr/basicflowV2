@@ -1,16 +1,14 @@
-// Crie em: handlers/modals/modal_store_cat_search.js
+// Substitua em: handlers/modals/modal_store_cat_search.js
 const db = require('../../database.js');
 const generateCategoryProductSelect = require('../../ui/store/categoryProductSelect.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
-    // Captura IDs como: modal_store_cat_search_add_5
     customId: 'modal_store_cat_search_', 
     async execute(interaction) {
         await interaction.deferUpdate();
 
-        // Parse do ID: modal_store_cat_search_MODE_CATID
         const parts = interaction.customId.replace('modal_store_cat_search_', '').split('_');
         const mode = parts[0];
         const categoryId = parts[1];
@@ -21,36 +19,36 @@ module.exports = {
             let productsQuery;
             let queryParams;
 
-            // Lógica de Busca Filtrada
+            // --- CORREÇÃO CRÍTICA: ADICIONADO guild_id ---
+
             if (mode === 'add') {
-                // Busca produtos SEM CATEGORIA que tenham esse nome
+                // Busca produtos SEM CATEGORIA da GUILDA ATUAL
                 productsQuery = `
                     SELECT id, name, price 
                     FROM store_products 
-                    WHERE category_id IS NULL 
-                    AND name ILIKE $1 
-                    ORDER BY id ASC 
-                    LIMIT 25
-                `;
-                queryParams = [`%${query}%`];
-            } else {
-                // (Remove ou Edit) Busca produtos DESTA CATEGORIA que tenham esse nome
-                productsQuery = `
-                    SELECT id, name, price 
-                    FROM store_products 
-                    WHERE category_id = $1 
+                    WHERE guild_id = $1 
+                    AND category_id IS NULL 
                     AND name ILIKE $2 
                     ORDER BY id ASC 
                     LIMIT 25
                 `;
-                queryParams = [categoryId, `%${query}%`];
+                queryParams = [interaction.guild.id, `%${query}%`];
+            } else {
+                // Busca produtos DESTA CATEGORIA da GUILDA ATUAL
+                productsQuery = `
+                    SELECT id, name, price 
+                    FROM store_products 
+                    WHERE guild_id = $1 
+                    AND category_id = $2 
+                    AND name ILIKE $3 
+                    ORDER BY id ASC 
+                    LIMIT 25
+                `;
+                queryParams = [interaction.guild.id, categoryId, `%${query}%`];
             }
 
-            // Executa a busca
             const products = (await db.query(productsQuery, queryParams)).rows;
 
-            // Gera a interface com o resultado da busca
-            // (lista, pag 0, 1 total, mode, catId, isSearch=true, termo)
             const uiComponents = generateCategoryProductSelect(products, 0, 1, mode, categoryId, true, query);
 
             await interaction.editReply({

@@ -17,17 +17,21 @@ module.exports = {
 
             let countQuery, productsQuery, queryParams, countParams;
 
+            // --- CORREÇÃO CRÍTICA: FILTRO POR GUILD_ID OBRIGATÓRIO ---
+
             if (mode === 'add') {
-                countQuery = 'SELECT COUNT(*) FROM store_products WHERE category_id IS NULL';
-                productsQuery = 'SELECT id, name, price FROM store_products WHERE category_id IS NULL ORDER BY id ASC LIMIT $1 OFFSET $2';
-                countParams = [];
-                queryParams = [ITEMS_PER_PAGE, offset];
+                countQuery = 'SELECT COUNT(*) FROM store_products WHERE guild_id = $1 AND category_id IS NULL';
+                productsQuery = 'SELECT id, name, price FROM store_products WHERE guild_id = $1 AND category_id IS NULL ORDER BY id ASC LIMIT $2 OFFSET $3';
+                
+                countParams = [interaction.guild.id];
+                queryParams = [interaction.guild.id, ITEMS_PER_PAGE, offset];
             } else {
-                // Remove e Edit (Mesma query)
-                countQuery = 'SELECT COUNT(*) FROM store_products WHERE category_id = $1';
-                productsQuery = 'SELECT id, name, price FROM store_products WHERE category_id = $1 ORDER BY id ASC LIMIT $2 OFFSET $3';
-                countParams = [categoryId];
-                queryParams = [categoryId, ITEMS_PER_PAGE, offset];
+                // Remove e Edit
+                countQuery = 'SELECT COUNT(*) FROM store_products WHERE guild_id = $1 AND category_id = $2';
+                productsQuery = 'SELECT id, name, price FROM store_products WHERE guild_id = $1 AND category_id = $2 ORDER BY id ASC LIMIT $3 OFFSET $4';
+                
+                countParams = [interaction.guild.id, categoryId];
+                queryParams = [interaction.guild.id, categoryId, ITEMS_PER_PAGE, offset];
             }
 
             const countRes = await db.query(countQuery, countParams);
