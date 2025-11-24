@@ -1,16 +1,20 @@
-// Substitua completamente o conteúdo em: utils/createTranscript.js
 const fs = require('fs');
 const axios = require('axios');
 
+// Função auxiliar segura para converter imagens
 async function imageToBase64(url) {
     if (!url) return '';
     try {
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        const response = await axios.get(url, { 
+            responseType: 'arraybuffer',
+            timeout: 5000 // Timeout de 5s para não travar o bot
+        });
         const buffer = Buffer.from(response.data, 'binary').toString('base64');
         const mimeType = response.headers['content-type'];
         return `data:${mimeType};base64,${buffer}`;
     } catch (error) {
-        console.error(`[Transcript] Falha ao converter imagem para Base64: ${url}`, error);
+        // Log simplificado para não sujar o console
+        // console.warn(`[Transcript] Imagem não pôde ser carregada (provavelmente link expirado): ${url}`); 
         return '';
     }
 }
@@ -19,27 +23,32 @@ async function createTranscript(channel) {
     const messages = await channel.messages.fetch({ limit: 100 });
     const reversedMessages = Array.from(messages.values()).reverse();
     
-    // Sua logo
-    const logoUrl = 'https://media.discordapp.net/attachments/1310610658844475404/1426758912224264344/Logotipo_Banda_de_Rock_Vermelho_e_Preto__1_-removebg-preview.png?ex=68ee5e88&is=68ed0d08&hm=0ea8b2cd632e2c5e581a723905b1da970a8176111356b2e72564d843418ba30a&=&format=webp&quality=lossless';
+    // CORREÇÃO: Usa o ícone do servidor dinamicamente em vez de link fixo que expira
+    const logoUrl = channel.guild.iconURL({ extension: 'png', size: 128, forceStatic: false });
     const logoBase64 = await imageToBase64(logoUrl);
 
     const messagePromises = reversedMessages.map(async msg => {
         let author = msg.author;
-        let avatarUrl = author.displayAvatarURL({ extension: 'png', size: 64 });
+        let avatarUrl = author.displayAvatarURL({ extension: 'png', size: 64, forceStatic: false });
         let content = msg.content;
         let isRelayed = false;
 
+        // Tratamento para Webhooks e Embeds de Relay
         if (author.bot && msg.embeds.length > 0 && msg.embeds[0]?.author) {
             const embedAuthor = msg.embeds[0].author;
             author = { username: embedAuthor.name, tag: embedAuthor.name };
-            avatarUrl = embedAuthor.iconURL;
-            content = msg.embeds[0].description;
+            // Verifica se o iconURL existe antes de tentar usar
+            if (embedAuthor.iconURL) {
+                avatarUrl = embedAuthor.iconURL;
+            }
+            content = msg.embeds[0].description || content; // Fallback para content se desc for nula
             isRelayed = true;
         }
 
         const attachmentsHtml = (await Promise.all(Array.from(msg.attachments.values()).map(async att => {
             if (att.contentType?.startsWith('image/')) {
                 const imageBase64 = await imageToBase64(att.url);
+                if (!imageBase64) return ''; // Se falhar, não mostra imagem quebrada
                 return `<a href="${att.url}" target="_blank"><img class="attachment-image" src="${imageBase64}" alt="Anexo"></a>`;
             }
             return `<div class="attachment-file"><a href="${att.url}" target="_blank" download>${att.name}</a></div>`;
@@ -47,13 +56,20 @@ async function createTranscript(channel) {
 
         const embedsHtml = msg.embeds.map(embed => {
             if (isRelayed) return '';
-            const fieldsHtml = (embed.fields || []).map(field => `<div class="embed-field"><strong>${field.name}</strong><div>${field.value.replace(/\n/g, '<br>')}</div></div>`).join('');
+            const fieldsHtml = (embed.fields || []).map(field => 
+                `<div class="embed-field">
+                    <strong>${field.name}</strong>
+                    <div>${field.value ? field.value.replace(/\n/g, '<br>') : ''}</div>
+                </div>`
+            ).join('');
+            
             return `
             <div class="embed" ${embed.hexColor ? `style="border-left-color: ${embed.hexColor}"` : ''}>
-                ${embed.author ? `<div class="embed-author"><img src="${embed.author.iconURL}" class="embed-author-icon">${embed.author.name}</div>` : ''}
+                ${embed.author ? `<div class="embed-author">${embed.author.iconURL ? `<img src="${embed.author.iconURL}" class="embed-author-icon">` : ''}${embed.author.name}</div>` : ''}
                 ${embed.title ? `<div class="embed-title">${embed.title}</div>` : ''}
                 ${embed.description ? `<div>${embed.description.replace(/\n/g, '<br>')}</div>` : ''}
                 ${fieldsHtml ? `<div class="embed-fields">${fieldsHtml}</div>` : ''}
+                ${embed.image ? `<div class="embed-image"><img src="${embed.image.url}" style="max-width: 100%; border-radius: 4px; margin-top: 10px;"></div>` : ''}
             </div>`;
         }).join('');
 
@@ -61,7 +77,7 @@ async function createTranscript(channel) {
 
         return `
             <div class="message-group">
-                <img class="avatar" src="${avatarBase64}" alt="${author.tag}">
+                <img class="avatar" src="${avatarBase64 || 'https://cdn.discordapp.com/embed/avatars/0.png'}" alt="${author.tag}">
                 <div class="message-content">
                     <div class="author-info">
                         <span class="username">${author.username}</span>
@@ -92,18 +108,16 @@ async function createTranscript(channel) {
             .header-info p { margin: 4px 0 0; font-size: 14px; color: #99AAB5; }
             .message-group { display: flex; padding: 16px 0; border-bottom: 1px solid #3a3e43; }
             .message-group:last-child { border-bottom: none; }
-            .avatar { width: 48px; height: 48px; border-radius: 50%; margin-right: 16px; transition: transform 0.2s ease; }
-            .avatar:hover { transform: scale(1.1); }
-            .message-content { flex-grow: 1; }
+            .avatar { width: 48px; height: 48px; border-radius: 50%; margin-right: 16px; object-fit: cover; }
+            .message-content { flex-grow: 1; overflow-wrap: anywhere; }
             .author-info { display: flex; align-items: baseline; margin-bottom: 6px; }
             .username { font-weight: 500; color: #FFFFFF; font-size: 17px; }
             .timestamp { font-size: 12px; color: #72767D; margin-left: 10px; }
             .message-text { font-size: 16px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
             .attachments { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px; }
-            .attachment-image { max-width: 450px; height: auto; border-radius: 8px; transition: opacity 0.3s; }
-            .attachment-image:hover { opacity: 0.8; }
+            .attachment-image { max-width: 400px; max-height: 400px; height: auto; border-radius: 8px; }
             .attachment-file a { color: #7289DA; text-decoration: none; background-color: #40444B; padding: 8px 12px; border-radius: 5px; font-size: 14px; }
-            .embed { background-color: #292B2F; border-left: 4px solid #4F545C; padding: 12px; border-radius: 5px; margin-top: 8px; }
+            .embed { background-color: #292B2F; border-left: 4px solid #4F545C; padding: 12px; border-radius: 5px; margin-top: 8px; max-width: 600px; }
             .embed-title { font-weight: 700; color: #FFFFFF; margin-bottom: 4px; }
             .embed-author { display: flex; align-items: center; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
             .embed-author-icon { width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; }
@@ -122,7 +136,7 @@ async function createTranscript(channel) {
                 </div>
             </div>
             ${messageElements.join('')}
-            <div class="footer"><p>Transcrição gerada por ${channel.client.user.username}</p></div>
+            <div class="footer"><p>Gerado automaticamente por ${channel.client.user.username} • ${new Date().toLocaleString('pt-BR')}</p></div>
         </div>
     </body>
     </html>

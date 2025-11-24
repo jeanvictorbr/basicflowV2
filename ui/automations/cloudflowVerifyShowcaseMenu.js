@@ -40,7 +40,7 @@ function getCloudflowVerifyShowcaseMenu(settings) {
                 { "type": 2, "style": 2, "label": "Título", "custom_id": "aut_showcase_set_title" },
                 { "type": 2, "style": 2, "label": "Descrição", "custom_id": "aut_showcase_set_desc" },
                 { "type": 2, "style": 2, "label": "Rodapé", "custom_id": "aut_showcase_set_footer" },
-                { "type": 2, "style": 2, "label": "Imagem", "custom_id": "aut_showcase_set_image" },
+            //  { "type": 2, "style": 2, "label": "Imagem", "custom_id": "aut_showcase_set_image",  },
             ]
         },
         {

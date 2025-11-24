@@ -1,7 +1,6 @@
 // utils/approvePurchase.js
 const db = require('../database.js');
 const { EmbedBuilder } = require('discord.js');
-const { logEvent } = require('./webhookLogger.js'); 
 const updateStoreVitrine = require('./updateStoreVitrine.js');
 
 async function approvePurchase(client, guildId, cartChannelId, staffMember = null) {
@@ -30,18 +29,16 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
         const logChannel = settings.store_log_channel_id ? await guild.channels.fetch(settings.store_log_channel_id).catch(() => null) : null;
         const publicLogChannel = settings.store_public_log_channel_id ? await guild.channels.fetch(settings.store_public_log_channel_id).catch(() => null) : null;
 
-        let deliveredItemsContent = []; // Para DMs de 'REAL'
-        let deliveredRoles = []; // Para DMs de 'role'
-        let productDetailsForLog = []; // Para o log final
-
-        // --- NOVA ADIÇÃO: Rastrear categorias afetadas para atualizar vitrine ---
+        let deliveredItemsContent = []; 
+        let deliveredRoles = []; 
+        let productDetailsForLog = []; 
         const affectedCategories = new Set();
-        // -----------------------------------------------------------------------
 
-        // --- INÍCIO DA LÓGICA DE DURAÇÃO (PARA O CARGO DE CLIENTE) ---
+        // Variáveis para recálculo seguro do preço
+        let calculatedTotal = 0;
+
         let maxDuration = 0;
         let hasPermanentProductRole = false;
-        // --- FIM DA LÓGICA ---
 
         // Agrupa produtos idênticos para entrega
         const productSummary = new Map();
@@ -52,12 +49,11 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
         for (const [productId, quantity] of productSummary.entries()) {
             const product = (await client_db.query('SELECT * FROM store_products WHERE id = $1', [productId])).rows[0];
             
-            // [MODIFICAÇÃO] Criamos o objeto antes para poder popular o 'delivered_content' depois
             let logItem = { 
                 name: product ? product.name : `[Produto Deletado ID: ${productId}]`, 
                 quantity: quantity, 
                 price: product ? product.price : 0,
-                delivered_content: [] // <-- AQUI SERÃO SALVAS AS KEYS
+                delivered_content: [] 
             };
 
             if (!product) {
@@ -65,10 +61,10 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
                 continue;
             }
 
-            // Adiciona categoria à lista de atualização
-            if (product.category_id) affectedCategories.add(product.category_id);
+            // CORREÇÃO 1: Somar ao total calculado para garantir que não seja nulo
+            calculatedTotal += parseFloat(product.price) * quantity;
 
-            // Adicionamos o objeto (referência) ao array principal
+            if (product.category_id) affectedCategories.add(product.category_id);
             productDetailsForLog.push(logItem);
 
             // 1. Entrega de Cargo
@@ -78,7 +74,6 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
                     await member.roles.add(role, 'Compra na Loja BasicFlow');
                     deliveredRoles.push(role.name);
                     
-                    // Lógica de expiração
                     if (product.role_duration_days && product.role_duration_days > 0) {
                         await client_db.query(`
                             INSERT INTO store_user_roles_expiration (guild_id, user_id, role_id, expires_at)
@@ -87,15 +82,11 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
                             DO UPDATE SET expires_at = NOW() + INTERVAL '${product.role_duration_days} days';
                         `, [guildId, member.id, role.id]);
                         
-                        // --- LÓGICA DE DURAÇÃO (PARA O CARGO DE CLIENTE) ---
                         if (product.role_duration_days > maxDuration) {
                             maxDuration = product.role_duration_days;
                         }
-                        // --- FIM DA LÓGICA ---
                     } else {
-                        // --- LÓGICA DE DURAÇÃO (PARA O CARGO DE CLIENTE) ---
-                        hasPermanentProductRole = true; // Marcou que tem um cargo permanente
-                        // --- FIM DA LÓGICA ---
+                        hasPermanentProductRole = true; 
                     }
                 }
             }
@@ -111,47 +102,47 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
                     let deliveredContent = [];
                     for (const stockItem of stockItems) {
                         await client_db.query('UPDATE store_stock SET is_claimed = true, claimed_by_user_id = $1, claimed_at = NOW() WHERE id = $2', [member.id, stockItem.id]);
-                        
                         deliveredContent.push(stockItem.content);
-                        
-                        // [MODIFICAÇÃO] Salva a key também no log para recuperação futura
                         logItem.delivered_content.push(stockItem.content);
                     }
                     deliveredItemsContent.push(`**${product.name} (x${quantity})**:\n\`\`\`\n${deliveredContent.join('\n')}\n\`\`\``);
-                    
-                    // Atualiza a contagem de estoque
                     await client_db.query('UPDATE store_products SET stock = stock - $1 WHERE id = $2', [quantity, product.id]);
                 } else {
-                    // Sem estoque! Loga o erro.
                     if(logChannel) await logChannel.send(`⚠️ **FALHA NA ENTREGA (SEM ESTOQUE)!**\nProduto: \`${product.name}\` (ID: ${product.id})\nCliente: ${member}\nPedido: ${quantity} / Disponível: ${stockItems.length}\nO item foi pago mas não pôde ser entregue.`);
                     deliveredItemsContent.push(`**${product.name} (x${quantity})**: \`ERRO: Sem estoque! Um admin foi notificado.\``);
                 }
             }
         }
         
-        // --- INÍCIO DA CORREÇÃO (CARGO DE CLIENTE TEMPORÁRIO) ---
+        // CORREÇÃO 2: Aplicar desconto do cupom se houver (no cálculo seguro)
+        if (cart.coupon_id) {
+            const couponRes = await client_db.query('SELECT discount_percent FROM store_coupons WHERE id = $1', [cart.coupon_id]);
+            if (couponRes.rows.length > 0) {
+                const discount = (calculatedTotal * couponRes.rows[0].discount_percent) / 100;
+                calculatedTotal -= discount;
+            }
+        }
+
+        // Formata o total final para string com 2 casas decimais (evita null)
+        const finalTotalToSave = Math.max(0, calculatedTotal).toFixed(2);
+
         // 3. Cargo de Cliente
         if (settings.store_client_role_id) {
             const clientRole = await guild.roles.fetch(settings.store_client_role_id).catch(() => null);
             if (clientRole) {
                 await member.roles.add(clientRole, 'Cliente do StoreFlow');
-                
-                // Se o usuário NÃO comprou nenhum cargo permanente E comprou PELO MENOS UM cargo temporário
-                // O cargo de cliente vai expirar junto com o cargo temporário mais longo
                 if (!hasPermanentProductRole && maxDuration > 0) {
                      await client_db.query(`
                         INSERT INTO store_user_roles_expiration (guild_id, user_id, role_id, expires_at)
                         VALUES ($1, $2, $3, NOW() + INTERVAL '${maxDuration} days')
                         ON CONFLICT (guild_id, user_id, role_id)
                         DO UPDATE SET expires_at = NOW() + INTERVAL '${maxDuration} days';
-                    `, [guildId, member.id, clientRole.id]); // Adiciona o CARGO DE CLIENTE na expiração
+                    `, [guildId, member.id, clientRole.id]); 
                 }
             }
         }
-        // --- FIM DA CORREÇÃO ---
 
-
-        // 4. Enviar DMs de entrega
+        // 4. Enviar DMs
         if (deliveredItemsContent.length > 0) {
             await member.send(`🎉 **Sua entrega de ${guild.name} chegou!**\n\nObrigado por sua compra. Aqui estão seus produtos:\n\n${deliveredItemsContent.join('\n\n')}`).catch(() => {
                 if(logChannel) logChannel.send(`⚠️ Falha ao enviar DM de entrega de estoque para ${member}.`);
@@ -164,22 +155,25 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
         }
 
         // 5. Atualizar Carrinho e Logar Venda
-        await client_db.query("UPDATE store_carts SET status = 'delivered', claimed_by_staff_id = $1 WHERE channel_id = $2", [staffId, cartChannelId]);
+        // CORREÇÃO 3: Usar 'finalTotalToSave' em vez de 'cart.total_price' (que pode ser null)
+        await client_db.query("UPDATE store_carts SET status = 'delivered', claimed_by_staff_id = $1, total_price = $3 WHERE channel_id = $2", [staffId, cartChannelId, finalTotalToSave]);
+        
         await client_db.query(
             "INSERT INTO store_sales_log (guild_id, user_id, total_amount, product_details, status, created_at) VALUES ($1, $2, $3, $4::jsonb, 'completed', NOW())",
-            [guildId, member.id, cart.total_price, JSON.stringify(productDetailsForLog)]
+            [guildId, member.id, finalTotalToSave, JSON.stringify(productDetailsForLog)]
         );
         
         // 6. Logar no canal privado
         const logEmbed = new EmbedBuilder()
             .setTitle('✅ Venda Aprovada')
             .setColor('Green')
-            .setDescription(`**Cliente:** ${member} (\`${member.id}\`)\n**Atendente:** <@${staffId}>\n**Valor:** \`R$ ${cart.total_price}\`\n**ID Carrinho:** \`${cart.channel_id}\``)
+            // CORREÇÃO 4: Exibir o preço calculado no Embed
+            .setDescription(`**Cliente:** ${member} (\`${member.id}\`)\n**Atendente:** <@${staffId}>\n**Valor:** \`R$ ${finalTotalToSave}\`\n**ID Carrinho:** \`${cart.channel_id}\``)
             .addFields({ name: 'Itens Entregues', value: productDetailsForLog.map(p => `• ${p.quantity}x ${p.name}`).join('\n') })
             .setTimestamp();
         if(logChannel) await logChannel.send({ embeds: [logEmbed] });
 
-        // 7. Logar no canal público (Estilo solicitado)
+        // 7. Logar no canal público
         if(publicLogChannel) {
             const productListString = productDetailsForLog.map(p => `• ${p.quantity}x ${p.name}`).join('\n');
             const descriptionComBarra = `> ${member} acaba de adquirir seus produtos!\n> Agradecemos a preferência!`;
@@ -201,8 +195,7 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
 
         await client_db.query('COMMIT');
 
-        // 8. ATUALIZAR AS VITRINES DAS CATEGORIAS AFETADAS
-        // Agora percorremos o Set de IDs e atualizamos apenas as necessárias
+        // 8. Atualizar Vitrines
         if (affectedCategories.size > 0) {
             for (const catId of affectedCategories) {
                 try {
@@ -212,7 +205,6 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
                 }
             }
         } else {
-            // Fallback para vitrine global se nenhuma categoria específica for detectada (compatibilidade)
             try {
                 await updateStoreVitrine(client, guildId);
             } catch (e) {}

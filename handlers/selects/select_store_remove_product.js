@@ -1,68 +1,63 @@
-// Substitua o conteúdo em: handlers/selects/select_store_remove_product.js
+// Substitua em: handlers/selects/select_store_remove_product.js
 const db = require('../../database.js');
-const generateProductsMenu = require('../../ui/store/productsMenu.js');
-const updateStoreVitrine = require('../../utils/updateStoreVitrine.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'select_store_remove_product',
     async execute(interaction) {
-        await interaction.deferUpdate();
+        if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+
         const productId = interaction.values[0];
+        if (productId === 'no_result') return;
 
-        // 1. BUSCA DADOS CRITICOS (Categoria e Cargo) ANTES DE DELETAR
-        const productResult = await db.query(
-            'SELECT role_id_to_grant, auto_created_role, category_id FROM store_products WHERE id = $1 AND guild_id = $2', 
-            [productId, interaction.guild.id]
-        );
-        const product = productResult.rows[0];
+        try {
+            const product = (await db.query('SELECT * FROM store_products WHERE id = $1', [productId])).rows[0];
 
-        // Se o produto não existir mais, interrompe
-        if (!product) {
-             return interaction.followUp({ content: '❌ Produto não encontrado ou já excluído.', ephemeral: true });
-        }
+            if (!product) {
+                return interaction.editReply({ content: '❌ Produto já não existe mais.', components: [] });
+            }
 
-        // --- LÓGICA DE EXCLUSÃO DE CARGO ---
-        if (product.auto_created_role && product.role_id_to_grant) {
-            try {
-                const role = await interaction.guild.roles.fetch(product.role_id_to_grant);
-                if (role) {
-                    await role.delete('Produto correspondente (StoreFlow) foi excluído.');
+            // Construção Manual da UI de Confirmação
+            const confirmPanel = [
+                {
+                    type: 17,
+                    components: [
+                        { type: 10, content: `> **🗑️ Excluir Produto:** ${product.name}` },
+                        { type: 10, content: `> **ATENÇÃO:** Você tem certeza? Essa ação não pode ser desfeita.\n> **ID:** ${product.id}` },
+                        { type: 14, divider: true, spacing: 2 },
+                        {
+                            type: 1,
+                            components: [
+                                // Botão CONFIRMAR (Vermelho)
+                                { 
+                                    type: 2, 
+                                    style: 4, // Danger
+                                    label: "SIM, EXCLUIR", 
+                                    emoji: { name: "🗑️" }, 
+                                    custom_id: `store_confirm_delete_${product.id}` 
+                                },
+                                // Botão CANCELAR (Cinza) - Volta pro menu anterior
+                                { 
+                                    type: 2, 
+                                    style: 2, 
+                                    label: "Cancelar", 
+                                    emoji: { name: "↩️" }, 
+                                    custom_id: "store_remove_product" 
+                                }
+                            ]
+                        }
+                    ]
                 }
-            } catch (error) {
-                console.error(`[Store] Falha ao deletar cargo automático ${product.role_id_to_grant}:`, error.message);
-                await interaction.followUp({ content: '⚠️ O produto foi removido, mas falhei em deletar o cargo automático. Delete-o manualmente.', ephemeral: true });
-            }
-        }
-        
-        // Limpa registros de expiração do cargo
-        if (product.role_id_to_grant) {
-            await db.query('DELETE FROM store_user_roles_expiration WHERE role_id = $1 AND guild_id = $2', [product.role_id_to_grant, interaction.guild.id]);
-        }
-        // --- FIM DA LÓGICA DE EXCLUSÃO ---
+            ];
 
-        // 2. DELETA O PRODUTO (e estoque via cascade ou manual)
-        await db.query('DELETE FROM store_stock WHERE product_id = $1 AND guild_id = $2', [productId, interaction.guild.id]);
-        await db.query('DELETE FROM store_products WHERE id = $1 AND guild_id = $2', [productId, interaction.guild.id]);
+            await interaction.editReply({
+                components: confirmPanel,
+                flags: V2_FLAG | EPHEMERAL_FLAG
+            });
 
-        // 3. RECARREGA O MENU DE GERENCIAMENTO
-        const products = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
-        await interaction.editReply({
-            components: generateProductsMenu(products, 0),
-            flags: V2_FLAG | EPHEMERAL_FLAG,
-        });
-        
-        await interaction.followUp({ content: '✅ Produto removido e vitrine atualizada!', ephemeral: true });
-
-        // 4. ATUALIZA A VITRINE DA CATEGORIA CORRETA
-        // Agora passamos o ID da categoria que salvamos no passo 1
-        if (product.category_id) {
-            try {
-                await updateStoreVitrine(interaction.client, interaction.guild.id, product.category_id);
-            } catch (vitrineError) {
-                console.error('[Store Remove] Erro ao atualizar vitrine:', vitrineError);
-            }
+        } catch (error) {
+            console.error("Erro ao abrir confirmação de delete:", error);
         }
     }
 };
