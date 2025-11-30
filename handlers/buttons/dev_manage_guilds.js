@@ -1,3 +1,4 @@
+// handlers/buttons/dev_manage_guilds.js
 const devPanelUtils = require('../../utils/devPanelUtils.js');
 // Importação segura com fallback
 const getAndPrepareGuildData = devPanelUtils.getAndPrepareGuildData;
@@ -5,6 +6,7 @@ const getAndPrepareGuildData = devPanelUtils.getAndPrepareGuildData;
 const generateDevGuildsMenu = require('../../ui/devPanel/devGuildsMenu.js');
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
+const STORE_GUILD_ID = '1424757317701996544'; // ID do Servidor da Loja
 
 module.exports = {
     customId: 'dev_manage_guilds',
@@ -32,8 +34,28 @@ module.exports = {
         try {
             const { allGuildData, totals } = await getAndPrepareGuildData(interaction.client);
             
+            // --- NOVA LÓGICA: Verificar Donos na Loja (Página 0) ---
+            const ownersInStore = new Set();
+            try {
+                // Como esta é a página inicial (0) e a UI mostra 4 itens:
+                const currentSlice = allGuildData.slice(0, 4); 
+                const storeGuild = interaction.client.guilds.cache.get(STORE_GUILD_ID);
+                
+                if (storeGuild) {
+                    const ownerIdsToCheck = currentSlice.map(g => g.ownerId).filter(id => id);
+                    if (ownerIdsToCheck.length > 0) {
+                        // Busca eficiente na API apenas para os donos desta página
+                        const fetchedMembers = await storeGuild.members.fetch({ user: ownerIdsToCheck });
+                        fetchedMembers.forEach(m => ownersInStore.add(m.id));
+                    }
+                }
+            } catch (err) {
+                console.error('Erro ao verificar donos na loja (DevManage):', err);
+            }
+            // -------------------------------------------------------
+
             await interaction.editReply({
-                components: generateDevGuildsMenu(allGuildData, 0, totals, 'default'),
+                components: generateDevGuildsMenu(allGuildData, 0, totals, 'default', ownersInStore),
                 flags: V2_FLAG | EPHEMERAL_FLAG,
             });
         } catch (error) {
