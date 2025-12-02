@@ -1,8 +1,11 @@
 const { EmbedBuilder } = require('discord.js');
 const database = require('../database');
 
+// Função de pausa para evitar spam de requisições
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function startVerificationLoop(client) {
-    console.log('[Verification Loop] ✅ Sistema iniciado e blindado. Aguardando usuários...');
+    console.log('[Verification Loop] ✅ Sistema iniciado e blindado (Modo Seguro).');
 
     // 1. Garante a coluna de controle na tabela
     let initDb;
@@ -15,14 +18,14 @@ async function startVerificationLoop(client) {
         if (initDb) initDb.release();
     }
 
-    // 2. Loop Principal (Roda a cada 15 segundos)
+    // 2. Loop Principal (Aumentado para 30 segundos para evitar Rate Limit)
     setInterval(async () => {
         let db;
         try {
             // Pega uma conexão do pool
             db = await database.getClient();
             
-            // Busca usuários pendentes (limitado a 5 por vez para não spammar)
+            // Busca usuários pendentes (limitado a 5 por vez)
             const res = await db.query("SELECT * FROM users WHERE origin_guild IS NOT NULL AND processed = FALSE LIMIT 5");
 
             if (res.rows.length > 0) {
@@ -33,6 +36,9 @@ async function startVerificationLoop(client) {
                 const { id, origin_guild, username } = userRow;
 
                 try {
+                    // Pausa de 2 segundos entre cada usuário para não sobrecarregar a API
+                    await sleep(2000);
+
                     // TRATAMENTO ESPECIAL: Login Global (sem guilda de origem)
                     if (origin_guild === 'global') {
                         console.log(`[Verification] 🌍 Usuário ${username} fez login Global. Apenas registrando.`);
@@ -43,7 +49,7 @@ async function startVerificationLoop(client) {
                     // Verifica se o bot está na guilda
                     const guild = client.guilds.cache.get(origin_guild);
                     if (!guild) {
-                        console.log(`[Verification] ⚠️ Bot não está na guilda ID ${origin_guild}. Pulando ${username}.`);
+                        console.log(`[Verification] ⚠️ Bot não está na guilda ID ${origin_guild}. Finalizando pendência de ${username}.`);
                         await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                         continue; 
                     }
@@ -53,7 +59,6 @@ async function startVerificationLoop(client) {
                     
                     // Se não tiver cargo configurado, marca como feito e pula
                     if (settingsRes.rows.length === 0 || !settingsRes.rows[0].cloudflow_verify_role_id) {
-                        // console.log(`[Verification] Sem cargo configurado em ${guild.name}.`);
                         await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                         continue;
                     }
@@ -65,9 +70,12 @@ async function startVerificationLoop(client) {
                     try {
                         member = await guild.members.fetch(id);
                     } catch (e) {
-                        // Usuário logou no site mas ainda não entrou no Discord
-                        // NÃO marcamos como processado para tentar de novo na próxima volta
-                        // console.log(`[Verification] Usuário ${username} ainda não entrou no servidor.`);
+                        // [CORREÇÃO CRÍTICA]
+                        // Se der erro (ex: usuário não está no servidor), PRECISAMOS marcar como processado.
+                        // Caso contrário, o bot tentará buscar esse usuário infinitamente a cada loop,
+                        // causando "API Abuse" e desligamento pela Discloud.
+                        console.log(`[Verification] ❌ Usuário ${username} (${id}) não encontrado no servidor. Cancelando verificação.`);
+                        await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                         continue; 
                     }
 
@@ -96,19 +104,18 @@ async function startVerificationLoop(client) {
                             await member.send({ embeds: [embed] });
                             console.log(`[Verification] 📩 DM enviada para ${username}`);
                         } catch (dmErr) {
-                            if (dmErr.code === 50007) {
-                                console.log(`[Verification] ⚠️ DM fechada para ${username}. (Cargo foi entregue)`);
-                            } else {
+                            // Ignora erro de DM fechada, mas loga
+                            if (dmErr.code !== 50007) {
                                 console.error(`[Verification] ❌ Erro DM para ${username}:`, dmErr.message);
                             }
                         }
 
-                        // 3. MARCAR COMO CONCLUÍDO (Para não repetir)
+                        // 3. MARCAR COMO CONCLUÍDO (Sucesso)
                         await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                     }
 
                 } catch (innerErr) {
-                    console.error(`[Verification] ❌ Erro processando ${username}:`, innerErr.message);
+                    console.error(`[Verification] ❌ Erro Crítico processando ${username}:`, innerErr.message);
                     // Em caso de erro grave no user, marcamos como processado para não travar a fila eternamente
                     await db.query("UPDATE users SET processed = TRUE WHERE id = $1", [id]);
                 }
@@ -116,14 +123,13 @@ async function startVerificationLoop(client) {
         } catch (err) {
             console.error("[Verification Loop] 💥 Erro Geral no Loop:", err.message);
         } finally {
-            // A CORREÇÃO MÁGICA: Solta a conexão aconteça o que acontecer!
             if (db) {
                 try {
                     db.release();
                 } catch (e) { /* ignora erro de release */ }
             }
         }
-    }, 5 * 1000); // 15 Segundos
+    }, 30 * 1000); // 30 Segundos (Seguro)
 }
 
 module.exports = { startVerificationLoop };

@@ -18,7 +18,40 @@ module.exports = {
         }
 
         const activeSession = (await db.query('SELECT * FROM ponto_sessions WHERE user_id = $1 AND guild_id = $2', [interaction.user.id, interaction.guild.id])).rows[0];
-        if (activeSession) { return interaction.editReply({ content: '⚠️ Você já está em serviço.' }); }
+        
+        // Lógica alterada: Se o usuário já estiver em serviço, reenviamos o dashboard ativo
+        if (activeSession) { 
+            const useV2 = settings.ponto_dashboard_v2_enabled;
+            const dashboardPayload = useV2 ? { components: generatePontoDashboardV2(interaction, settings, activeSession), flags: V2_FLAG } : generatePontoDashboard(interaction, activeSession);
+
+            const dashboardMessage = await interaction.editReply({ ...dashboardPayload, fetchReply: true });
+            await db.query('UPDATE ponto_sessions SET dashboard_message_id = $1 WHERE session_id = $2', [dashboardMessage.id, activeSession.session_id]);
+            
+            // Limpa intervalo anterior se existir no cache local para evitar vazamento de memória/duplicidade
+            if (interaction.client.pontoIntervals.has(interaction.user.id)) {
+                clearInterval(interaction.client.pontoIntervals.get(interaction.user.id));
+                interaction.client.pontoIntervals.delete(interaction.user.id);
+            }
+
+            // Reinicia o intervalo de atualização para esta nova mensagem
+            const interval = setInterval(async () => {
+                const currentSession = (await db.query('SELECT * FROM ponto_sessions WHERE session_id = $1', [activeSession.session_id])).rows[0];
+                if (!currentSession || currentSession.is_paused) return;
+                
+                try {
+                    const updatedPayload = useV2 ? { components: generatePontoDashboardV2(interaction, settings, currentSession), flags: V2_FLAG } : generatePontoDashboard(interaction, currentSession);
+                    await interaction.editReply(updatedPayload).catch(() => {});
+                } catch (error) {
+                    if (error.code === 10008) { // Unknown Message
+                        clearInterval(interaction.client.pontoIntervals.get(interaction.user.id));
+                        interaction.client.pontoIntervals.delete(interaction.user.id);
+                    }
+                }
+            }, 10000);
+
+            interaction.client.pontoIntervals.set(interaction.user.id, interval);
+            return; 
+        }
         
         const role = await interaction.guild.roles.fetch(settings.ponto_cargo_em_servico).catch(() => null);
         if (!role) { return interaction.editReply({ content: '❌ O cargo "Em Serviço" não foi encontrado.' }); }

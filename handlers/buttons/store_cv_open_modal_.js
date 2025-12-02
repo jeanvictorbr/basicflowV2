@@ -1,4 +1,6 @@
+// handlers/buttons/store_cv_open_modal_.js
 const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const db = require('../../database.js'); // Adicionado para buscar os dados atuais
 
 module.exports = {
     customId: 'store_cv_set_', 
@@ -6,6 +8,22 @@ module.exports = {
         const parts = interaction.customId.split('_');
         const categoryId = parts.pop(); 
         const action = parts[3]; // title, desc, image, color
+
+        // --- NOVA LÓGICA: Buscar configurações atuais do banco ---
+        let currentValue = '';
+        try {
+            const res = await db.query('SELECT * FROM store_categories WHERE id = $1', [categoryId]);
+            if (res.rows.length > 0) {
+                const data = res.rows[0];
+                if (action === 'title') currentValue = data.vitrine_title || '';
+                if (action === 'desc') currentValue = data.vitrine_desc || '';
+                if (action === 'image') currentValue = data.vitrine_image || '';
+                if (action === 'color') currentValue = data.vitrine_color || '';
+            }
+        } catch (error) {
+            console.error('Erro ao buscar dados da categoria para modal:', error);
+        }
+        // ---------------------------------------------------------
 
         let modalTitle, inputLabel, inputId, inputStyle, placeholder;
 
@@ -52,6 +70,13 @@ module.exports = {
             .setStyle(inputStyle)
             .setPlaceholder(placeholder)
             .setRequired(action !== 'image');
+
+        // --- NOVA LÓGICA: Preencher o valor se existir ---
+        if (currentValue) {
+            // Limita a 4000 caracteres para segurança (limite do Discord)
+            input.setValue(String(currentValue).substring(0, 4000));
+        }
+        // -------------------------------------------------
 
         const row = new ActionRowBuilder().addComponents(input);
         modal.addComponents(row);

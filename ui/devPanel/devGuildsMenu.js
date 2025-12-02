@@ -1,4 +1,5 @@
-module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, sortType = 'default') {
+// ui/devPanel/devGuildsMenu.js
+module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, sortType = 'default', ownersInStore = new Set()) {
     const ITEMS_PER_PAGE = 4; // Mantido em 4 para segurança
     const totalPages = Math.ceil(guildsData.length / ITEMS_PER_PAGE);
     const start = page * ITEMS_PER_PAGE;
@@ -47,12 +48,17 @@ module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, so
         if (guild.totalInteractions > 1000) statusIcons += "🔥 ";
         if (guild.totalInteractions === 0) statusIcons += "👻 ";
 
+        // --- NOVA LÓGICA: Verifica se o Dono está na Loja ---
+        const isClient = ownersInStore.has(guild.ownerId);
+        const clientStatus = isClient ? "✅ **CLIENTE LOJA**" : "❌ **NÃO ESTÁ NA LOJA**";
+        // ----------------------------------------------------
+
         guildComponents.push(
             { type: 14, divider: true, spacing: 2 },
             {
                 type: 10,
                 content: `### ${statusIcons}${guild.name}\n` +
-                         `🆔 \`${guild.id}\` • 👑 <@${guild.ownerId}>\n` +
+                         `🆔 \`${guild.id}\` • 👑 <@${guild.ownerId}> • ${clientStatus}\n` + // Adicionado Aqui
                          `👥 **Membros:** ${memberCount} • 📥 **Entrou:** ${joinedDate}\n` +
                          `📡 **Última Ação:** ${lastActiveStr} (Total: ${guild.totalInteractions})\n` +
                          `🔑 **Licença:** ${featuresList}`
