@@ -1,76 +1,64 @@
-// Conteúdo completo para: handlers/commands/configurar.js
+// handlers/commands/configurar.js
 const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants.js');
 const mainMenu = require('../../ui/mainMenu.js'); 
 const { PermissionsBitField } = require('discord.js');
-const db = require('../../database.js'); // [NOVO] Necessário para buscar o cargo no banco
+const db = require('../../database.js'); 
 
 /**
  * @param {import('discord.js').ChatInputCommandInteraction} interaction
  */
 async function execute(interaction) {
-    // 1. Adia a resposta para garantir que temos tempo
+    // 1. Adia a resposta
     await interaction.deferReply({ flags: EPHEMERAL_FLAG });
 
-    // --- [NOVO] Lógica de Permissão (Admin OU Staff da Loja) ---
-    let settings = {};
     try {
-        // Busca as configurações para saber o ID do cargo Staff
-        const res = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
-        settings = res.rows[0];
+        // [FIX] Força a atualização do membro para garantir que os cargos estejam atualizados
+        const member = await interaction.guild.members.fetch(interaction.user.id);
 
-        // Se não existir config, cria uma padrão para não quebrar
-        if (!settings) {
+        // 2. Busca configurações do banco
+        let settings = {};
+        const res = await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id]);
+        
+        if (res.rows.length > 0) {
+            settings = res.rows[0];
+        } else {
+            // Cria config padrão se não existir
             await db.query('INSERT INTO guild_settings (guild_id) VALUES ($1) ON CONFLICT (guild_id) DO NOTHING', [interaction.guild.id]);
             settings = { guild_id: interaction.guild.id };
         }
-    } catch (err) {
-        console.error('Erro ao buscar permissões:', err);
-    }
 
-    // Verifica se é Admin
-    const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
-    // Verifica se tem o cargo de Staff da Loja
-    const isStoreStaff = settings?.store_staff_role_id && interaction.member.roles.cache.has(settings.store_staff_role_id);
+        // 3. Verificação de Permissões (DEBUG)
+        const isAdmin = member.permissions.has(PermissionsBitField.Flags.Administrator);
+        const staffRoleId = settings.store_staff_role_id;
+        const hasStaffRole = staffRoleId && member.roles.cache.has(staffRoleId);
 
-    // Se NÃO for Admin E NÃO for Staff, bloqueia
-    if (!isAdmin && !isStoreStaff) {
-        return interaction.editReply({
-            content: '❌ **Acesso Negado:** Você precisa de permissão de Administrador ou ter o cargo de **Staff da Loja** configurado.'
-        });
-    }
-    // -----------------------------------------------------------
+        // SE FOR BLOQUEADO: Mostra exatamente o motivo
+        if (!isAdmin && !hasStaffRole) {
+            let debugMsg = '❌ **Acesso Negado**\n\n';
+            debugMsg += `🔒 **É Admin?** ${isAdmin ? '✅ Sim' : '❌ Não'}\n`;
+            debugMsg += `👮 **Cargo Staff Configurado:** ${staffRoleId ? `<@&${staffRoleId}> (\`${staffRoleId}\`)` : '⚠️ Não configurado no Painel'}\n`;
+            debugMsg += `👤 **Você tem o cargo?** ${hasStaffRole ? '✅ Sim' : '❌ Não'}\n\n`;
+            debugMsg += `💡 *Solução: Peça para um Admin ir em "Loja > Configurações > Definir Cargo Staff" e selecionar o cargo correto.*`;
 
-    try {
-        // 3. Gerar o menu
-        // O mainMenu (ui/mainMenu.js) retorna um ARRAY de componentes V2
-        // Passamos 'settings' caso o menu precise dele futuramente
+            return interaction.editReply({ content: debugMsg });
+        }
+
+        // 4. Se passou, mostra o menu
         const menuComponents = await mainMenu(interaction, 0, settings); 
 
-        // 4. Responder com editReply
         await interaction.editReply({
-            // ===================================================================
-            //  ⬇️  A CORREÇÃO ESTÁ AQUI  ⬇️
-            // ===================================================================
-
-            // O array retornado pelo UI deve ser atribuído à chave 'components'
-            components: menuComponents,
-
-            // ===================================================================
-            //  ⬆️  FIM DA CORREÇÃO ⬆️
-            // ===================================================================
-            
+            components: menuComponents, // Passando corretamente como components
             flags: V2_FLAG | EPHEMERAL_FLAG
         });
 
     } catch (error) {
         console.error('Erro ao executar /configurar:', error);
         await interaction.editReply({
-            content: '❌ Ocorreu um erro ao buscar as configurações do servidor.'
+            content: `❌ **Erro Crítico:** \`${error.message}\``
         });
     }
 }
 
-// Exporta o execute para o index.js
 module.exports = {
     execute,
 };
