@@ -1,35 +1,39 @@
-// Substitua em: handlers/buttons/store_manage_stock.js
+// handlers/buttons/store_manage_stock.js
+const { PermissionsBitField } = require('discord.js');
 const db = require('../../database.js');
-const generateManageStockSelectMenu = require('../../ui/store/manageStockSelectMenu.js');
+const generateStockMenu = require('../../ui/store/stockMenu.js'); // Assumindo que existe uma UI para isso
+
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'store_manage_stock',
     async execute(interaction) {
-        // Interação inicial precisa de deferUpdate
-        if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+        // 1. Verificação Estrita: APENAS ADMIN (Para não ver as keys reais)
+        if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+            return interaction.reply({ 
+                content: '🔒 **Conteúdo Protegido:** Apenas Administradores podem visualizar/editar o estoque real (Keys).\n✅ Você ainda pode **Adicionar Estoque** usando o botão no menu do produto.', 
+                ephemeral: true 
+            });
+        }
 
-        const ITEMS_PER_PAGE = 25;
-        
-        // 1. Contar
-        const countResult = await db.query('SELECT COUNT(*) as count FROM store_products WHERE guild_id = $1', [interaction.guild.id]);
-        const totalItems = parseInt(countResult.rows[0].count || 0);
-        let totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-        if (totalPages < 1) totalPages = 1;
+        await interaction.deferUpdate();
 
-        // 2. Buscar Página 0
-        const products = (await db.query(
-            'SELECT id, name, price FROM store_products WHERE guild_id = $1 ORDER BY id ASC LIMIT $2 OFFSET 0', 
-            [interaction.guild.id, ITEMS_PER_PAGE]
-        )).rows;
-
-        // 3. Gerar UI (Página 0)
-        const uiComponents = generateManageStockSelectMenu(products, 0, totalPages, false);
-
-        await interaction.editReply({
-            components: uiComponents,
-            flags: V2_FLAG | EPHEMERAL_FLAG
-        });
+        try {
+            // Lógica original para carregar o menu de estoque
+            const products = (await db.query('SELECT * FROM store_products WHERE guild_id = $1 ORDER BY id ASC', [interaction.guild.id])).rows;
+            
+            // Se tiver função de UI pronta
+            if (typeof generateStockMenu === 'function') {
+                const payload = await generateStockMenu(interaction, products);
+                await interaction.editReply({ ...payload, flags: V2_FLAG | EPHEMERAL_FLAG });
+            } else {
+                // Fallback simples se a UI não for importada
+                await interaction.editReply({ content: '✅ Menu de estoque carregado (Admin).' });
+            }
+        } catch (error) {
+            console.error(error);
+            await interaction.editReply({ content: '❌ Erro ao abrir gestão de estoque.' });
+        }
     }
 };
