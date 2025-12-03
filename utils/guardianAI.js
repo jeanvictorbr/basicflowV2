@@ -1,4 +1,4 @@
-// Substitua o conteúdo em: utils/guardianAI.js
+// utils/guardianAI.js
 const { OpenAI } = require('openai');
 const db = require('../database.js');
 const executePunishment = require('./modUtils.js');
@@ -13,6 +13,9 @@ const channelMessageCache = new Map();
 const channelAlertCooldowns = new Map();
 
 function updateMessageCache(message) {
+    // Garante que só roda em guildas
+    if (!message.guild) return [];
+    
     const key = `${message.guild.id}-${message.author.id}`;
     if (!messageCache.has(key)) {
         messageCache.set(key, []);
@@ -124,6 +127,10 @@ async function processConflictDetection(message, settings) {
 }
 
 async function processMessageForGuardian(message) {
+    // --- CORREÇÃO CRÍTICA: Ignora se não for em uma guilda (DM) ---
+    if (!message.guild) return; 
+    // -------------------------------------------------------------
+
     const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
     if (!settings?.guardian_ai_enabled) return;
 
@@ -229,7 +236,6 @@ async function executeRuleActions(message, policy, step, reason, settings, messa
                 member: await guild.members.fetch(client.user.id),
             };
             
-            // CORREÇÃO: Passa o objeto 'customPunishment' como último argumento
             await executePunishment(fakeInteraction, customPunishment.action.toLowerCase(), member, reason, customPunishment.duration, customPunishment);
             
             punishmentDetails = `Punição Personalizada: \`${customPunishment.name}\``;
