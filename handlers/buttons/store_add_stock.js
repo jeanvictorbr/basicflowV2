@@ -3,39 +3,36 @@ const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, Permis
 const db = require('../../database.js');
 
 module.exports = {
-    customId: 'store_add_stock',
+    customId: 'store_add_stock', // O ID base é store_add_stock (o _ID vem depois)
     async execute(interaction) {
-        // 1. Busca permissões
+        // 1. Verificação de Permissão (Admin OU Staff da Loja)
         const settings = (await db.query('SELECT store_staff_role_id FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         const isAdmin = interaction.member.permissions.has(PermissionsBitField.Flags.Administrator);
         const isStoreStaff = settings.store_staff_role_id && interaction.member.roles.cache.has(settings.store_staff_role_id);
 
-        // Permite Admin OU Staff
         if (!isAdmin && !isStoreStaff) {
             return interaction.reply({ content: '❌ Sem permissão para adicionar estoque.', ephemeral: true });
         }
 
-        // Obtém o ID do produto do customId (se houver, ex: store_add_stock_123)
-        // Se for botão genérico, o modal pede o ID/Nome depois
+        // Recupera o ID do produto
+        // O formato esperado é store_add_stock_PRODUTOID
         const parts = interaction.customId.split('_');
         const productId = parts.length > 3 ? parts[3] : null;
 
         const modal = new ModalBuilder()
-            .setCustomId(`modal_store_add_stock_${productId || ''}`) // Passa o ID adiante se existir
+            .setCustomId(`modal_store_add_stock_${productId || ''}`)
             .setTitle('Adicionar Estoque/Keys');
 
-        // Se não tiver ID no botão, talvez precise selecionar (mas geralmente esse botão fica no produto)
-        // Vou assumir a estrutura padrão de adicionar conteúdo
-        
-        const contentInput = new TextInputBuilder()
-            .setCustomId('input_content')
-            .setLabel("Conteúdo (Keys/Links)")
+        // --- CORREÇÃO AQUI: O ID deve ser 'input_stock_content' para bater com o modal ---
+        const stockInput = new TextInputBuilder()
+            .setCustomId('input_stock_content') 
+            .setLabel("Conteúdo do Estoque (um item por linha)")
             .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder("Uma key por linha ou texto do produto...")
+            .setPlaceholder('KEY-12345\nKEY-67890\nLINK-DOWNLOAD')
             .setRequired(true);
+        // ---------------------------------------------------------------------------------
 
-        modal.addComponents(new ActionRowBuilder().addComponents(contentInput));
-        
+        modal.addComponents(new ActionRowBuilder().addComponents(stockInput));
         await interaction.showModal(modal);
     }
 };
