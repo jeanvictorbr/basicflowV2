@@ -757,17 +757,25 @@ client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
 
     // 1. Chamada do Guardian AI para moderação (executa apenas uma vez)
-    try {
-        await processMessageForGuardian(message);
-    } catch (err) {
-        console.error('[Guardian AI] Erro não tratado:', err);
+    // --- CORREÇÃO: Guardian e Settings só funcionam em GUILDAS ---
+    if (message.guild) {
+        try {
+            await processMessageForGuardian(message);
+        } catch (err) {
+            console.error('[Guardian AI] Erro não tratado:', err);
+        }
     }
 
-    const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
+    // Inicializa settings vazio para evitar crash em DM
+    let settings = {}; 
+    if (message.guild) {
+        settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
+    }
+    // -------------------------------------------------------------
 
     // 2. Bloco ÚNICO para chat por menção
     const isMentioned = message.mentions.has(client.user) && !message.mentions.everyone;
-    if (isMentioned && settings.guardian_ai_mention_chat_enabled) {
+    if (isMentioned && settings.guardian_ai_mention_chat_enabled && message.guild) {
         try {
             // Ignora se for apenas uma menção vazia
             const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
@@ -814,7 +822,7 @@ client.on(Events.MessageCreate, async (message) => {
     }
  
     // --- Início do Bloco do Arquiteto & Consultor de Servidor ---
-    if ((message.channel.name.startsWith('arquiteto-') || message.channel.name.startsWith('consultor-')) && message.channel.topic === message.author.id) {
+    if (message.guild && (message.channel.name.startsWith('arquiteto-') || message.channel.name.startsWith('consultor-')) && message.channel.topic === message.author.id) {
         try {
             const sessionResult = await db.query('SELECT * FROM architect_sessions WHERE channel_id = $1 AND (status = $2 OR status = $3)', [message.channel.id, 'active', 'pending_confirmation']);
             if (sessionResult.rows.length === 0) return;
