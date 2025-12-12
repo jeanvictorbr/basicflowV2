@@ -1,20 +1,33 @@
+// handlers/commands/loja-flow.js
 const db = require('../../database.js');
-const getFlowShopUI = require('../../ui/flowCoins/shopUI.js');
-const V2_FLAG = 1 << 15;
+const generateShopUI = require('../../ui/flowCoins/shopUI.js');
 
 module.exports = async (interaction) => {
-    // Busca itens ativos da loja
-    const items = await db.query('SELECT * FROM flow_shop_items WHERE is_active = true ORDER BY price ASC');
-    
-    // Busca saldo do usuário
-    const userRes = await db.query('SELECT balance FROM flow_users WHERE user_id = $1', [interaction.user.id]);
-    const balance = userRes.rows[0] ? userRes.rows[0].balance : 0;
+    await interaction.deferReply({ ephemeral: true });
 
-    const ui = getFlowShopUI(items.rows, balance);
+    try {
+        const userId = interaction.user.id;
 
-    await interaction.reply({
-        components: ui.components,
-        flags: V2_FLAG,
-        ephemeral: true
-    });
+        // 1. Busca saldo do usuário (Cria se não existir)
+        let user = (await db.query('SELECT balance FROM flow_users WHERE user_id = $1', [userId])).rows[0];
+        if (!user) {
+            await db.query('INSERT INTO flow_users (user_id) VALUES ($1)', [userId]);
+            user = { balance: 0 };
+        }
+        const balance = parseInt(user.balance || 0);
+
+        // 2. Busca itens da loja
+        // [CORREÇÃO] O erro estava aqui. Faltava o .rows no final
+        const itemsResult = await db.query('SELECT * FROM flow_shop_items WHERE is_active = true ORDER BY price ASC');
+        const shopItems = itemsResult.rows || []; // Garante que seja um array
+
+        // 3. Gera a UI
+        const payload = generateShopUI(balance, shopItems);
+
+        await interaction.editReply(payload);
+
+    } catch (error) {
+        console.error('Erro no comando /loja-flow:', error);
+        await interaction.editReply({ content: '❌ Ocorreu um erro ao carregar a loja.' });
+    }
 };
