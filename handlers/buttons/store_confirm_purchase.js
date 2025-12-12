@@ -126,6 +126,14 @@ async function createOrUpdateStandardCart(interaction, products) {
 module.exports = {
     customId: 'store_confirm_purchase_products_',
     async execute(interaction) {
+        // CORREÇÃO: Impede execução fora de um servidor para evitar erro de .guild.id ser null
+        if (!interaction.guild) {
+            return interaction.reply({ 
+                content: '❌ Esta ação só pode ser realizada dentro do servidor, não em mensagens diretas (DM).', 
+                ephemeral: true 
+            });
+        }
+
         const parts = interaction.customId.split('_coupon_');
         const productIdsString = parts[0].replace('store_confirm_purchase_products_', '');
         const productIds = productIdsString.split('-');
