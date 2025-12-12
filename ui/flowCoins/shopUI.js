@@ -1,53 +1,54 @@
-module.exports = (items, balance) => {
-    // items: array de objetos do banco
-    // balance: saldo do usuário
+// ui/flowCoins/shopUI.js
+const { StringSelectMenuBuilder, ActionRowBuilder } = require('discord.js');
+const FEATURES = require('../../config/features.js'); // Importa para o fallback
 
-    const header = {
-        type: 10,
-        content: `## 🛒 Loja FlowCoins\n👛 **Seu Saldo:** \`${balance} FC\`\n\nFarm moedas usando \`/daily\` e troque por features premium para seus servidores!`,
-        style: 1
+module.exports = function generateShopUI(userBalance, shopItems) {
+    const embed = {
+        title: '🛒 Loja de FlowCoins',
+        description: `Bem-vindo à loja oficial! Troque suas moedas por benefícios premium para o seu servidor.\n\n💰 **Seu Saldo:** \`${userBalance} FC\``,
+        color: 0xF1C40F, // Dourado
+        thumbnail: { url: 'https://cdn-icons-png.flaticon.com/512/3081/3081559.png' }, // Icone genérico de loja ou do bot
+        footer: { text: 'Os itens são ativados automaticamente após a compra.' }
     };
 
-    if (items.length === 0) {
-        return {
-            type: 17,
-            components: [
-                header,
-                { type: 10, content: "🚫 *A loja está vazia no momento. Fale com o desenvolvedor.*", style: 3 }
-            ]
-        };
-    }
+    // Cria as opções do menu
+    const options = shopItems.map(item => {
+        // --- LÓGICA DE DESCRIÇÃO INTELIGENTE ---
+        let description = item.description;
 
-    // Cria uma seção para cada item
-    const itemComponents = items.map(item => {
-        const canAfford = balance >= item.price;
+        // Se não tiver descrição no banco, tenta gerar uma baseada na feature
+        if (!description) {
+            const featureInfo = FEATURES.find(f => f.value === item.feature_key);
+            if (featureInfo) {
+                description = `Libera o acesso: ${featureInfo.label}`;
+            } else {
+                description = 'Sem descrição detalhada.';
+            }
+        }
+
+        // Adiciona info de duração
+        const durationText = item.duration_days > 0 ? `(${item.duration_days} dias)` : '(Permanente)';
         
         return {
-            type: 9, // Section
-            accessory: {
-                type: 2, // Button
-                style: canAfford ? 1 : 2, // Roxo se pode comprar, Cinza se não
-                label: `${item.price} FC`,
-                emoji: { name: canAfford ? "🛒" : "🔒" },
-                custom_id: `flow_buy_start_${item.id}`,
-                disabled: !canAfford
-            },
-            components: [
-                { type: 10, content: `${item.emoji || '📦'} **${item.name}**` },
-                { type: 10, content: `${item.description || 'Sem descrição'} • Duração: ${item.duration_days} dias` }
-            ]
+            label: `${item.name} - ${item.price} FC`,
+            description: `${durationText} ${description}`.substring(0, 100), // Limite do Discord
+            value: item.id.toString(),
+            emoji: item.emoji || '📦'
         };
     });
 
-    // Adiciona separadores entre os itens
-    const finalComponents = [header, { type: 14, spacing: 2 }];
-    itemComponents.forEach(comp => {
-        finalComponents.push(comp);
-        finalComponents.push({ type: 14, spacing: 1 }); // Separador
-    });
+    const components = [];
 
-    return {
-        type: 17,
-        components: finalComponents
-    };
+    if (options.length > 0) {
+        const select = new StringSelectMenuBuilder()
+            .setCustomId('flow_buy_start_') // Handler de compra
+            .setPlaceholder('Selecione um item para ver detalhes ou comprar...')
+            .addOptions(options.slice(0, 25)); // Limite de 25 itens
+
+        components.push(new ActionRowBuilder().addComponents(select));
+    } else {
+        embed.description += "\n\n🚫 *A loja está vazia no momento.*";
+    }
+
+    return { embeds: [embed], components };
 };
