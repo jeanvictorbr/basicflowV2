@@ -10,11 +10,45 @@ const schema = {
         // --- NOVA COLUNA ADICIONADA AQUI ---
         active_ai_provider: { type: 'VARCHAR(50)', default: 'openai' } // RemPode ser 'openai' ou 'gemini'
     },
+
+    // --- ECONOMIA FLOWCOINS ---
+    flow_users: {
+        user_id: { type: 'VARCHAR(255)', primaryKey: true },
+        balance: { type: 'INTEGER', default: 0 },
+        last_daily: { type: 'TIMESTAMPTZ' }, // Para controlar o cooldown de 24h
+        total_farmed: { type: 'INTEGER', default: 0 } // Estatística
+    },
+
+    flow_shop_items: {
+        id: { type: 'SERIAL', primaryKey: true },
+        name: { type: 'VARCHAR(255)', notNull: true }, // Ex: "Premium Visuals (7 Dias)"
+        feature_key: { type: 'VARCHAR(100)', notNull: true }, // Ex: "CUSTOM_VISUALS"
+        price: { type: 'INTEGER', notNull: true },
+        duration_days: { type: 'INTEGER', default: 30 },
+        emoji: { type: 'VARCHAR(50)' },
+        description: { type: 'TEXT' },
+        is_active: { type: 'BOOLEAN', default: true }
+    },
     // --- INÍCIO: MÓDULO DE AUTOMAÇÕES ---
 	automations_settings: {
 		guild_id: { type: 'VARCHAR(255)', primaryKey: true },
 		enabled: { type: 'BOOLEAN', default: false }
 	},
+
+    // Configuração dos Formulários (Automações)
+    forms_templates: {
+        form_id: { type: 'SERIAL', primaryKey: true },
+        approved_role_id: { type: 'VARCHAR(255)' },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        custom_id: { type: 'VARCHAR(100)', notNull: true }, // ID único (ex: 'recrutamento')
+        title: { type: 'VARCHAR(255)', notNull: true },
+        description: { type: 'TEXT' },
+        button_label: { type: 'VARCHAR(50)', 'default': 'Iniciar Formulário' },
+        questions: { type: 'JSONB', notNull: true }, // Array das perguntas
+        log_channel_id: { type: 'VARCHAR(255)' },
+        created_at: { type: 'TIMESTAMPTZ', 'default': 'NOW()' },
+        _unique: { type: 'UNIQUE', columns: ['guild_id', 'custom_id'] }
+    },
     
  // --- NOVA TABELA PARA BLUEPRINTS DO ARQUITETO ---
     guild_blueprints: {
@@ -725,6 +759,24 @@ cloudflow_transfer_logs: {
         _unique: { type: 'UNIQUE', columns: ['user_id', 'target_guild_id'] }
     },
     
-};
+
+
+voice_hubs: {
+        guild_id: { type: 'VARCHAR(255)', primaryKey: true },
+        trigger_channel_id: { type: 'VARCHAR(255)', notNull: true },
+        category_id: { type: 'VARCHAR(255)' },
+        default_limit: { type: 'INTEGER', 'default': 0 }
+    },
+
+    temp_voices: {
+        channel_id: { type: 'VARCHAR(255)', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        owner_id: { type: 'VARCHAR(255)', notNull: true },
+        text_channel_id: { type: 'VARCHAR(255)' }, 
+        is_locked: { type: 'BOOLEAN', 'default': false },
+        is_hidden: { type: 'BOOLEAN', 'default': false },
+        created_at: { type: 'TIMESTAMPTZ', 'default': 'NOW()' }
+    },
+    };
 
 module.exports = schema;

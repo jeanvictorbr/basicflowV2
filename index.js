@@ -5,6 +5,8 @@ const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const { startPurgeMonitor } = require('./utils/purgeMonitor');
 const { checkTokenUsage } = require('./utils/tokenMonitor.js');
+const voiceHubManager = require('./utils/voiceHubManager.js');
+
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
 const { EPHEMERAL_FLAG } = require('./utils/constants');
@@ -35,13 +37,17 @@ const url = require('url');
 const crypto = require('crypto');
 const axios = require('axios'); // Mais seguro que fetch nativo
 // -
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMembers] });
+
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers] });
 automationsMonitor.start(client); //
 client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
 client.hangmanTimeouts = new Map();
 client.moduleStatusCache = new Map();
+client.on('voiceStateUpdate', (oldState, newState) => {
+    voiceHubManager(oldState, newState, client);
+});
 
 
 // ===================================================================
@@ -1091,5 +1097,9 @@ client.on(Events.MessageCreate, async (message) => {
         }
     }
     // --- FIM DA NOVA LÓGICA DO ASSISTENTE DE TICKET ---
+});
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+    voiceHubManager(oldState, newState, client);
 });
 client.login(process.env.DISCORD_TOKEN);
