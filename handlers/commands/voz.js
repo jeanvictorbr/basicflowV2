@@ -1,17 +1,14 @@
-const generateVoiceSelectMenu = require('../../ui/voiceSelectMenu.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+// Arquivo: handlers/commands/voz.js (ou commands/voz.js)
 
-module.exports = async function(interaction) {
-    // Busca os canais da guilda
-    const channels = await interaction.guild.channels.fetch();
-    
-    // Gera o menu
-    const payload = generateVoiceSelectMenu(interaction.guild, channels);
+module.exports = {
+    // Se houver outras propriedades aqui (como 'data' ou 'name'), mantenha-as.
+    // Apenas substitua ou adicione o método 'execute' abaixo:
 
-    // Responde de forma efêmera
-    await interaction.reply({
-        components: payload.components,
-        flags: V2_FLAG | EPHEMERAL_FLAG
-    });
+    async execute(interaction) {
+        // Responde imediatamente avisando da manutenção
+        await interaction.reply({ 
+            content: '🚧 **O sistema de voz está DESATIVADO TEMPORARIAMENTE PARA MANUTENÇÃO.** 🚧\nPor favor, tente novamente mais tarde.', 
+            ephemeral: true // Apenas quem usou o comando vê a mensagem
+        });
+    }
 };
