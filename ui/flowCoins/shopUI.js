@@ -15,7 +15,7 @@ module.exports = function generateShopUI(userBalance, shopItems) {
         `Use o comando \`/daily\` a cada 24 horas para farmar.`,
         `• 🎲 **Ganho Base:** Você ganha entre **50 e 150 FC** por dia.`,
         `• 🎰 **Jackpot:** Existe **10% de chance** de duplicar o prêmio (Até 300 FC)!`,
-        `• 📈 **Acumule:** Junte moedas diariamente para manter seu servidor Premium.`
+        `• 📈 **Acumule:** Junte moedas diariamente para usar funções gratuitamente.`
     ].join('\n');
 
     const embed = {
