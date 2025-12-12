@@ -2,7 +2,13 @@ const db = require('../../database.js');
 const { EmbedBuilder } = require('discord.js');
 
 module.exports = async (interaction) => {
+
+    
     const userId = interaction.user.id;
+    // No início da função execute(interaction) {
+if (!interaction.member.permissions.has('Administrator')) {
+    return interaction.reply({ content: '❌ Este comando é exclusivo para Administradores do servidor.', ephemeral: true });
+}
     
     // 1. Busca usuário
     let user = (await db.query('SELECT * FROM flow_users WHERE user_id = $1', [userId])).rows[0];

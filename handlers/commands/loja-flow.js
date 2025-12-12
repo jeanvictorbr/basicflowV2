@@ -8,6 +8,11 @@ module.exports = async (interaction) => {
     try {
         const userId = interaction.user.id;
 
+        // No início da função execute(interaction) {
+if (!interaction.member.permissions.has('Administrator')) {
+    return interaction.reply({ content: '❌ Este comando é exclusivo para Administradores do servidor.', ephemeral: true });
+}
+
         // 1. Busca saldo do usuário (Cria se não existir)
         let user = (await db.query('SELECT balance FROM flow_users WHERE user_id = $1', [userId])).rows[0];
         if (!user) {
