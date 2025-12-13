@@ -1,6 +1,4 @@
 // ui/devPanel/devUserGuildsResult.js
-const { StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder } = require('discord.js');
-
 module.exports = function devUserGuildsResult(targetUser, sharedGuilds) {
     // 1. Cria as opções do menu (Máximo 25 servidores)
     const options = sharedGuilds.slice(0, 25).map(g => ({
@@ -10,19 +8,28 @@ module.exports = function devUserGuildsResult(targetUser, sharedGuilds) {
         emoji: '🏰'
     }));
 
-    // 2. Monta o cabeçalho V2
-    const headerComponent = {
-        type: 10,
-        content: `## 🔍 Resultado da Busca: ${targetUser.username}\n` +
-                 `> 🆔 **ID:** \`${targetUser.id}\`\n` +
-                 `> 📂 **Encontrado em:** ${sharedGuilds.length} servidores compartilhados.` +
-                 (sharedGuilds.length > 25 ? `\n> ⚠️ *Exibindo apenas os 25 primeiros.*` : '')
+    // 2. Monta o Embed (Substituindo o Header V2 que causava erro)
+    const embed = {
+        title: `🔍 Resultado da Busca: ${targetUser.username}`,
+        description: `> 🆔 **ID:** \`${targetUser.id}\`\n> 📂 **Encontrado em:** ${sharedGuilds.length} servidores compartilhados.`,
+        color: 0x5865F2, // Blurple
+        thumbnail: { url: targetUser.displayAvatarURL() }
     };
 
+    if (sharedGuilds.length > 25) {
+        embed.footer = { text: '⚠️ Resultado truncado: Exibindo apenas os 25 primeiros.' };
+    }
+
+    if (sharedGuilds.length === 0) {
+        embed.description += '\n\n❌ **Nenhuma guilda em comum encontrada.**';
+        embed.color = 0xE74C3C; // Red
+    }
+
+    // 3. Monta os Componentes (Estritamente Type 1: ActionRow)
     const components = [];
 
     if (options.length > 0) {
-        // Constrói o menu manualmente para garantir estrutura V2 Type 17
+        // Row 1: Select Menu
         components.push({
             type: 1, // Action Row
             components: [{
@@ -32,13 +39,11 @@ module.exports = function devUserGuildsResult(targetUser, sharedGuilds) {
                 placeholder: 'Selecione a guilda para gerenciar...'
             }]
         });
-    } else {
-        headerComponent.content += `\n\n❌ **Nenhuma guilda em comum encontrada.**`;
     }
 
-    // Botão Voltar
+    // Row 2: Botão Voltar
     components.push({
-        type: 1,
+        type: 1, // Action Row
         components: [{ 
             type: 2, // Button
             style: 2, // Secondary
@@ -47,15 +52,9 @@ module.exports = function devUserGuildsResult(targetUser, sharedGuilds) {
         }]
     });
 
-    // RETORNA ARRAY (Essencial para o handler pegar o index 0)
-    return [
-        {
-            type: 17,
-            components: [
-                headerComponent,
-                { type: 14, divider: true, spacing: 2 },
-                ...components
-            ]
-        }
-    ];
+    // Retorna o payload padrão de mensagem
+    return {
+        embeds: [embed],
+        components: components
+    };
 };
