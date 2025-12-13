@@ -21,7 +21,7 @@ module.exports = async (oldState, newState, client) => {
                 }
                 
                 const voiceChannel = await guild.channels.create({
-                    name: `Sala de ${member.user.username}`,
+                    name: `📞・Suporte- ${member.user.username}`,
                     type: ChannelType.GuildVoice,
                     parent: parentCategory,
                     permissionOverwrites: [
