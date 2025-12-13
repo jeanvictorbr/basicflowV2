@@ -19,6 +19,19 @@ const schema = {
         total_farmed: { type: 'INTEGER', default: 0 } // Estatística
     },
 
+// --- AUTOMAÇÃO: CARGOS INTERATIVOS (BUTTON ROLES) ---
+    button_role_panels: {
+        panel_id: { type: 'SERIAL', primaryKey: true },
+        guild_id: { type: 'VARCHAR(255)', notNull: true },
+        channel_id: { type: 'VARCHAR(255)' },
+        message_id: { type: 'VARCHAR(255)' },
+        title: { type: 'VARCHAR(255)', notNull: true },
+        description: { type: 'TEXT' },
+        image_url: { type: 'TEXT' },
+        // [CORREÇÃO] Removemos o "default" que estava quebrando
+        roles_data: { type: 'JSONB' }, 
+        created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
+    },
     flow_shop_items: {
         id: { type: 'SERIAL', primaryKey: true },
         name: { type: 'VARCHAR(255)', notNull: true }, // Ex: "Premium Visuals (7 Dias)"
@@ -168,6 +181,13 @@ automations_announcements: {
         registros_status: { type: 'BOOLEAN', default: true },
         registros_canal_vitrine: { type: 'VARCHAR(255)' },
         registros_imagem_vitrine: { type: 'VARCHAR(1024)' },
+        // --- ESTATÍSTICAS DO SERVIDOR (SERVER STATS) ---
+        stats_enabled: { type: 'BOOLEAN', default: false },
+        stats_category_id: { type: 'VARCHAR(255)' }, // Categoria onde ficam os canais
+        stats_members_channel_id: { type: 'VARCHAR(255)' }, // ID do canal de Membros
+        stats_clients_channel_id: { type: 'VARCHAR(255)' }, // ID do canal de Clientes
+        stats_format_members: { type: 'VARCHAR(100)', default: '👥 Membros: {count}' },
+        stats_format_clients: { type: 'VARCHAR(100)', default: '💼 Clientes: {count}' },
 
         // --- INÍCIO DAS NOVAS COLUNAS DE REGISTRO POR CAPTCHA ---
         captcha_verify_enabled: { type: 'BOOLEAN', default: false },
@@ -475,12 +495,13 @@ automations_announcements: {
         tag: { type: 'VARCHAR(255)', notNull: true },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'role_id'] }
     },
-    ticket_departments: {
+ticket_departments: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },
         description: { type: 'TEXT' },
-        role_id: { type: 'VARCHAR(255)', notNull: true },
+        // [MUDANÇA IMPORTANTE] De VARCHAR para JSONB para salvar múltiplos IDs ["123", "456"]
+        role_id: { type: 'JSONB', notNull: true }, 
         emoji: { type: 'VARCHAR(100)' }
     },
     ticket_feedback: {

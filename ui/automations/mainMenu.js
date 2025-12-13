@@ -1,3 +1,4 @@
+// ui/automations/mainMenu.js
 const db = require('../../database');
 const hasFeature = require('../../utils/featureCheck.js');
 
@@ -11,8 +12,8 @@ async function buildAutomationsMenu(interaction, page = 1) {
         if (rows[0]) isEnabled = rows[0].enabled;
     } catch (e) {}
 
-    // 2. Contagens (Otimizado)
-    const counts = { announcements: 0, giveaways: 0, forms: 0 };
+    // 2. Contagens
+    const counts = { announcements: 0, giveaways: 0, forms: 0, button_panels: 0 };
     try {
         const resAnn = await db.query('SELECT COUNT(*) FROM automations_announcements WHERE guild_id = $1 AND enabled = true', [guildId]);
         counts.announcements = resAnn.rows[0].count;
@@ -22,15 +23,21 @@ async function buildAutomationsMenu(interaction, page = 1) {
 
         const resForms = await db.query('SELECT COUNT(*) FROM forms_templates WHERE guild_id = $1', [guildId]);
         counts.forms = resForms.rows[0].count;
-    } catch (e) {}
 
-    // 3. Feature Flags
+        // VERIFICAÇÃO DA TABELA DE BOTÕES (Se ela existir no seu banco)
+        // Se der erro aqui é pq a tabela button_role_panels nao existe, mas o catch segura.
+        const resButtons = await db.query('SELECT COUNT(*) FROM button_role_panels WHERE guild_id = $1', [guildId]);
+        counts.button_panels = resButtons.rows[0]?.count || 0;
+    } catch (e) {
+        // Ignora erro se a tabela ainda não existir
+    }
+
     const hasCloudFlow = await hasFeature(guildId, 'AUTOMATIONS');
 
-    // --- CONSTRUÇÃO DAS PÁGINAS ---
+    // --- PÁGINA 1 ---
     const itemsPage1 = [
         {
-            type: 9, // Section: Anúncios
+            type: 9, 
             accessory: { type: 2, style: 2, label: 'Gerenciar', emoji: { name: '📣' }, custom_id: 'automations_manage_announcements', disabled: !isEnabled },
             components: [
                 { type: 10, content: "📣 Anúncios Agendados" },
@@ -39,7 +46,7 @@ async function buildAutomationsMenu(interaction, page = 1) {
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, // Section: Sorteios
+            type: 9, 
             accessory: { type: 2, style: 2, label: 'Gerenciar', emoji: { name: '🎉' }, custom_id: 'aut_gw_menu', disabled: !isEnabled },
             components: [
                 { type: 10, content: "🎉 Sorteios & Giveaways" },
@@ -48,7 +55,7 @@ async function buildAutomationsMenu(interaction, page = 1) {
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, // Section: Auto-Purge
+            type: 9, 
             accessory: { type: 2, style: 2, label: 'Configurar', emoji: { name: '🧹' }, custom_id: 'aut_purge_menu', disabled: !isEnabled },
             components: [
                 { type: 10, content: "🧹 Auto-Purge" },
@@ -57,7 +64,7 @@ async function buildAutomationsMenu(interaction, page = 1) {
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, // Section: CloudFlow
+            type: 9, 
             accessory: { type: 2, style: 2, label: 'Abrir', emoji: { name: '☁️' }, custom_id: 'aut_open_cloudflow_menu', disabled: !isEnabled || !hasCloudFlow },
             components: [
                 { type: 10, content: "☁️ CloudFlow (OAuth2)" },
@@ -66,9 +73,10 @@ async function buildAutomationsMenu(interaction, page = 1) {
         }
     ];
 
+    // --- PÁGINA 2 ---
     const itemsPage2 = [
         {
-            type: 9, // Section: Formulários (NOVO)
+            type: 9, 
             accessory: { type: 2, style: 1, label: 'Acessar', emoji: { name: '📝' }, custom_id: 'aut_forms_hub', disabled: !isEnabled },
             components: [
                 { type: 10, content: "📝 Formulários & Aplicações" },
@@ -77,7 +85,7 @@ async function buildAutomationsMenu(interaction, page = 1) {
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, // Section: Voz Temporária (NOVO)
+            type: 9, 
             accessory: { type: 2, style: 1, label: 'Configurar', emoji: { name: '🔊' }, custom_id: 'aut_voice_hub', disabled: !isEnabled },
             components: [
                 { type: 10, content: "🔊 Hub de Voz Temporário" },
@@ -86,10 +94,20 @@ async function buildAutomationsMenu(interaction, page = 1) {
         },
         { type: 14, divider: true, spacing: 2 },
         {
-            type: 9, // Section: Cargos em Massa
+            // [AQUI ESTÁ A CORREÇÃO] - Botão Restaurado
+            type: 9, 
+            accessory: { type: 2, style: 1, label: 'Gerenciar', emoji: { name: '🔘' }, custom_id: 'aut_button_roles_menu', disabled: !isEnabled },
+            components: [
+                { type: 10, content: "🔘 Cargos Interativos (Button Roles)" },
+                { type: 10, content: `Crie mensagens com botões que dão cargos. Criados: \`${counts.button_panels}\`` }
+            ]
+        },
+        { type: 14, divider: true, spacing: 2 },
+        {
+            type: 9, 
             accessory: { type: 2, style: 2, label: 'Abrir', emoji: { name: '🏷️' }, custom_id: 'aut_mass_roles_menu', disabled: !isEnabled },
             components: [
-                { type: 10, content: "🏷️ Gerenciador de Cargos" },
+                { type: 10, content: "🏷️ Gerenciador de Cargos (Massa)" },
                 { type: 10, content: `Adicione ou remova cargos de todos os membros.` }
             ]
         }
@@ -109,7 +127,7 @@ async function buildAutomationsMenu(interaction, page = 1) {
 
             { type: 14, divider: true, spacing: 2 },
             {
-                type: 1, // Action Row de Navegação
+                type: 1, 
                 components: [
                     { type: 2, style: 2, emoji: { name: '⬅️' }, custom_id: page === 1 ? 'main_menu_back' : 'aut_page_1', disabled: page === 1 && page !== 2 },
                     { type: 2, style: isEnabled ? 4 : 3, label: isEnabled ? 'Desativar Tudo' : 'Ativar Tudo', custom_id: 'automations_toggle_system' },

@@ -78,7 +78,9 @@ module.exports = function generateDevGuildsMenu(guildsData, page = 0, totals, so
         components: [
             { type: 2, style: 2, label: "◀", custom_id: `dev_guilds_page_${page - 1}_${sortType}`, disabled: page === 0 },
             { type: 2, style: 2, label: `${page + 1}/${totalPages || 1}`, custom_id: "noop", disabled: true },
-            { type: 2, style: 2, label: "▶", custom_id: `dev_guilds_page_${page + 1}_${sortType}`, disabled: page + 1 >= totalPages }
+            { type: 2, style: 2, label: "▶", custom_id: `dev_guilds_page_${page + 1}_${sortType}`, disabled: page + 1 >= totalPages },
+            // --- NOVO BOTÃO ADICIONADO AQUI ---
+            { type: 2, style: 1, label: "Buscar User", emoji: { name: "🔍" }, custom_id: "dev_search_user_start" }
         ]
     };
 
