@@ -412,7 +412,34 @@ client.once(Events.ClientReady, async () => {
     setInterval(() => updateModuleStatusCache(client), 15 * 60 * 1000);
     setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
 });
+const pontoRecovery = async () => {
+    console.log('[Ponto] Recuperando sessões ativas...');
+    
+    // Busca sessões que estão 'open' ou 'paused'
+    const activeSessions = await db.query("SELECT * FROM ponto_sessions WHERE status IN ('open', 'paused')");
+    
+    activeSessions.rows.forEach(session => {
+        // Recria o loop de atualização para cada sessão encontrada
+        // NOTA: Você precisa ter certeza que a função de atualizar (ui/pontoDashboardPessoalV2) está acessível aqui
+        
+        // Exemplo simplificado de recuperação:
+        const channel = client.channels.cache.get(session.channel_id);
+        if (channel) {
+            channel.messages.fetch(session.message_id).then(msg => {
+                // Reinicia o intervalo de edição para esta mensagem
+                // Chame sua função de atualizar painel aqui
+                console.log(`[Ponto] Sessão recuperada para user ${session.user_id}`);
+            }).catch(() => {
+                console.log(`[Ponto] Mensagem de ponto não encontrada para ${session.user_id}`);
+            });
+        }
+    });
+};
 
+// Chame a função quando o bot ligar
+client.once('ready', () => {
+    setTimeout(pontoRecovery, 5000); // Espera 5s para garantir que tudo carregou
+});
 // ===================================================================
 //  ⬇️  ROTEADOR DE INTERAÇÃO CORRIGIDO  ⬇️
 // ===================================================================
