@@ -3,10 +3,6 @@ const { formatDuration } = require('../utils/formatDuration.js');
 
 module.exports = function generatePontoDashboardV2(interaction, settings, session, status = 'active') {
     const startTime = new Date(session.start_time);
-    
-    // [NOVO] Cria o Timestamp UNIX para o Discord gerenciar o contador visual
-    const startUnix = Math.floor(startTime.getTime() / 1000);
-
     let elapsedTimeMs;
     let dashboardText = '';
     const defaultImage = 'https://media.discordapp.net/attachments/1310610658844475404/1424391049648017571/E99EBFA9-97D6-42F2-922C-6AC4EEC1651A.png?ex=68e46fca&is=68e31e4a&hm=167f4d74e96a1250138270ac9396faec3eb7ed427afb3490510b4f969b4f1a1f&=&format=webp&quality=lossless';
@@ -18,7 +14,6 @@ module.exports = function generatePontoDashboardV2(interaction, settings, sessio
         elapsedTimeMs = session.durationMs;
         dashboardText = `> **Status:** ⏹️ **Finalizado**\n> **Tempo Total de Serviço:** \`${formatDuration(elapsedTimeMs)}\``;
     } else {
-        // Cálculo interno para lógica do bot (não afeta o visual do contador principal)
         elapsedTimeMs = Date.now() - startTime.getTime();
         elapsedTimeMs -= (session.total_paused_ms || 0);
         if (session.is_paused) {
@@ -27,20 +22,8 @@ module.exports = function generatePontoDashboardV2(interaction, settings, sessio
         }
 
         dashboardText = `> **Status:** ${session.is_paused ? '⏸️ Pausado' : '▶️ Em Serviço'}\n`;
-        
-        // [ALTERADO] Início mostra Data/Hora fixa
-        dashboardText += `> **Início:** <t:${startUnix}:f>\n`;
-        
-        // [SOLUÇÃO DO ERRO] Usa <t:X:R>
-        // O Discord conta isso automaticamente no cliente. Nunca mais vai "travar" visualmente.
-        dashboardText += `> **Tempo Decorrido:** <t:${startUnix}:R>\n`;
-
-        // Se houver pausas descontadas, mostra o líquido embaixo para diferenciar
-        if (session.total_paused_ms > 0) {
-             dashboardText += `> **Tempo Líquido:** \`${formatDuration(elapsedTimeMs)}\`\n`;
-        }
-
-        dashboardText += `\n`;
+        dashboardText += `> **Início:** <t:${Math.floor(startTime.getTime() / 1000)}:R>\n`;
+        dashboardText += `> **Tempo Decorrido:** \`${formatDuration(elapsedTimeMs)}\`\n\n`;
         dashboardText += `> **Cargo Ativo:** <@&${settings.ponto_cargo_em_servico}>\n`;
         dashboardText += `> **Dashboard:** \`V2 Ativado ✨\`\n`;
 
