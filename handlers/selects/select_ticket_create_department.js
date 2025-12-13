@@ -11,59 +11,60 @@ module.exports = {
         const departmentId = interaction.values[0];
         const department = (await db.query('SELECT * FROM ticket_departments WHERE id = $1', [departmentId])).rows[0];
         if (!department) {
-            return interaction.editReply({ content: '❌ Departamento não encontrado ou removido.', ephemeral: true });
+            return interaction.editReply({ content: '❌ Departamento não encontrado.', ephemeral: true });
         }
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
         const category = await interaction.guild.channels.fetch(settings.tickets_category).catch(() => null);
         
         if (!category) {
-            return interaction.editReply({ content: '❌ A categoria de tickets não foi configurada corretamente.', ephemeral: true });
+            return interaction.editReply({ content: '❌ Categoria de tickets inválida.', ephemeral: true });
         }
 
         try {
-            // Gera número do ticket
             const ticketCountResult = await db.query('SELECT ticket_number FROM tickets WHERE guild_id = $1 ORDER BY ticket_number DESC LIMIT 1', [interaction.guild.id]);
             const nextTicketNumber = (ticketCountResult.rows[0]?.ticket_number || 0) + 1;
             
-            // Define permissões de forma EXCLUSIVA
+            // --- LÓGICA DE PERMISSÕES MÚLTIPLAS ---
             const permissionOverwrites = [
-                { 
-                    id: interaction.guild.id, 
-                    deny: [PermissionsBitField.Flags.ViewChannel] // Ninguém vê
-                },
-                { 
-                    id: interaction.user.id, 
-                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.AttachFiles] 
-                }
+                { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.AttachFiles] }
             ];
 
-            // LÓGICA DE CARGO EXCLUSIVO
-            if (department.role_id) {
-                // Se tem cargo de departamento, SÓ ELE entra (além do usuário)
-                permissionOverwrites.push({ 
-                    id: department.role_id, 
-                    allow: [
-                        PermissionsBitField.Flags.ViewChannel, 
-                        PermissionsBitField.Flags.SendMessages, 
-                        PermissionsBitField.Flags.ReadMessageHistory, 
-                        PermissionsBitField.Flags.AttachFiles, 
-                        PermissionsBitField.Flags.ManageMessages // Permissão para administrar
-                    ] 
+            let departmentRoles = [];
+            let mentionString = '';
+
+            // Tenta ler como JSON (formato novo) ou string única (formato antigo)
+            try {
+                const parsed = JSON.parse(department.role_id);
+                if (Array.isArray(parsed)) {
+                    departmentRoles = parsed; // É um array de IDs
+                } else {
+                    departmentRoles = [department.role_id]; // É um ID único
+                }
+            } catch (e) {
+                // Se der erro no parse, é porque é um ID antigo (string pura)
+                if (department.role_id) departmentRoles = [department.role_id];
+            }
+
+            // Adiciona permissões para CADA cargo do departamento
+            if (departmentRoles.length > 0) {
+                departmentRoles.forEach(roleId => {
+                    permissionOverwrites.push({
+                        id: roleId,
+                        allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ManageMessages]
+                    });
+                    mentionString += `<@&${roleId}> `;
                 });
             } else if (settings.tickets_cargo_suporte) {
-                // Fallback: Se o departamento NÃO tem cargo, usa o Suporte Geral
-                permissionOverwrites.push({ 
-                    id: settings.tickets_cargo_suporte, 
-                    allow: [
-                        PermissionsBitField.Flags.ViewChannel, 
-                        PermissionsBitField.Flags.SendMessages, 
-                        PermissionsBitField.Flags.ReadMessageHistory, 
-                        PermissionsBitField.Flags.AttachFiles, 
-                        PermissionsBitField.Flags.ManageMessages
-                    ] 
+                // Fallback: Se não tiver cargos definidos, usa o Geral
+                permissionOverwrites.push({
+                    id: settings.tickets_cargo_suporte,
+                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ManageMessages]
                 });
+                mentionString = `<@&${settings.tickets_cargo_suporte}>`;
             }
+            // ---------------------------------------
 
             const channelName = `${department.emoji ? department.emoji + '-' : ''}ticket-${String(nextTicketNumber).padStart(4, '0')}`;
 
@@ -71,7 +72,7 @@ module.exports = {
                 name: channelName,
                 type: ChannelType.GuildText,
                 parent: category,
-                topic: `Ticket #${nextTicketNumber} | Dept: ${department.name} | Aberto por ${interaction.user.tag} (${interaction.user.id})`,
+                topic: `Ticket #${nextTicketNumber} | Dept: ${department.name} | User: ${interaction.user.id}`,
                 permissionOverwrites: permissionOverwrites
             });
             
@@ -81,11 +82,9 @@ module.exports = {
             const ticketData = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [channel.id])).rows[0];
             const dashboard = generateTicketDashboard(ticketData, interaction.member);
 
-            // Menção inteligente (apenas quem pode ver)
-            const mentionRole = department.role_id ? `<@&${department.role_id}>` : (settings.tickets_cargo_suporte ? `<@&${settings.tickets_cargo_suporte}>` : '');
-            await channel.send({ content: `${interaction.user} ${mentionRole}`, ...dashboard });
+            await channel.send({ content: `${interaction.user} ${mentionString}`, ...dashboard });
 
-            // Mensagens de Saudação (se ativas)
+            // Saudação
             if (settings.tickets_greeting_enabled) {
                 const activeMessages = (await db.query('SELECT message FROM ticket_greeting_messages WHERE guild_id = $1 AND is_active = true ORDER BY id ASC', [interaction.guild.id])).rows;
                 const sendSequentially = async () => {
@@ -100,11 +99,11 @@ module.exports = {
                 sendSequentially();
             }
 
-            await interaction.editReply({ content: `✅ Ticket criado com sucesso: ${channel}`, components: [] });
+            await interaction.editReply({ content: `✅ Ticket criado: ${channel}`, components: [] });
 
         } catch (error) {
-            console.error("Erro ao criar ticket:", error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro ao criar o ticket. Verifique as permissões do bot.', components: [] });
+            console.error("Erro Ticket Create:", error);
+            await interaction.editReply({ content: '❌ Erro ao criar ticket.', components: [] });
         }
     }
 };

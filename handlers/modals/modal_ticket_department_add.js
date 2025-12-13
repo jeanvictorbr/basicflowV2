@@ -1,35 +1,31 @@
-// Crie em: handlers/modals/modal_ticket_department_add.js
-const { RoleSelectMenuBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
+const { ActionRowBuilder, RoleSelectMenuBuilder } = require('discord.js');
 
 module.exports = {
     customId: 'modal_ticket_department_add',
     async execute(interaction) {
-        const name = interaction.fields.getTextInputValue('input_name');
-        const description = interaction.fields.getTextInputValue('input_desc');
-        const emoji = interaction.fields.getTextInputValue('input_emoji');
+        // Pega os dados do formulário
+        const name = interaction.fields.getTextInputValue('input_dept_name');
+        const description = interaction.fields.getTextInputValue('input_dept_desc');
+        const emoji = interaction.fields.getTextInputValue('input_dept_emoji') || '';
 
-        // Codifica os dados para serem passados no customId. Usamos chaves curtas para economizar espaço.
-        const departmentData = JSON.stringify({ n: name, d: description, e: emoji });
-        const encodedData = encodeURIComponent(departmentData);
-        
-        // Garante que o customId não exceda o limite de 100 caracteres.
-        const baseCustomId = `select_ticket_department_role_`;
-        if ((baseCustomId + encodedData).length > 100) {
-            return interaction.reply({ content: 'O nome e a descrição do departamento são muito longos. Por favor, tente com textos mais curtos.', ephemeral: true });
-        }
+        // Salva no cache temporário
+        const tempId = interaction.user.id;
+        interaction.client.tempDeptData = interaction.client.tempDeptData || new Map();
+        interaction.client.tempDeptData.set(tempId, { name, description, emoji });
 
-        const selectMenu = new RoleSelectMenuBuilder()
-            .setCustomId(baseCustomId + encodedData) // Passa os dados aqui
-            .setPlaceholder('Selecione o cargo para este departamento');
-        
-        const cancelButton = new ButtonBuilder().setCustomId('tickets_config_departments').setLabel('Cancelar').setStyle(ButtonStyle.Secondary);
+        // --- A CORREÇÃO ESTÁ AQUI ---
+        const select = new RoleSelectMenuBuilder()
+            .setCustomId('select_new_department_role')
+            .setPlaceholder('Selecione os cargos responsáveis (Até 25)')
+            .setMinValues(1)     // Mínimo 1
+            .setMaxValues(25);   // Máximo 25 (Isso ativa as caixinhas de seleção múltipla)
 
-        // Atualiza a interação sem usar o campo 'content'
-        await interaction.update({
-            components: [new ActionRowBuilder().addComponents(selectMenu), new ActionRowBuilder().addComponents(cancelButton)],
-            flags: V2_FLAG | EPHEMERAL_FLAG
+        const row = new ActionRowBuilder().addComponents(select);
+
+        await interaction.reply({
+            content: `✨ Configurando departamento **${name}**.\nAgora, selecione quais cargos poderão **ver e responder** os tickets desta categoria:`,
+            components: [row],
+            ephemeral: true
         });
     }
 };
