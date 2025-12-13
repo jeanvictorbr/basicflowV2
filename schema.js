@@ -488,12 +488,13 @@ automations_announcements: {
         tag: { type: 'VARCHAR(255)', notNull: true },
         _unique: { type: 'UNIQUE', columns: ['guild_id', 'role_id'] }
     },
-    ticket_departments: {
+ticket_departments: {
         id: { type: 'SERIAL', primaryKey: true },
         guild_id: { type: 'VARCHAR(255)', notNull: true },
         name: { type: 'VARCHAR(100)', notNull: true },
         description: { type: 'TEXT' },
-        role_id: { type: 'VARCHAR(255)', notNull: true },
+        // [MUDANÇA IMPORTANTE] De VARCHAR para JSONB para salvar múltiplos IDs ["123", "456"]
+        role_id: { type: 'JSONB', notNull: true }, 
         emoji: { type: 'VARCHAR(100)' }
     },
     ticket_feedback: {

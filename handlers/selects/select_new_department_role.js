@@ -1,50 +1,48 @@
+// handlers/selects/select_new_department_role.js
 const db = require('../../database.js');
-const { EmbedBuilder } = require('discord.js');
+const generateSuccessUI = require('../../ui/ticketDepartmentSuccess.js');
 
 module.exports = {
     customId: 'select_new_department_role',
     async execute(interaction) {
+        // Recupera dados salvos
         const tempData = interaction.client.tempDeptData?.get(interaction.user.id);
         
         if (!tempData) {
-            return interaction.update({ content: '❌ Tempo esgotado. Comece novamente.', components: [], embeds: [] });
+            return interaction.update({ 
+                content: '❌ Dados perdidos. Tente novamente.', 
+                components: [], 
+                embeds: [] 
+            });
         }
 
-        // Pega a lista de IDs selecionados (Array)
+        // [CORREÇÃO] interaction.values É UM ARRAY ['id1', 'id2']
         const roleIds = interaction.values; 
-        // Converte para texto JSON para salvar no banco
-        const rolesJson = JSON.stringify(roleIds);
+        const rolesJson = JSON.stringify(roleIds); // Prepara para salvar no JSONB
 
         try {
+            // Salva no Banco de Dados
             await db.query(
                 `INSERT INTO ticket_departments (guild_id, name, description, emoji, role_id) VALUES ($1, $2, $3, $4, $5)`,
                 [interaction.guild.id, tempData.name, tempData.description, tempData.emoji, rolesJson]
             );
 
-            // Limpa o cache
+            // Limpa cache
             interaction.client.tempDeptData.delete(interaction.user.id);
 
-            // --- RESPOSTA SIMPLIFICADA PARA EVITAR ERRO DE API ---
-            const embed = new EmbedBuilder()
-                .setTitle('✅ Departamento Criado!')
-                .setDescription(`O departamento **${tempData.name}** foi configurado.`)
-                .addFields({ 
-                    name: 'Cargos Responsáveis', 
-                    value: roleIds.map(id => `<@&${id}>`).join(', ') || 'Nenhum'
-                })
-                .setColor('Green');
-
-            // Atualiza a mensagem apenas com o sucesso, removendo o menu
-            await interaction.update({
-                content: '',
-                embeds: [embed],
-                components: [] 
-            });
+            // Gera a resposta visual usando o arquivo UI limpo
+            const payload = generateSuccessUI(tempData.name, roleIds);
+            
+            // [ESTRATÉGIA ANTI-ERRO]
+            // Usamos editReply se já houve defer, ou update se for direto.
+            // Para garantir que não quebre com "Invalid Form Body", passamos o payload exato.
+            await interaction.update(payload);
 
         } catch (error) {
-            console.error('Erro ao salvar departamento:', error);
+            console.error('Erro DB:', error);
+            // Tenta avisar o usuário sem quebrar tudo
             if (!interaction.replied) {
-                await interaction.reply({ content: '❌ Erro ao salvar no banco de dados.', ephemeral: true });
+                await interaction.reply({ content: '❌ Erro ao salvar. Verifique se o schema do banco foi atualizado.', ephemeral: true });
             }
         }
     }
