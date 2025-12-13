@@ -181,6 +181,13 @@ automations_announcements: {
         registros_status: { type: 'BOOLEAN', default: true },
         registros_canal_vitrine: { type: 'VARCHAR(255)' },
         registros_imagem_vitrine: { type: 'VARCHAR(1024)' },
+        // --- ESTATÍSTICAS DO SERVIDOR (SERVER STATS) ---
+        stats_enabled: { type: 'BOOLEAN', default: false },
+        stats_category_id: { type: 'VARCHAR(255)' }, // Categoria onde ficam os canais
+        stats_members_channel_id: { type: 'VARCHAR(255)' }, // ID do canal de Membros
+        stats_clients_channel_id: { type: 'VARCHAR(255)' }, // ID do canal de Clientes
+        stats_format_members: { type: 'VARCHAR(100)', default: '👥 Membros: {count}' },
+        stats_format_clients: { type: 'VARCHAR(100)', default: '💼 Clientes: {count}' },
 
         // --- INÍCIO DAS NOVAS COLUNAS DE REGISTRO POR CAPTCHA ---
         captcha_verify_enabled: { type: 'BOOLEAN', default: false },

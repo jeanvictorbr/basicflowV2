@@ -23,7 +23,7 @@ const { logInteraction } = require('./utils/analyticsUtils.js');
 const MODULES = require('./config/modules.js');
 const { updateModuleStatusCache } = require('./utils/moduleStatusCache.js');
 const { splitMessage } = require('./utils/messageSplitter'); //
-
+const { startStatsMonitor } = require('./utils/statsMonitor.js');
 const { startVerificationLoop } = require('./utils/verificationLoop'); // <--- ADICIONE IS
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
@@ -353,6 +353,7 @@ console.log('--- Handlers Carregados ---');
 client.once(Events.ClientReady, async () => {
     startGiveawayMonitor(client);
     startVerificationLoop(client);
+    startStatsMonitor(client);
     await db.synchronizeDatabase();
     try {
         startPurgeMonitor(client, db); // Inicia o cronjob
