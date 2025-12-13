@@ -1,23 +1,25 @@
+// handlers/selects/select_dev_found_guild_manage.js
 const db = require('../../database.js');
-const generateGuildManageUI = require('../../ui/devPanel/devGuildManageMenu.js'); // Importa seu menu existente
+const generateGuildManageUI = require('../../ui/devPanel/devGuildManageMenu.js');
 
 module.exports = {
     customId: 'select_dev_found_guild_manage',
     async execute(interaction) {
-        await interaction.deferUpdate();
-
+        // Importante: V2 geralmente usa update, não deferUpdate, para transições suaves
+        // Mas se demorar, usamos deferUpdate. Vamos tentar direto.
+        
         const guildId = interaction.values[0];
         const guild = interaction.client.guilds.cache.get(guildId);
 
         if (!guild) {
-            return interaction.editReply({ content: '❌ A guilda não está mais acessível ou o bot foi removido.', components: [], embeds: [] });
+            return interaction.update({ content: '❌ Guilda não encontrada.', components: [] });
         }
 
         try {
-            // Busca dados do banco para preencher o menu corretamente
+            // Busca configurações
             const settings = await db.getGuildSettings(guildId);
             
-            // Dados extras que o menu pode precisar
+            // Prepara dados compatíveis com o menu existente
             const guildData = {
                 memberCount: guild.memberCount,
                 ownerId: guild.ownerId,
@@ -25,14 +27,22 @@ module.exports = {
                 ...settings
             };
 
-            // Gera a UI usando o componente que você JÁ TEM
-            const payload = generateGuildManageUI(guild, guildData);
+            // Gera a UI usando o componente existente
+            const payloadArray = generateGuildManageUI(guild, guildData);
             
-            await interaction.editReply(payload);
+            // [CORREÇÃO CRÍTICA]
+            // A UI retorna um Array [{ type: 17 ... }]. 
+            // O interaction.update espera O OBJETO, não o array.
+            const payload = Array.isArray(payloadArray) ? payloadArray[0] : payloadArray;
+
+            await interaction.update(payload);
 
         } catch (error) {
-            console.error(error);
-            await interaction.editReply({ content: '❌ Erro ao carregar o gerenciador da guilda.', components: [] });
+            console.error('Erro ao abrir gerenciador:', error);
+            // Tenta recuperar com uma mensagem simples se falhar
+            if (!interaction.replied) {
+                await interaction.reply({ content: '❌ Erro ao carregar o menu. Tente novamente.', ephemeral: true });
+            }
         }
     }
 };

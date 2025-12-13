@@ -1,6 +1,6 @@
+// ui/devPanel/devUserGuildsResult.js
 module.exports = function devUserGuildsResult(targetUser, sharedGuilds) {
-    // sharedGuilds é um array de objetos Guild
-
+    // 1. Gera as opções do Select Menu
     const options = sharedGuilds.slice(0, 25).map(g => ({
         label: g.name.substring(0, 100),
         description: `ID: ${g.id} | Membros: ${g.memberCount}`,
@@ -8,46 +8,47 @@ module.exports = function devUserGuildsResult(targetUser, sharedGuilds) {
         emoji: { name: '🏰' }
     }));
 
-    if (options.length === 0) {
-        return {
-            embeds: [{
-                title: '🔍 Resultado da Busca',
-                description: `O usuário **${targetUser.tag}** (${targetUser.id}) não foi encontrado em nenhum servidor onde eu estou.`,
-                color: 0xE74C3C // Vermelho
-            }],
+    // Cabeçalho V2 (Type 10)
+    const headerComponent = {
+        type: 10,
+        content: `## 🔍 Resultado da Busca: ${targetUser.username}\n` +
+                 `> 🆔 **ID:** \`${targetUser.id}\`\n` +
+                 `> 📂 **Encontrado em:** ${sharedGuilds.length} servidores compartilhados.`
+    };
+
+    const components = [];
+
+    if (options.length > 0) {
+        // Menu de Seleção V2
+        components.push({
+            type: 1,
             components: [{
-                type: 1,
-                components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'dev_guilds_page_0' }]
-            }],
-            flags: 1 << 6
-        };
+                type: 3, // String Select
+                custom_id: 'select_dev_found_guild_manage',
+                options: options,
+                placeholder: 'Selecione a guilda para gerenciar...'
+            }]
+        });
+    } else {
+        // Mensagem se não achar nada
+        headerComponent.content += `\n\n❌ **Nenhuma guilda em comum encontrada.**`;
     }
 
-    return {
-        embeds: [{
-            title: `🔍 Guildas de ${targetUser.username}`,
-            description: `Encontrei este usuário em **${sharedGuilds.length}** servidores compartilhados.\nSelecione um abaixo para abrir o **Painel de Gerenciamento** daquela guilda.`,
-            thumbnail: { url: targetUser.displayAvatarURL() },
-            color: 0x5865F2, // Blurple
-            fields: [
-                { name: 'Usuário', value: `<@${targetUser.id}>\n\`${targetUser.id}\``, inline: true }
+    // Botão Voltar
+    components.push({
+        type: 1,
+        components: [{ type: 2, style: 2, label: 'Voltar ao Menu', custom_id: 'dev_guilds_page_0' }]
+    });
+
+    // Retorna Array V2 (Importante para compatibilidade)
+    return [
+        {
+            type: 17,
+            components: [
+                headerComponent,
+                { type: 14, divider: true, spacing: 2 }, // Divisor
+                ...components
             ]
-        }],
-        components: [
-            {
-                type: 1,
-                components: [{
-                    type: 3, // String Select
-                    custom_id: 'select_dev_found_guild_manage',
-                    options: options,
-                    placeholder: 'Selecione a guilda para gerenciar...'
-                }]
-            },
-            {
-                type: 1,
-                components: [{ type: 2, style: 2, label: 'Voltar', custom_id: 'dev_guilds_page_0' }]
-            }
-        ],
-        flags: 1 << 6
-    };
+        }
+    ];
 };
