@@ -1,51 +1,61 @@
+// handlers/modals/modal_dev_search_user_submit.js
 const generateResultsUI = require('../../ui/devPanel/devUserGuildsResult.js');
 
 module.exports = {
     customId: 'modal_dev_search_user_submit',
     async execute(interaction) {
+        // Usa deferReply para ter até 15 minutos, mas será rápido agora
         await interaction.deferReply({ ephemeral: true });
 
-        const userId = interaction.fields.getTextInputValue('target_user_id');
+        const userId = interaction.fields.getTextInputValue('target_user_id').trim();
         const client = interaction.client;
 
         try {
-            // Tenta buscar o usuário no cache global ou na API
-            const targetUser = await client.users.fetch(userId).catch(() => null);
-
-            if (!targetUser) {
-                return interaction.editReply({ content: '❌ Usuário não encontrado ou ID inválido.' });
+            // 1. Tenta identificar o usuário (API Check)
+            let targetUser;
+            try {
+                targetUser = await client.users.fetch(userId);
+            } catch (e) {
+                return interaction.editReply({ content: '❌ Usuário não encontrado no Discord. Verifique o ID.' });
             }
 
-            // Varredura de Guildas
-            // Nota: Isso pode ser intensivo se o bot estiver em milhares de servidores.
-            // Para bots gigantes, seria ideal usar sharding/broadcast, mas para single instance funciona bem.
-            const sharedGuilds = [];
+            // 2. Busca Paralela Otimizada
+            // Em vez de um loop 'for' lento, criamos uma array de promessas
+            // O Discord.js gerencia o Rate Limit automaticamente se houver muitos requests
+            const searchPromises = client.guilds.cache.map(async (guild) => {
+                // Verificação 1: É o dono? (Instantâneo)
+                if (guild.ownerId === userId) return guild;
 
-            // Vamos iterar sobre o cache de guildas
-            for (const [guildId, guild] of client.guilds.cache) {
+                // Verificação 2: Está no cache? (Instantâneo)
+                if (guild.members.cache.has(userId)) return guild;
+
+                // Verificação 3: Request na API (Lento, mas necessário para "fantasmas")
                 try {
-                    // Verifica cache primeiro para economizar API
-                    if (guild.members.cache.has(userId)) {
-                        sharedGuilds.push(guild);
-                    } else {
-                        // Se não estiver no cache, tentamos fetch (leve, apenas check)
-                        const member = await guild.members.fetch(userId).catch(() => null);
-                        if (member) {
-                            sharedGuilds.push(guild);
-                        }
-                    }
+                    // force: true ignora cache e vai no servidor do Discord
+                    const member = await guild.members.fetch({ user: userId, force: true }).catch(() => null);
+                    return member ? guild : null;
                 } catch (e) {
-                    // Ignora erros de permissão ou acesso
+                    return null;
                 }
-            }
+            });
 
-            // Gera a UI com os resultados
-            const payload = generateResultsUI(targetUser, sharedGuilds);
+            // Aguarda todas as buscas terminarem
+            const results = await Promise.all(searchPromises);
+            
+            // Filtra os nulos (servidores onde não foi encontrado)
+            const sharedGuilds = results.filter(guild => guild !== null);
+
+            // 3. Gera a UI V2 com o resultado
+            const payloadArray = generateResultsUI(targetUser, sharedGuilds);
+            
+            // Pega o objeto do array para enviar
+            const payload = Array.isArray(payloadArray) ? payloadArray[0] : payloadArray;
+
             await interaction.editReply(payload);
 
         } catch (error) {
-            console.error(error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro ao processar a busca.' });
+            console.error('[Dev Search] Erro:', error);
+            await interaction.editReply({ content: '❌ Ocorreu um erro crítico durante a busca.' });
         }
     }
 };
