@@ -6,7 +6,6 @@ const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const { startPurgeMonitor } = require('./utils/purgeMonitor');
 const { checkTokenUsage } = require('./utils/tokenMonitor.js');
 const voiceHubManager = require('./utils/voiceHubManager.js');
-const MusicOrchestrator = require('./utils/MusicOrchestrator.js');
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
 const { EPHEMERAL_FLAG } = require('./utils/constants');
