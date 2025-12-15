@@ -16,150 +16,116 @@ module.exports = {
         const guildId = interaction.guild.id;
 
         try {
-            // --- 1. BUSCAR NO BANCO (Com os nomes exatos do seu schema.js) ---
-            // Colunas usadas: ticket_number, user_id, channel_id, last_message_at
-            // Filtro: status = 'open' (conforme padrão do seu schema)
+            // 1. Buscar TODOS os tickets abertos desta guilda no banco
+            // Não usamos LIMIT aqui porque precisamos baixar todos para conferir quais estão bugados
             const query = `
                 SELECT * FROM tickets 
                 WHERE guild_id = $1 AND status = 'open' 
-                ORDER BY ticket_number DESC 
-                LIMIT 25
+                ORDER BY ticket_number DESC
             `;
             
             const result = await db.query(query, [guildId]);
 
             if (result.rows.length === 0) {
-                return interaction.editReply('✅ **Nenhum ticket aberto encontrado neste servidor.**');
+                return interaction.editReply('✅ **Tudo limpo!** Nenhum ticket aberto encontrado no banco.');
             }
 
-            // --- 2. CRIAR MENU (Dropdown) ---
-            const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('admin_ticket_select')
-                .setPlaceholder('Selecione um ticket para gerenciar...');
+            // 2. O FILTRO MÁGICO (Detecta Fantasmas)
+            // Verificamos se o canal ID do banco existe na lista de canais do Discord
+            const ticketsBugados = result.rows.filter(ticket => {
+                const channel = interaction.guild.channels.cache.get(ticket.channel_id);
+                // Se channel for 'undefined', significa que foi deletado, então É BUGADO.
+                return !channel; 
+            });
 
-            // Adiciona opções baseadas no resultado do DB
-            result.rows.forEach(row => {
-                // Tenta pegar o nome do user no cache do Discord
+            if (ticketsBugados.length === 0) {
+                return interaction.editReply('✨ **Nenhum bug encontrado.**\nTodos os tickets abertos no banco possuem canais válidos no servidor.');
+            }
+
+            // Pegamos apenas os 25 primeiros para caber no menu (limite do Discord)
+            const ticketsParaExibir = ticketsBugados.slice(0, 25);
+
+            // 3. Criar o Menu de Seleção
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('admin_ghost_ticket_select')
+                .setPlaceholder(`Selecione para remover (${ticketsBugados.length} detectados)`);
+
+            ticketsParaExibir.forEach(row => {
+                // Tenta pegar o nome do usuário (pode ser null se ele saiu do server)
                 const member = interaction.guild.members.cache.get(row.user_id);
-                const userName = member ? member.user.username : `User ID: ${row.user_id}`;
+                const userName = member ? member.user.username : `User saiu/ID: ${row.user_id}`;
                 
                 selectMenu.addOptions(
                     new StringSelectMenuOptionBuilder()
-                        .setLabel(`Ticket #${row.ticket_number} - ${userName}`)
-                        .setDescription(`Canal ID: ${row.channel_id}`)
-                        .setValue(row.ticket_number.toString()) // Usamos o ticket_number como valor
+                        .setLabel(`🗑️ Fantasma #${row.ticket_number} - ${userName}`)
+                        .setDescription(`Canal ID: ${row.channel_id} (INEXISTENTE)`)
+                        .setValue(row.ticket_number.toString())
                 );
             });
 
             const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
 
+            // 4. Botão "Limpar Tudo" (Salva muito tempo)
+            const btnLimparTodos = new ButtonBuilder()
+                .setCustomId('admin_clean_all_ghosts')
+                .setLabel(`♻️ Corrigir Todos (${ticketsBugados.length})`)
+                .setStyle(ButtonStyle.Danger);
+
+            const rowBtn = new ActionRowBuilder().addComponents(btnLimparTodos);
+
             const response = await interaction.editReply({
-                content: `📂 **Encontrei ${result.rows.length} tickets abertos.**\nSelecione abaixo para ver detalhes ou fechar.`,
-                components: [rowMenu]
+                content: `🚨 **ALERTA DE INCONSISTÊNCIA**\nEncontrei **${ticketsBugados.length}** tickets que constam como "Abertos" no banco de dados, mas **o canal não existe mais**.\n\nIsso pode impedir usuários de abrirem novos tickets.`,
+                components: [rowMenu, rowBtn]
             });
 
-            // --- 3. COLETOR (Ouvir a seleção do Admin) ---
+            // 5. Coletor de Ações
             const collector = response.createMessageComponentCollector({ 
-                componentType: ComponentType.StringSelect, 
                 time: 300000 // 5 minutos
             });
 
             collector.on('collect', async i => {
-                if (i.user.id !== interaction.user.id) {
-                    return i.reply({ content: '❌ Apenas quem usou o comando pode mexer aqui.', ephemeral: true });
+                if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Apenas para você.', ephemeral: true });
+
+                // --- OPÇÃO 1: Limpar um por um via Menu ---
+                if (i.isStringSelectMenu()) {
+                    const ticketNum = i.values[0];
+                    await i.deferUpdate();
+
+                    // Fecha no banco
+                    await db.query(`
+                        UPDATE tickets SET status = 'closed', closed_at = NOW() 
+                        WHERE ticket_number = $1 AND guild_id = $2
+                    `, [ticketNum, guildId]);
+
+                    await i.followUp({ content: `✅ Ticket Fantasma **#${ticketNum}** foi fechado no banco de dados com sucesso.`, ephemeral: true });
                 }
 
-                const selectedTicketNum = i.values[0];
-                
-                // Encontrar os dados do ticket selecionado na lista que já puxamos
-                const ticketData = result.rows.find(t => t.ticket_number.toString() === selectedTicketNum);
+                // --- OPÇÃO 2: Limpar TODOS de uma vez ---
+                if (i.isButton() && i.customId === 'admin_clean_all_ghosts') {
+                    await i.deferUpdate();
 
-                if (!ticketData) return i.reply({ content: 'Erro: Ticket não encontrado na memória.', ephemeral: true });
+                    // Pega os IDs de todos os tickets bugados
+                    const idsParaFechar = ticketsBugados.map(t => t.ticket_number);
 
-                // Puxar infos adicionais
-                const ticketOwner = await interaction.guild.members.fetch(ticketData.user_id).catch(() => null);
-                const channel = interaction.guild.channels.cache.get(ticketData.channel_id);
-
-                // Embed de Detalhes
-                const embed = new EmbedBuilder()
-                    .setTitle(`🎫 Gerenciando Ticket #${ticketData.ticket_number}`)
-                    .setColor('Blue')
-                    .addFields(
-                        { 
-                            name: '👤 Criado por', 
-                            value: ticketOwner ? `${ticketOwner.user.tag} (\`${ticketOwner.id}\`)` : `Desconhecido (\`${ticketData.user_id}\`)`, 
-                            inline: true 
-                        },
-                        { 
-                            name: '📍 Canal', 
-                            value: channel ? `<#${channel.id}>` : '❌ Canal não existe mais', 
-                            inline: true 
-                        },
-                        { 
-                            name: '🕒 Última Atividade', 
-                            // O schema tem 'last_message_at', usamos ele
-                            value: ticketData.last_message_at ? `<t:${Math.floor(new Date(ticketData.last_message_at).getTime() / 1000)}:R>` : 'N/A', 
-                            inline: false 
-                        }
-                    )
-                    .setFooter({ text: 'Selecione abaixo para fechar este ticket permanentemente.' });
-
-                // Botões de Ação
-                const btnFechar = new ButtonBuilder()
-                    .setCustomId(`admin_close_${selectedTicketNum}`)
-                    .setLabel('🔒 Fechar e Deletar Canal')
-                    .setStyle(ButtonStyle.Danger);
-
-                const btnLink = new ButtonBuilder()
-                    .setLabel('Ir para o Canal')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(channel ? channel.url : 'https://discord.com')
-                    .setDisabled(!channel);
-
-                const rowBotoes = new ActionRowBuilder().addComponents(btnFechar, btnLink);
-
-                // Atualiza a mensagem com os detalhes
-                const msgDetalhes = await i.update({
-                    content: null,
-                    embeds: [embed],
-                    components: [rowMenu, rowBotoes], 
-                    fetchReply: true
-                });
-
-                // --- SUB-COLETOR PARA O BOTÃO FECHAR ---
-                const btnCollector = msgDetalhes.createMessageComponentCollector({
-                    componentType: ComponentType.Button,
-                    time: 60000
-                });
-
-                btnCollector.on('collect', async btnInt => {
-                    if (btnInt.customId === `admin_close_${selectedTicketNum}`) {
-                        await btnInt.deferUpdate();
-
-                        // 1. Deletar canal no Discord (se existir)
-                        if (channel) {
-                            await channel.delete('Fechado via Painel Admin').catch(e => console.log('Erro ao deletar canal:', e.message));
-                        }
-
-                        // 2. Atualizar Banco de Dados (Schema: status='closed', closed_at=NOW())
-                        // Usamos ticket_number no WHERE
+                    if (idsParaFechar.length > 0) {
+                        // Comando SQL poderoso para fechar vários de uma vez (ANY)
                         await db.query(`
-                            UPDATE tickets 
-                            SET status = 'closed', closed_at = NOW() 
-                            WHERE ticket_number = $1 AND guild_id = $2
-                        `, [ticketData.ticket_number, guildId]);
-
-                        await interaction.followUp({ content: `✅ Ticket **#${ticketData.ticket_number}** fechado com sucesso!`, ephemeral: true });
-                        btnCollector.stop();
+                            UPDATE tickets SET status = 'closed', closed_at = NOW() 
+                            WHERE guild_id = $1 AND ticket_number = ANY($2::int[])
+                        `, [guildId, idsParaFechar]);
                     }
-                });
+
+                    await i.editReply({ 
+                        content: `✅ **Limpeza Concluída!**\nTodos os **${idsParaFechar.length}** tickets fantasmas foram sincronizados e fechados no banco de dados.`, 
+                        components: [] 
+                    });
+                    collector.stop();
+                }
             });
 
         } catch (error) {
-            console.error('Erro no painel de tickets:', error);
-            if (!interaction.replied) {
-                await interaction.editReply('❌ Erro ao consultar banco de dados.');
-            }
+            console.error('Erro no filtro de tickets:', error);
+            await interaction.editReply('❌ Erro ao processar filtro.');
         }
     }
 };
