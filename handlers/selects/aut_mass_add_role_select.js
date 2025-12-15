@@ -1,53 +1,50 @@
 // handlers/selects/aut_mass_add_role_select.js
-const { V2_FLAG, EPHEMERAL_FLAG } = require('../../utils/constants');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, RoleSelectMenuBuilder } = require('discord.js');
 
 module.exports = {
     customId: 'aut_mass_add_role_select',
     async execute(interaction) {
-        const roleId = interaction.values[0];
-        const role = await interaction.guild.roles.fetch(roleId);
+        const roleIdToAdd = interaction.values[0];
 
-        if (!role) {
-            // --- CORREÇÃO AQUI ---
-            return interaction.update({
-                type: 17, flags: EPHEMERAL_FLAG | V2_FLAG,
-                components: [
-                    { type: 10, content: "## ❌ Erro\nCargo não encontrado." },
-                    { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', emoji: { name: '⬅️' }, custom_id: 'aut_mass_roles_menu' }] }
-                ]
-            });
-        }
-        
-        if (!role.editable) {
-            // --- CORREÇÃO AQUI ---
-             return interaction.update({
-                type: 17, flags: EPHEMERAL_FLAG | V2_FLAG,
-                components: [
-                    { type: 10, content: `## ❌ Erro de Permissão\nO cargo <@&${roleId}> é **mais alto** que o meu cargo no Discord. Não posso gerenciá-lo.` },
-                    { type: 1, components: [{ type: 2, style: 2, label: 'Voltar', emoji: { name: '⬅️' }, custom_id: 'aut_mass_roles_menu' }] }
-                ]
-            });
-        }
+        // 1. Salva no cache
+        const cacheKey = `mass_role_${interaction.user.id}_${interaction.guild.id}`;
+        interaction.client.massRoleCache = interaction.client.massRoleCache || new Map();
+        interaction.client.massRoleCache.set(cacheKey, { 
+            action: 'add',
+            roleToAdd: roleIdToAdd, 
+            filterRoles: [] // Inicialmente vazio
+        });
 
-        const membersCount = interaction.guild.memberCount;
+        // 2. Constrói o Menu de Filtro
+        const row = new ActionRowBuilder().addComponents(
+            new RoleSelectMenuBuilder()
+                .setCustomId('aut_mass_filter_select')
+                .setPlaceholder('Selecione os cargos que os membros DEVEM ter (Filtro)')
+                .setMinValues(1)
+                .setMaxValues(20)
+        );
 
-        const payload = {
-            type: 17,
-            flags: EPHEMERAL_FLAG | V2_FLAG, // Adicionando flags
-            components: [
-                { type: 10, content: `## ⚠️ Confirmação Final\nVocê tem certeza que deseja **ADICIONAR** o cargo <@&${roleId}> para **TODOS** os \`${membersCount}\` membros do servidor?` },
-                { type: 10, content: "Esta ação é irreversível e pode demorar vários minutos." },
-                {
-                    type: 1,
-                    components: [
-                        { type: 2, style: 3, label: 'Sim, Adicionar Cargo', emoji: { name: '➕' }, custom_id: `aut_mass_add_role_confirm_${roleId}` },
-                        { type: 2, style: 2, label: 'Cancelar', emoji: { name: '✖️' }, custom_id: 'aut_mass_roles_menu' }
-                    ]
-                }
-            ]
-        };
+        // 3. Constrói os Botões
+        const rowBtns = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('aut_mass_add_confirm_all') 
+                .setLabel('Pular Filtro (Aplicar a Todos)')
+                .setStyle(ButtonStyle.Secondary),
+            // [MUDANÇA] Botão Cancelar agora fecha a mensagem, pois é uma nova resposta
+            new ButtonBuilder()
+                .setCustomId('delete_ephemeral_reply') 
+                .setLabel('Cancelar')
+                .setStyle(ButtonStyle.Danger)
+        );
 
-        // --- CORREÇÃO AQUI ---
-        return interaction.update(payload);
+        // [CORREÇÃO DO ERRO]
+        // Usamos .reply() com ephemeral: true.
+        // Isso cria uma nova mensagem flutuante "Passo 2" em cima do menu principal,
+        // evitando o conflito de incompatibilidade de layouts (V2 vs Legado).
+        await interaction.reply({
+            content: `📂 **Passo 2:** Filtragem de Membros.\n\nO cargo <@&${roleIdToAdd}> será adicionado.\n\n❓ **Quem deve receber este cargo?**\nSelecione abaixo os cargos "Filtro". Apenas quem tiver **um dos cargos selecionados** receberá o novo cargo.\n\n*Exemplo: Se selecionar "Vip", apenas quem já é Vip ganhará o cargo novo.*`,
+            components: [row, rowBtns],
+            ephemeral: true
+        });
     }
 };

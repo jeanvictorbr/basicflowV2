@@ -297,7 +297,16 @@ automations_announcements: {
         created_at: { type: 'TIMESTAMPTZ', default: 'NOW()' }
     },
     
-    
+    // --- SISTEMA DE MÚSICA (CLUSTER) ---
+    music_workers: {
+        client_id: { type: 'VARCHAR(255)', primaryKey: true },
+        token_enc: { type: 'TEXT', notNull: true }, // Token criptografado
+        iv: { type: 'VARCHAR(255)', notNull: true }, // Vetor de inicialização da criptografia
+        name: { type: 'VARCHAR(255)' }, // Nome do bot (ex: Music 1)
+        current_guild_id: { type: 'VARCHAR(255)' }, // Onde ele está tocando agora?
+        last_activity: { type: 'TIMESTAMPTZ', default: 'NOW()' },
+        is_active: { type: 'BOOLEAN', default: true } // Se false, o orquestrador ignora este bot
+    },
     // ... (O resto do seu schema.js continua aqui)
     
     tickets: {

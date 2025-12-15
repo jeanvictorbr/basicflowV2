@@ -1,13 +1,10 @@
-// Local: utils/encryption.js (No Bot) 
-// Local: encryption.js (No Site, se estiver na raiz)
+// Local: utils/encryption.js
 const crypto = require('crypto');
 require('dotenv').config();
 
-// Algoritmo padrão
 const ALGORITHM = 'aes-256-cbc';
 
-// Gera a chave baseada no TOKEN para garantir que seja igual nos dois lados
-// IMPORTANTE: O .env dos dois projetos deve ter o mesmo DISCORD_TOKEN
+// Mantivemos sua lógica de chave original para compatibilidade total
 const ENCRYPTION_KEY = crypto.createHash('sha256')
     .update(String(process.env.DISCORD_TOKEN))
     .digest('base64')
@@ -19,19 +16,36 @@ function encrypt(text) {
         const cipher = crypto.createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY), iv);
         let encrypted = cipher.update(String(text));
         encrypted = Buffer.concat([encrypted, cipher.final()]);
-        // Retorna no formato IV:CONTEUDO
-        return iv.toString('hex') + ':' + encrypted.toString('hex');
+        
+        // RETORNA UM OBJETO (Melhor para o Banco de Dados SQL)
+        // Mas se você der console.log ou somar com string, ele vira o formato antigo "IV:CONTENT"
+        const result = { 
+            iv: iv.toString('hex'), 
+            content: encrypted.toString('hex'),
+            toString: function() { return this.iv + ':' + this.content; } 
+        };
+        return result;
     } catch (e) {
         console.error('Encryption Error:', e.message);
         return null;
     }
 }
 
-function decrypt(text) {
+function decrypt(data) {
     try {
-        const textParts = text.split(':');
-        const iv = Buffer.from(textParts.shift(), 'hex');
-        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        let iv, encryptedText;
+
+        // NOVA ADIÇÃO: Verifica se é o formato Objeto (do Banco) ou String (do Site)
+        if (typeof data === 'string') {
+            const textParts = data.split(':');
+            iv = Buffer.from(textParts.shift(), 'hex');
+            encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        } else if (data && data.iv && data.content) {
+            iv = Buffer.from(data.iv, 'hex');
+            encryptedText = Buffer.from(data.content, 'hex');
+        } else {
+            return null;
+        }
         
         const decipher = crypto.createDecipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY), iv);
         let decrypted = decipher.update(encryptedText);
@@ -39,7 +53,6 @@ function decrypt(text) {
         return decrypted.toString();
     } catch (e) {
         console.error('Decryption Error:', e.message);
-        // Retorna null para quem chamou saber que falhou
         return null;
     }
 }

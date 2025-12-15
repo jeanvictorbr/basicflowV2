@@ -1,4 +1,4 @@
-// Crie em: handlers/buttons/ponto_show_ranking.js
+// handlers/buttons/ponto_show_ranking.js
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../../database.js');
 const { formatDuration } = require('../../utils/formatDuration.js');
@@ -32,7 +32,8 @@ module.exports = {
             const rankingList = await Promise.all(leaderboardData.rows.map(async (row, index) => {
                 const member = await interaction.guild.members.fetch(row.user_id).catch(() => null);
                 const position = offset + index + 1;
-                return `**${position}.** ${member || '`Usuário Saiu`'} - \`${formatDuration(row.total_ms)}\``;
+                // --- CORREÇÃO: Number(row.total_ms) garante que a string do DB vire número
+                return `**${position}.** ${member || '`Usuário Saiu`'} - \`${formatDuration(Number(row.total_ms))}\``;
             }));
             embed.setDescription(rankingList.join('\n'));
         }

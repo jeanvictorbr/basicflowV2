@@ -6,7 +6,7 @@ const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const { startPurgeMonitor } = require('./utils/purgeMonitor');
 const { checkTokenUsage } = require('./utils/tokenMonitor.js');
 const voiceHubManager = require('./utils/voiceHubManager.js');
-
+const MusicOrchestrator = require('./utils/MusicOrchestrator.js');
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
 const { EPHEMERAL_FLAG } = require('./utils/constants');
@@ -31,6 +31,8 @@ const http = require('http');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { approvePurchase } = require('./utils/approvePurchase.js');
 const { startGiveawayMonitor } = require('./utils/giveawayManager');
+// --- IMPORTAÇÃO DA CORREÇÃO DE PONTO ---
+const restorePontoSessions = require('./utils/pontoRestore.js'); 
 
 // --- IMPORTAÇÕES ADICIONADAS PARA O OAUTH2 FUNCIONAR ---
 const url = require('url');
@@ -350,6 +352,8 @@ componentTypes.forEach(type => {
 
 console.log('--- Handlers Carregados ---');
 
+
+
 client.once(Events.ClientReady, async () => {
     startGiveawayMonitor(client);
     startVerificationLoop(client);
@@ -360,6 +364,17 @@ client.once(Events.ClientReady, async () => {
     } catch(e) { console.error('[Monitor] Erro ao iniciar Purge:', e); }
 
     await updateModuleStatusCache(client);
+    
+    // --- CORREÇÃO PONTO: RESTAURAR INTERVALOS ---
+    await restorePontoSessions(client);
+    // ---------------------------------------------
+// --- INICIAR ORQUESTRA DE MÚSICA ---
+    try {
+        await MusicOrchestrator.start(); 
+    } catch (e) {
+        console.error('[Music] Falha ao iniciar orquestra:', e);
+    }
+    // -----------------------------------
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
         if (process.env.DEV_GUILD_ID) {

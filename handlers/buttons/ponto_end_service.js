@@ -14,19 +14,16 @@ module.exports = {
         if (interaction.client.afkCheckTimers.has(interaction.user.id)) { clearTimeout(interaction.client.afkCheckTimers.get(interaction.user.id)); interaction.client.afkCheckTimers.delete(interaction.user.id); }
         if (interaction.client.afkToleranceTimers.has(interaction.user.id)) { clearTimeout(interaction.client.afkToleranceTimers.get(interaction.user.id)); interaction.client.afkToleranceTimers.delete(interaction.user.id); }
 
-        // VERIFICAÇÃO DE SEGURANÇA ADICIONADA
-        // Verifica se deferUpdate existe E se a interação ainda não foi diferida/respondida
         if (typeof interaction.deferUpdate === 'function' && !interaction.deferred && !interaction.replied) {
             try {
                 await interaction.deferUpdate();
             } catch (e) {
-                console.warn('Falha ao deferir update no ponto_end_service (pode ser ignorado se for simulação):', e.message);
+                console.warn('Falha ao deferir update no ponto_end_service:', e.message);
             }
         }
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
         if (!settings?.ponto_status) { 
-            // Usa uma função auxiliar segura para responder
             const replyFunc = interaction.editReply || interaction.reply || (() => {});
             return replyFunc.call(interaction, { content: '❌ O sistema de bate-ponto está desativado.', components: [], embeds: [] }); 
         }
@@ -45,17 +42,21 @@ module.exports = {
         try {
             const startTime = new Date(activeSession.start_time);
             let endTime = new Date();
-            let totalPausedMs = activeSession.total_paused_ms || 0;
+            
+            // --- CORREÇÃO AQUI: Converter String do DB para Number ---
+            let totalPausedMs = Number(activeSession.total_paused_ms) || 0;
+            
             if (activeSession.is_paused) {
                 const lastPauseTime = new Date(activeSession.last_pause_time);
+                // Agora a soma é matemática, não concatenação de texto
                 totalPausedMs += (endTime.getTime() - lastPauseTime.getTime());
             }
-            const durationMs = (endTime.getTime() - startTime.getTime()) - Number(totalPausedMs);
+            
+            const durationMs = (endTime.getTime() - startTime.getTime()) - totalPausedMs;
+            // ---------------------------------------------------------
             
             activeSession.durationMs = durationMs;
             
-            // Verifica se é uma interação real para atualizar a UI
-            // Se for simulação (afk check), interaction.message pode não existir ou ser diferente
             if (interaction.message) {
                 const finalDashboardPayload = settings.ponto_dashboard_v2_enabled
                     ? { components: generatePontoDashboardV2(interaction, settings, activeSession, 'finalizado'), flags: V2_FLAG }
@@ -90,7 +91,6 @@ module.exports = {
 
         } catch (error) {
             console.error("Erro ao finalizar serviço:", error);
-            // Tenta avisar apenas se possível
             if (interaction.followUp) {
                 await interaction.followUp({ content: '❌ Ocorreu um erro ao finalizar seu serviço.', ephemeral: true }).catch(()=>{});
             }
