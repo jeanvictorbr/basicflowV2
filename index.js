@@ -5,7 +5,9 @@ const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const { startPurgeMonitor } = require('./utils/purgeMonitor');
 const { checkTokenUsage } = require('./utils/tokenMonitor.js');
+const { startPontoUpdateLoop } = require('./utils/pontoLogLoop.js');
 const voiceHubManager = require('./utils/voiceHubManager.js');
+const MusicOrchestrator = require('./utils/MusicOrchestrator.js');
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
 const { EPHEMERAL_FLAG } = require('./utils/constants');
@@ -22,7 +24,7 @@ const { logInteraction } = require('./utils/analyticsUtils.js');
 const MODULES = require('./config/modules.js');
 const { updateModuleStatusCache } = require('./utils/moduleStatusCache.js');
 const { splitMessage } = require('./utils/messageSplitter'); //
-
+const { startStatsMonitor } = require('./utils/statsMonitor.js');
 const { startVerificationLoop } = require('./utils/verificationLoop'); // <--- ADICIONE IS
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
@@ -354,8 +356,10 @@ console.log('--- Handlers Carregados ---');
 
 
 client.once(Events.ClientReady, async () => {
+    startPontoUpdateLoop(client);
     startGiveawayMonitor(client);
     startVerificationLoop(client);
+    startStatsMonitor(client);
     await db.synchronizeDatabase();
     try {
         startPurgeMonitor(client, db); // Inicia o cronjob

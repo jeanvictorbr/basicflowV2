@@ -1,82 +1,82 @@
-const { formatDuration } = require('../utils/formatDuration.js');
+const { calculateSessionTime } = require('../utils/pontoUtils.js');
 
-module.exports = function generatePontoDashboardV2(interaction, settings, session, status = 'ativo') {
-    const startTime = new Date(session.start_time);
-    let currentDuration = 0;
-
-    // --- CORREÇÃO AQUI ---
-    if (session.is_paused && session.last_pause_time) {
-        // Congela o tempo na hora da pausa
-        const pauseTime = new Date(session.last_pause_time);
-        currentDuration = pauseTime.getTime() - startTime.getTime() - (Number(session.total_paused_ms) || 0);
-    } else {
-        // Tempo correndo
-        currentDuration = Date.now() - startTime.getTime() - (Number(session.total_paused_ms) || 0);
-    }
-    if (currentDuration < 0) currentDuration = 0;
-    // ---------------------
-
-    const isPaused = session.is_paused;
-    const formattedDuration = formatDuration(currentDuration);
+module.exports = (session, member) => {
+    const timeData = calculateSessionTime(session);
     
-    // Define cores e textos baseados no estado
-    const color = status === 'finalizado' ? 15158332 : (isPaused ? 15844367 : 3066993); // Vermelho, Amarelo, Verde
-    const statusText = status === 'finalizado' ? "Serviço Finalizado" : (isPaused ? "Serviço Pausado" : "Em Serviço");
-    const statusEmoji = status === 'finalizado' ? "⏹️" : (isPaused ? "⏸️" : "✅");
+    // Cores e Status Visuais
+    let color = 0x00FF00; // Verde (Trabalhando)
+    let statusText = "🟢 Em Serviço";
+    let statusDescription = "Você está contabilizando horas atualmente.";
 
+    if (session.is_paused) {
+        color = 0xFFFF00; // Amarelo
+        statusText = "⏸️ Pausado";
+        statusDescription = "Seu tempo está pausado. Clique em **Retomar** para continuar.";
+    }
+
+    // Botões
     const components = [
         {
-            type: 10,
-            content: `## ${statusEmoji} Painel de Ponto - ${interaction.member.displayName}`
-        },
-        {
-            type: 10,
-            content: `> **Tempo Decorrido:** \`${formattedDuration}\`\n> **Início:** <t:${Math.floor(startTime.getTime() / 1000)}:f>`
+            type: 1, // Action Row
+            components: [
+                {
+                    type: 2, // Button
+                    style: session.is_paused ? 3 : 2, // Verde se pausado, Cinza se trabalhando
+                    label: session.is_paused ? "Retomar Serviço" : "Pausar Serviço",
+                    custom_id: session.is_paused ? "ponto_resume_service" : "ponto_pause_service",
+                    emoji: session.is_paused ? { name: "▶️" } : { name: "⏸️" }
+                },
+                {
+                    type: 2, // Button
+                    style: 4, // Danger (Vermelho)
+                    label: "Encerrar Expediente",
+                    custom_id: "ponto_end_service",
+                    emoji: { name: "🛑" }
+                },
+                {
+                    type: 2, // Button
+                    style: 1, // Primary (Azul)
+                    label: "Atualizar Painel",
+                    custom_id: "ponto_meu_status",
+                    emoji: { name: "🔄" }
+                }
+            ]
         }
     ];
 
-    if (isPaused && status !== 'finalizado') {
-        components.push({
-            type: 10,
-            content: `⚠️ **PAUSADO:** O contador está parado. Clique em **Retomar** para continuar contando.`
-        });
-    }
-
-    // Botões (Action Row)
-    if (status !== 'finalizado') {
-        const buttons = [];
-        
-        if (isPaused) {
-            buttons.push({
-                type: 2,
-                style: 3, // Success (Green)
-                label: "Retomar",
-                emoji: { name: "▶️" },
-                custom_id: "ponto_resume_service"
-            });
-        } else {
-            buttons.push({
-                type: 2,
-                style: 2, // Secondary (Grey)
-                label: "Pausar",
-                emoji: { name: "⏸️" },
-                custom_id: "ponto_pause_service"
-            });
-        }
-
-        buttons.push({
-            type: 2,
-            style: 4, // Danger (Red)
-            label: "Finalizar",
-            emoji: { name: "⏹️" },
-            custom_id: "ponto_end_service"
-        });
-
-        components.push({
-            type: 1,
-            components: buttons
-        });
-    }
-
-    return components;
+    return {
+        content: "",
+        embeds: [
+            {
+                title: `Painel de Ponto: ${member.displayName}`,
+                description: statusDescription,
+                color: color,
+                fields: [
+                    {
+                        name: "⏱️ Tempo Decorrido",
+                        value: `\`${timeData.formatted}\``,
+                        inline: true
+                    },
+                    {
+                        name: "📊 Status Atual",
+                        value: `**${statusText}**`,
+                        inline: true
+                    },
+                    {
+                        name: "📅 Início da Sessão",
+                        // AQUI ESTAVA O ERRO: Usamos timeData.startTimestamp calculado corretamente
+                        value: `<t:${timeData.startTimestamp}:f> (<t:${timeData.startTimestamp}:R>)`,
+                        inline: false
+                    }
+                ],
+                footer: {
+                    text: "BasicFlow Time Tracking • Stable",
+                    icon_url: member.guild.iconURL()
+                },
+                timestamp: new Date().toISOString()
+            }
+        ],
+        components: components,
+        flags: 1 << 6 // EPHEMERAL
+    };
 };

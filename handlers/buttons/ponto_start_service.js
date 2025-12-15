@@ -1,101 +1,37 @@
-// handlers/buttons/ponto_start_service.js
-const { EmbedBuilder } = require('discord.js');
 const db = require('../../database.js');
-const generatePontoDashboard = require('../../ui/pontoDashboardPessoal.js');
-const generatePontoDashboardV2 = require('../../ui/pontoDashboardPessoalV2.js');
-const { scheduleAfkCheck } = require('../../utils/afkCheck.js');
-
-const V2_FLAG = 1 << 15; // Flag adicionada para corrigir o erro
+const pontoDashboard = require('../../ui/pontoDashboardPessoalV2.js');
+const { updatePontoLog } = require('../../utils/pontoLogManager.js');
+const { managePontoRole } = require('../../utils/pontoRoleManager.js'); // <--- NOVO
 
 module.exports = {
     customId: 'ponto_start_service',
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        const userId = interaction.user.id;
+        const guildId = interaction.guild.id;
+        const now = new Date();
 
-        const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0];
-        if (!settings?.ponto_status || !settings?.ponto_canal_registros || !settings?.ponto_cargo_em_servico) {
-            return interaction.editReply({ content: '❌ O sistema de bate-ponto está desativado ou mal configurado.' });
+        const check = await db.query(`
+            SELECT * FROM ponto_sessions 
+            WHERE user_id = $1 AND guild_id = $2 AND (status = 'OPEN' OR status IS NULL)
+        `, [userId, guildId]);
+
+        if (check.rows.length > 0) {
+            return interaction.reply(pontoDashboard(check.rows[0], interaction.member));
         }
 
-        const activeSession = (await db.query('SELECT * FROM ponto_sessions WHERE user_id = $1 AND guild_id = $2', [interaction.user.id, interaction.guild.id])).rows[0];
-        
-        // Lógica alterada: Se o usuário já estiver em serviço, reenviamos o dashboard ativo
-        if (activeSession) { 
-            const useV2 = settings.ponto_dashboard_v2_enabled;
-            const dashboardPayload = useV2 ? { components: generatePontoDashboardV2(interaction, settings, activeSession), flags: V2_FLAG } : generatePontoDashboard(interaction, activeSession);
+        const result = await db.query(`
+            INSERT INTO ponto_sessions (user_id, guild_id, start_time, status, is_paused, total_paused_ms)
+            VALUES ($1, $2, $3, 'OPEN', false, 0)
+            RETURNING *;
+        `, [userId, guildId, now]);
 
-            const dashboardMessage = await interaction.editReply({ ...dashboardPayload, fetchReply: true });
-            await db.query('UPDATE ponto_sessions SET dashboard_message_id = $1 WHERE session_id = $2', [dashboardMessage.id, activeSession.session_id]);
-            
-            // Limpa intervalo anterior se existir no cache local para evitar vazamento de memória/duplicidade
-            if (interaction.client.pontoIntervals.has(interaction.user.id)) {
-                clearInterval(interaction.client.pontoIntervals.get(interaction.user.id));
-                interaction.client.pontoIntervals.delete(interaction.user.id);
-            }
+        const session = result.rows[0];
 
-            // Reinicia o intervalo de atualização para esta nova mensagem
-            const interval = setInterval(async () => {
-                const currentSession = (await db.query('SELECT * FROM ponto_sessions WHERE session_id = $1', [activeSession.session_id])).rows[0];
-                if (!currentSession || currentSession.is_paused) return;
-                
-                try {
-                    const updatedPayload = useV2 ? { components: generatePontoDashboardV2(interaction, settings, currentSession), flags: V2_FLAG } : generatePontoDashboard(interaction, currentSession);
-                    await interaction.editReply(updatedPayload).catch(() => {});
-                } catch (error) {
-                    if (error.code === 10008) { // Unknown Message
-                        clearInterval(interaction.client.pontoIntervals.get(interaction.user.id));
-                        interaction.client.pontoIntervals.delete(interaction.user.id);
-                    }
-                }
-            }, 10000);
+        // --- AÇÕES ---
+        updatePontoLog(interaction.client, session, interaction.user);
+        managePontoRole(interaction.client, guildId, userId, 'ADD'); // <--- DAR CARGO
 
-            interaction.client.pontoIntervals.set(interaction.user.id, interval);
-            return; 
-        }
-        
-        const role = await interaction.guild.roles.fetch(settings.ponto_cargo_em_servico).catch(() => null);
-        if (!role) { return interaction.editReply({ content: '❌ O cargo "Em Serviço" não foi encontrado.' }); }
-
-        try {
-            await interaction.member.roles.add(role);
-            const logChannel = await interaction.guild.channels.fetch(settings.ponto_canal_registros);
-            const startTime = new Date();
-
-            const entryEmbed = new EmbedBuilder().setColor('Green').setAuthor({ name: interaction.member.displayName, iconURL: interaction.user.displayAvatarURL() }).setTitle('▶️ Entrada de Serviço').addFields({ name: 'Membro', value: `${interaction.user}`, inline: true }, { name: 'Início', value: `<t:${Math.floor(startTime.getTime() / 1000)}:f>`, inline: true }).setFooter({ text: `ID do Usuário: ${interaction.user.id}` });
-            const logMessage = await logChannel.send({ embeds: [entryEmbed] });
-
-            const sessionResult = await db.query('INSERT INTO ponto_sessions (guild_id, user_id, start_time, log_message_id) VALUES ($1, $2, $3, $4) RETURNING *', [interaction.guild.id, interaction.user.id, startTime, logMessage.id]);
-            const session = sessionResult.rows[0];
-
-            const useV2 = settings.ponto_dashboard_v2_enabled;
-            const dashboardPayload = useV2 ? { components: generatePontoDashboardV2(interaction, settings, session), flags: V2_FLAG } : generatePontoDashboard(interaction, session);
-
-            const dashboardMessage = await interaction.editReply({ ...dashboardPayload, fetchReply: true });
-            await db.query('UPDATE ponto_sessions SET dashboard_message_id = $1 WHERE session_id = $2', [dashboardMessage.id, session.session_id]);
-            
-            const interval = setInterval(async () => {
-                const currentSession = (await db.query('SELECT * FROM ponto_sessions WHERE session_id = $1', [session.session_id])).rows[0];
-                if (!currentSession || currentSession.is_paused) return;
-                
-                try {
-                    const updatedPayload = useV2 ? { components: generatePontoDashboardV2(interaction, settings, currentSession), flags: V2_FLAG } : generatePontoDashboard(interaction, currentSession);
-                    await interaction.editReply(updatedPayload).catch(() => {});
-                } catch (error) {
-                    if (error.code === 10008) {
-                        clearInterval(interaction.client.pontoIntervals.get(interaction.user.id));
-                        interaction.client.pontoIntervals.delete(interaction.user.id);
-                    }
-                }
-            }, 10000);
-
-            interaction.client.pontoIntervals.set(interaction.user.id, interval);
-            
-            if (settings.ponto_afk_check_enabled) {
-                scheduleAfkCheck(interaction.client, interaction.guild.id, interaction.user.id, settings.ponto_afk_check_interval_minutes);
-            }
-        } catch (error) {
-            console.error("Erro ao iniciar serviço:", error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro ao iniciar seu serviço.' }).catch(()=>{});
-        }
+        const dashboard = pontoDashboard(session, interaction.member);
+        await interaction.reply(dashboard);
     }
 };
