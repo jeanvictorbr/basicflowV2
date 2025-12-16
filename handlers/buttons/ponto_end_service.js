@@ -29,12 +29,12 @@ module.exports = {
             if (!isNaN(lastPauseMs)) finalTotalPause += Math.max(0, nowMs - lastPauseMs);
         }
 
-        // 3. Atualiza a tabela de Sessões (Fecha o expediente individual)
+        // 3. Atualiza a tabela de Sessões
         await db.query(`
             UPDATE ponto_sessions SET status = 'CLOSED', end_time = $1, is_paused = FALSE, total_paused_ms = $2 WHERE session_id = $3
         `, [now, finalTotalPause, session.session_id]);
 
-        // Atualiza objeto local para o cálculo
+        // Atualiza objeto local
         session.end_time = now;
         session.status = 'CLOSED';
         session.total_paused_ms = finalTotalPause;
@@ -44,14 +44,14 @@ module.exports = {
         const timeData = calculateSessionTime(session);
 
         // ====================================================================================
-        // AQUI ESTÁ A CORREÇÃO: Salvar na tabela 'ponto_leaderboard'
+        // CORREÇÃO: Usando 'total_ms' e 'ponto_leaderboard'
         // ====================================================================================
         if (timeData.durationMs > 0) {
             await db.query(`
-                INSERT INTO ponto_leaderboard (user_id, guild_id, total_time)
+                INSERT INTO ponto_leaderboard (user_id, guild_id, total_ms)
                 VALUES ($1, $2, $3)
-                ON CONFLICT (user_id, guild_id)
-                DO UPDATE SET total_time = ponto_leaderboard.total_time + $3
+                ON CONFLICT (guild_id, user_id) 
+                DO UPDATE SET total_ms = ponto_leaderboard.total_ms + $3
             `, [userId, guildId, timeData.durationMs]);
         }
         // ====================================================================================
@@ -69,7 +69,7 @@ module.exports = {
                 { name: "Tempo Total", value: `\`${timeData.formatted}\``, inline: true },
                 { name: "Fim", value: `<t:${Math.floor(nowMs / 1000)}:f>`, inline: true }
             ],
-            footer: { text: `Sessão #${session.session_id} encerrada e contabilizada.` }
+            footer: { text: `Sessão #${session.session_id} encerrada e salva no ranking.` }
         };
 
         await interaction.update({ embeds: [finalEmbed], components: [] });
