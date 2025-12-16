@@ -1,64 +1,54 @@
-// handlers/buttons/ponto_admin_view_sessions.js
 const db = require('../../database.js');
-const { formatDuration } = require('../../utils/formatDuration.js');
-const V2_FLAG = 1 << 15;
-const EPHEMERAL_FLAG = 1 << 6;
 
 module.exports = {
     customId: 'ponto_admin_view_sessions',
     async execute(interaction) {
-        await interaction.deferUpdate();
+        const guildId = interaction.guild.id;
 
-        // Busca todas as sessões ativas nesta guilda
-        const sessions = (await db.query('SELECT * FROM ponto_sessions WHERE guild_id = $1 ORDER BY start_time DESC LIMIT 10', [interaction.guild.id])).rows;
+        // Busca apenas sessões REALMENTE abertas (Status OPEN ou sem data de fim)
+        const result = await db.query(`
+            SELECT session_id, user_id, start_time 
+            FROM ponto_sessions 
+            WHERE guild_id = $1 AND (status = 'OPEN' OR end_time IS NULL)
+            ORDER BY session_id ASC
+            LIMIT 15
+        `, [guildId]);
 
-        if (sessions.length === 0) {
-            return interaction.editReply({ 
-                components: [{ type: 17, components: [{ type: 10, content: '✅ **Nenhuma sessão aberta no momento.**' }] }],
-                flags: V2_FLAG | EPHEMERAL_FLAG 
-            });
+        if (result.rows.length === 0) {
+            return interaction.reply({ content: "✅ Tudo limpo! Nenhuma sessão ativa encontrada.", ephemeral: true });
         }
 
+        // Montagem INTELIGENTE dos botões (Agrupa 5 por linha)
         const components = [];
-        components.push({ type: 10, content: `## 🚨 Sessões Ativas (${sessions.length})\nUse os botões para encerrar forçadamente.` });
+        let currentRow = { type: 1, components: [] };
 
-        for (const session of sessions) {
-            const startTime = new Date(session.start_time);
-            let elapsedTime = Date.now() - startTime.getTime();
-            if (session.is_paused) {
-                // Cálculo aproximado se estiver pausado
-                // (Para precisão exata precisaria da lógica completa, mas aqui é admin view)
-                elapsedTime -= parseInt(session.total_paused_ms || 0);
-            } else {
-                elapsedTime -= parseInt(session.total_paused_ms || 0);
+        result.rows.forEach((session, index) => {
+            // Se a linha encheu (5 botões), salva ela e cria uma nova
+            if (currentRow.components.length >= 5) {
+                components.push(currentRow);
+                currentRow = { type: 1, components: [] };
             }
 
-            const statusIcon = session.is_paused ? '⏸️ Pausado' : '▶️ Ativo';
-            
-            components.push(
-                { type: 14, divider: true, spacing: 1 },
-                { 
-                    type: 10, 
-                    content: `**Usuário:** <@${session.user_id}>\n**Início:** <t:${Math.floor(startTime.getTime()/1000)}:R>\n**Status:** ${statusIcon}\n**Tempo Corrente:** \`${formatDuration(elapsedTime)}\`` 
-                },
-                {
-                    type: 1,
-                    components: [
-                        { 
-                            type: 2, 
-                            style: 4, 
-                            label: "Forçar Finalização", 
-                            emoji: { name: "🛑" }, 
-                            custom_id: `ponto_force_close_${session.session_id}` 
-                        }
-                    ]
-                }
-            );
+            currentRow.components.push({
+                type: 2,
+                style: 4, // Vermelho (Danger)
+                label: `Fechar #${session.session_id}`,
+                custom_id: `ponto_force_close_${session.session_id}`
+            });
+        });
+
+        // Adiciona a última linha se sobrou algum botão
+        if (currentRow.components.length > 0) {
+            components.push(currentRow);
         }
 
-        await interaction.editReply({
-            components: [{ type: 17, components: components }],
-            flags: V2_FLAG | EPHEMERAL_FLAG
+        // Monta o texto de lista
+        const lista = result.rows.map(s => `• **#${s.session_id}** - <@${s.user_id}> (Início: <t:${Math.floor(new Date(s.start_time).getTime() / 1000)}:R>)`).join('\n');
+
+        await interaction.reply({
+            content: `🚨 **Painel de Controle de Ponto**\nEncontrei **${result.rows.length}** sessões abertas:\n\n${lista}\n\n👇 **Clique no ID abaixo para FORÇAR o fechamento:**`,
+            components: components,
+            ephemeral: true
         });
     }
 };

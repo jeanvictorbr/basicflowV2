@@ -4,62 +4,41 @@ const { updatePontoLog } = require('../../utils/pontoLogManager.js');
 const { managePontoRole } = require('../../utils/pontoRoleManager.js');
 
 module.exports = {
-    // O ID vem como 'ponto_force_close_SESSIONID'
     customId: 'ponto_force_close_', 
     async execute(interaction) {
-        // Extrai o ID da sessão do customId do botão
+        // Pega o ID depois do ultimo underscore
         const sessionId = interaction.customId.split('_').pop();
         const guildId = interaction.guild.id;
 
-        // 1. Busca a sessão alvo
+        // 1. Busca a sessão (mesmo se o banco achar que está fechada, vamos conferir)
         const result = await db.query(`
-            SELECT * FROM ponto_sessions 
-            WHERE session_id = $1 AND guild_id = $2
-        `, [sessionId, guildId]);
+            SELECT * FROM ponto_sessions WHERE session_id = $1
+        `, [sessionId]);
 
         if (result.rows.length === 0) {
-            return interaction.reply({ content: "❌ Sessão não encontrada ou já purgada.", ephemeral: true });
+            return interaction.update({ content: "❌ Sessão não encontrada no banco.", components: [] });
         }
 
         const session = result.rows[0];
-
-        // Se já estiver fechada, avisa
-        if (session.status === 'CLOSED' && session.end_time) {
-            return interaction.reply({ content: "⚠️ Esta sessão já foi finalizada anteriormente.", ephemeral: true });
-        }
-
         const now = new Date();
         const nowMs = now.getTime();
 
-        // 2. Calcula pausas pendentes (Igual ao end_service)
-        let finalTotalPause = parseInt(session.total_paused_ms || 0);
-        if (session.is_paused && session.last_pause_time) {
-            const lastPauseMs = new Date(session.last_pause_time).getTime();
-            if (!isNaN(lastPauseMs)) {
-                finalTotalPause += Math.max(0, nowMs - lastPauseMs);
-            }
-        }
-
-        // 3. Atualiza a tabela de Sessões (Fecha o expediente)
-        // Setamos 'status' para CLOSED e definimos o 'end_time' para agora
+        // 2. FORÇA o Status para CLOSED e define End Time AGORA
+        // Isso garante que ela saia da lista de 'OPEN'
         await db.query(`
             UPDATE ponto_sessions 
-            SET status = 'CLOSED', end_time = $1, is_paused = FALSE, total_paused_ms = $2 
-            WHERE session_id = $3
-        `, [now, finalTotalPause, sessionId]);
+            SET status = 'CLOSED', end_time = $1, is_paused = FALSE 
+            WHERE session_id = $2
+        `, [now, sessionId]);
 
-        // Atualiza objeto local para o cálculo
+        // Atualiza objeto local para cálculo correto
         session.end_time = now;
         session.status = 'CLOSED';
-        session.total_paused_ms = finalTotalPause;
         session.is_paused = false;
 
-        // 4. Calcula o tempo usando seu Utils Blindado
+        // 3. Calcula e Salva no Ranking (ponto_leaderboard)
         const timeData = calculateSessionTime(session);
 
-        // ====================================================================================
-        // CORREÇÃO: Salvar no Ranking (ponto_leaderboard)
-        // ====================================================================================
         if (timeData.durationMs > 0) {
             await db.query(`
                 INSERT INTO ponto_leaderboard (user_id, guild_id, total_ms)
@@ -68,30 +47,24 @@ module.exports = {
                 DO UPDATE SET total_ms = ponto_leaderboard.total_ms + $3
             `, [session.user_id, guildId, timeData.durationMs]);
         }
-        // ====================================================================================
 
-        // 5. Tenta pegar o usuário para remover o cargo e atualizar log
-        let user;
+        // 4. Limpeza (Remove cargo e atualiza log)
         try {
-            user = await interaction.client.users.fetch(session.user_id);
-        } catch (e) {
-            user = null; // Usuário pode ter saído do servidor
+            await managePontoRole(interaction.client, guildId, session.user_id, 'REMOVE');
+            
+            // Tenta buscar o usuário para atualizar o log (pode falhar se ele saiu do server)
+            const user = await interaction.client.users.fetch(session.user_id).catch(() => null);
+            if (user) {
+                updatePontoLog(interaction.client, session, user);
+            }
+        } catch (err) {
+            console.log("Erro menor na limpeza do Force Close:", err.message);
         }
 
-        if (user) {
-            // Atualiza o Log se o usuário ainda existir
-            updatePontoLog(interaction.client, session, user);
-            // Remove o cargo
-            managePontoRole(interaction.client, guildId, session.user_id, 'REMOVE');
-        }
-
-        // 6. Resposta para o Admin que clicou
-        await interaction.reply({
-            content: `✅ **Sessão #${sessionId} finalizada com força!**\n👤 Usuário: <@${session.user_id}>\n⏱️ Tempo Contabilizado: \`${timeData.formatted}\``,
-            ephemeral: true
+        // 5. Feedback Visual: Remove TODOS os botões da mensagem para "limpar" a tela do admin
+        await interaction.update({
+            content: `✅ **Resolvido!** Sessão **#${sessionId}** encerrada.\n👤 Usuário: <@${session.user_id}>\n⏱️ Tempo Creditado: \`${timeData.formatted}\``,
+            components: [] 
         });
-
-        // Opcional: Atualizar a mensagem original do painel de admin para remover o botão ou mostrar "Resolvido"
-        // Isso depende de como o 'ponto_admin_view_sessions' monta a UI, mas geralmente apenas responder resolve.
     }
 };
