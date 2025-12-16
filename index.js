@@ -5,7 +5,6 @@ const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
 const { startPurgeMonitor } = require('./utils/purgeMonitor');
 const { checkTokenUsage } = require('./utils/tokenMonitor.js');
-const { autoFixGlobalRanking } = require('./utils/autoFixRanking.js');
 const { startPontoUpdateLoop } = require('./utils/pontoLogLoop.js');
 const voiceHubManager = require('./utils/voiceHubManager.js');
 const MusicOrchestrator = require('./utils/MusicOrchestrator.js');
@@ -357,7 +356,6 @@ console.log('--- Handlers Carregados ---');
 
 
 client.once(Events.ClientReady, async () => {
-    await autoFixGlobalRanking();
     startPontoUpdateLoop(client);
     startGiveawayMonitor(client);
     startVerificationLoop(client);
@@ -440,23 +438,6 @@ client.on(Events.InteractionCreate, async interaction => {
     
     // Obter configurações da guilda (essencial para verificações)
     const guildSettings = await db.getGuildSettings(interaction.guildId);
-
-
-    if (interaction.isButton()) {
-    // 1. Tenta achar o botão pelo ID Exato
-    let buttonHandler = client.buttons.get(interaction.customId);
-
-    // 2. Se não achou, verifica se algum handler aceita ID Dinâmico (Função)
-    if (!buttonHandler) {
-        buttonHandler = client.buttons.find(handler => 
-            typeof handler.customId === 'function' && handler.customId(interaction.customId)
-        );
-    }
-
-    if (buttonHandler) {
-        await buttonHandler.execute(interaction);
-    }
-}
     if (!guildSettings && interaction.guildId) {
         // Se não houver configurações, é provável que a guilda não esteja no DB.
         // Apenas comandos de devpanel e ativar devem funcionar.
