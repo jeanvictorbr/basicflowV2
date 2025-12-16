@@ -12,7 +12,7 @@ module.exports = {
 
         // 1. Busca a sessão aberta
         const result = await db.query(`
-            SELECT * FROM ponto_sessions
+            SELECT * FROM ponto_sessions 
             WHERE user_id = $1 AND guild_id = $2 AND (status = 'OPEN' OR status IS NULL OR end_time IS NULL)
             ORDER BY session_id DESC LIMIT 1
         `, [userId, guildId]);
@@ -39,7 +39,7 @@ module.exports = {
 
         // 3. Atualiza a Sessão no DB (Fecha ela)
         await db.query(`
-            UPDATE ponto_leaderboard
+            UPDATE ponto_sessions 
             SET status = 'CLOSED', end_time = $1, is_paused = FALSE, total_paused_ms = $2 
             WHERE session_id = $3
         `, [now, finalTotalPause, session.session_id]);
