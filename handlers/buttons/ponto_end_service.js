@@ -1,7 +1,7 @@
 const db = require('../../database.js');
 const { calculateSessionTime } = require('../../utils/pontoUtils.js');
 const { updatePontoLog } = require('../../utils/pontoLogManager.js');
-const { managePontoRole } = require('../../utils/pontoRoleManager.js'); // <--- NOVO
+const { managePontoRole } = require('../../utils/pontoRoleManager.js');
 
 module.exports = {
     customId: 'ponto_end_service',
@@ -9,6 +9,7 @@ module.exports = {
         const userId = interaction.user.id;
         const guildId = interaction.guild.id;
 
+        // 1. Busca a sessão aberta
         const result = await db.query(`
             SELECT * FROM ponto_sessions 
             WHERE user_id = $1 AND guild_id = $2 AND (status = 'OPEN' OR status IS NULL OR end_time IS NULL)
@@ -21,26 +22,44 @@ module.exports = {
         const now = new Date();
         const nowMs = now.getTime();
 
+        // 2. Calcula pausas pendentes
         let finalTotalPause = parseInt(session.total_paused_ms || 0);
         if (session.is_paused && session.last_pause_time) {
             const lastPauseMs = new Date(session.last_pause_time).getTime();
             if (!isNaN(lastPauseMs)) finalTotalPause += Math.max(0, nowMs - lastPauseMs);
         }
 
+        // 3. Atualiza a tabela de Sessões (Fecha o expediente individual)
         await db.query(`
             UPDATE ponto_sessions SET status = 'CLOSED', end_time = $1, is_paused = FALSE, total_paused_ms = $2 WHERE session_id = $3
         `, [now, finalTotalPause, session.session_id]);
 
+        // Atualiza objeto local para o cálculo
         session.end_time = now;
         session.status = 'CLOSED';
         session.total_paused_ms = finalTotalPause;
         session.is_paused = false;
 
+        // 4. Calcula o tempo usando seu Utils
+        const timeData = calculateSessionTime(session);
+
+        // ====================================================================================
+        // AQUI ESTÁ A CORREÇÃO: Salvar na tabela 'ponto_leaderboard'
+        // ====================================================================================
+        if (timeData.durationMs > 0) {
+            await db.query(`
+                INSERT INTO ponto_leaderboard (user_id, guild_id, total_time)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (user_id, guild_id)
+                DO UPDATE SET total_time = ponto_leaderboard.total_time + $3
+            `, [userId, guildId, timeData.durationMs]);
+        }
+        // ====================================================================================
+
         // --- AÇÕES ---
         updatePontoLog(interaction.client, session, interaction.user);
-        managePontoRole(interaction.client, guildId, userId, 'REMOVE'); // <--- REMOVER CARGO
+        managePontoRole(interaction.client, guildId, userId, 'REMOVE'); 
 
-        const timeData = calculateSessionTime(session);
         const finalEmbed = {
             title: "✅ Expediente Finalizado",
             color: 0xFF0000,
@@ -50,7 +69,7 @@ module.exports = {
                 { name: "Tempo Total", value: `\`${timeData.formatted}\``, inline: true },
                 { name: "Fim", value: `<t:${Math.floor(nowMs / 1000)}:f>`, inline: true }
             ],
-            footer: { text: `Sessão #${session.session_id} encerrada.` }
+            footer: { text: `Sessão #${session.session_id} encerrada e contabilizada.` }
         };
 
         await interaction.update({ embeds: [finalEmbed], components: [] });
