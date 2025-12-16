@@ -1,8 +1,8 @@
-// utils/pontoUtils.js
-
 /**
+ * utils/pontoUtils.js
  * Versão Blindada contra NaN
  */
+
 function parseToMs(value) {
     if (!value) return 0;
     
@@ -60,11 +60,11 @@ function calculateSessionTime(session) {
     const discordTimestamp = startTimeMs > 0 ? Math.floor(startTimeMs / 1000) : Math.floor(now / 1000);
 
     return {
-        durationMs: liquidTime, // <--- O valor CRÍTICO para o Ranking
+        durationMs: liquidTime,
         hours,
         minutes,
         seconds,
-        formatted: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+        formatted: `${hours}h ${minutes}m ${seconds}s`,
         startTimestamp: discordTimestamp // Agora garantido ser um número válido
     };
 }
