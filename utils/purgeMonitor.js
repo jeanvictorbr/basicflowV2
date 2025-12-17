@@ -71,7 +71,7 @@ function startPurgeMonitor(client, db) {
                                     value: `Mensagens com mais de **${durationText}**.`,
                                     inline: true
                                 })
-                                .setFooter({ text: 'BasicFlow Auto-Purge System' })
+                                .setFooter({ text: 'Koda Auto-Purge System' })
                                 .setTimestamp();
 
                             // --- Envio com Log de Erro ---

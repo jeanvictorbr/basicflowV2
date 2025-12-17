@@ -10,10 +10,10 @@ module.exports = async (interaction) => {
     return [
         {
             "type": 17,
-            "accent_color": 5793266, // Cor azul do BasicFlow
+            "accent_color": 5793266, // Cor azul do Koda
             "components": [
                 { "type": 10, "content": "## 📢 Canal de Atualizações" },
-                { "type": 10, "content": "> Configure para receber novidades e correções do BasicFlow." },
+                { "type": 10, "content": "> Configure para receber novidades e correções do Koda." },
                 { "type": 14, "divider": true, "spacing": 1 },
                 { "type": 10, "content": `**Canal Atual:**\n> ${channelStatus}` },
                 { "type": 14, "divider": true, "spacing": 2 },

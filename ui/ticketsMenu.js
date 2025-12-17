@@ -53,7 +53,7 @@ module.exports = function generateTicketsMenu(settings, isPremium)  {
                 {
                     "type": 10, // Tipo 10 é um componente de Texto
                     // VVV   SUBSTITUA PELO TEXTO DO SEU RODAPÉ AQUI   VVV
-                    "content": " ↘  BasicFlow - Todos os direitos Reservados" 
+                    "content": " ↘  Koda - Todos os direitos Reservados" 
                 }
                 // =======================================================
             ]

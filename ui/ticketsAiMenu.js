@@ -24,7 +24,7 @@ module.exports = function generateAiMenu(settings) {
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": toggleBaseKnowledgeButton.style, "label": toggleBaseKnowledgeButton.label, "custom_id": "tickets_ai_toggle_base_knowledge" },
-                    "components": [{ "type": 10, "content": `**Usar Conhecimento Fixo do BasicFlow**\n> Status: \`${baseKnowledgeStatus}\`` }]
+                    "components": [{ "type": 10, "content": `**Usar Conhecimento Fixo do Koda**\n> Status: \`${baseKnowledgeStatus}\`` }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
                 {

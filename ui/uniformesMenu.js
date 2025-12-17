@@ -40,7 +40,7 @@ module.exports = function generateUniformesMenu(settings, isPremium) {
                     "components": [{ "type": 2, "style": 2, "label": "Voltar", "emoji": { "name": "↩️" }, "custom_id": "main_menu_back" }]
                 },
                 { "type": 14, "divider": true, "spacing": 1 },
-                { "type": 10, "content": " ↘   BasicFlow - Todos os direitos Reservados" }
+                { "type": 10, "content": " ↘   Koda - Todos os direitos Reservados" }
             ]
         }
     ];
