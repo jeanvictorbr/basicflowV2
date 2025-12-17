@@ -1,5 +1,5 @@
 // Substitua o conteúdo em: ui/store/dmConversationalFlow.js
-// jeanvictorbr/basicflowv2-beta/basicflowV2-BETA-37a76a5f8c6981d2e0e8259174db35646d1de700/ui/store/dmConversationalFlow.js
+// jeanvictorbr/Kodav2-beta/KodaV2-BETA-37a76a5f8c6981d2e0e8259174db35646d1de700/ui/store/dmConversationalFlow.js
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 

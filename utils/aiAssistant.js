@@ -14,7 +14,7 @@ const groq = new OpenAI({
     baseURL: 'https://api.groq.com/openai/v1',
 });
 
-const defaultPrompt = `Você é um assistente de IA amigável e eficiente chamado "Assistente BasicFlow".`;
+const defaultPrompt = `Você é um assistente de IA amigável e eficiente chamado "Assistente Koda".`;
 
 // --- FUNÇÕES ESPECÍFICAS PARA CADA PROVEDOR ---
 

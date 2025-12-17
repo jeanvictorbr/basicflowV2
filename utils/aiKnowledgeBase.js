@@ -1,72 +1,72 @@
 // utils/aiKnowledgeBase.js
 const db = require('../database.js');
 
-// MEMÓRIA FIXA - VERSÃO COMPLETA E DETALHADA (BasicFlow + FactionFlow)
+// MEMÓRIA FIXA - VERSÃO COMPLETA E DETALHADA (Koda + FactionFlow)
 const baseKnowledge = [
     // --- CONHECIMENTO GERAL ---
     { 
         topic: "Visão Geral e Diferenças dos Bots", 
-        keywords: ["qual a diferença", "vc aprende?","posso adicionar memoria em vc?", "memoria", "basicflow ou factionflow", "qual usar", "ajuda", "comandos", "bots"], 
-        content: `Eu sou um assistente com conhecimento sobre dois bots distintos: o **BasicFlow** e o **FactionFlow**.\n\n- **BasicFlow** é um bot de gestão geral para servidores, com módulos como Bate-Ponto, Tickets de Suporte, Registros (Whitelist), Ausências, Uniformes e um poderoso sistema de Moderação. É ideal para a administração diária da comunidade.\n\n- **FactionFlow** é um bot especializado para servidores de RP com foco em facções. Ele gerencia arsenal, finanças, membros, hierarquia, recrutamento, operações, parcerias e muito mais, tudo de forma automatizada para as organizações.\n\nQuando tiver uma dúvida sobre uma função, por favor, especifique sobre qual bot você quer saber para que eu possa te ajudar melhor!` 
+        keywords: ["qual a diferença", "vc aprende?","posso adicionar memoria em vc?", "memoria", "Koda ou factionflow", "qual usar", "ajuda", "comandos", "bots"], 
+        content: `Eu sou um assistente com conhecimento sobre dois bots distintos: o **Koda** e o **FactionFlow**.\n\n- **Koda** é um bot de gestão geral para servidores, com módulos como Bate-Ponto, Tickets de Suporte, Registros (Whitelist), Ausências, Uniformes e um poderoso sistema de Moderação. É ideal para a administração diária da comunidade.\n\n- **FactionFlow** é um bot especializado para servidores de RP com foco em facções. Ele gerencia arsenal, finanças, membros, hierarquia, recrutamento, operações, parcerias e muito mais, tudo de forma automatizada para as organizações.\n\nQuando tiver uma dúvida sobre uma função, por favor, especifique sobre qual bot você quer saber para que eu possa te ajudar melhor!` 
     },
     {
-    topic: "[BasicFlow] Módulo de Loja (StoreFlow)",
-    keywords: ["basicflow loja", "storeflow", "vender", "produtos", "comprar", "carrinho", "pagamento", "mercado pago", "pix", "cupom"],
-    content: `O **StoreFlow** é um módulo de loja completo integrado ao BasicFlow, permitindo que os servidores criem um sistema de e-commerce robusto.\n\n**Para Administradores (Grátis):**\n- **Gestão de Produtos:** Crie produtos com nome, preço, descrição e defina se o estoque é infinito ('GHOST') ou limitado ('REAL').\n- **Vitrine de Produtos:** Publique uma vitrine interativa onde os membros podem selecionar múltiplos itens para adicionar ao carrinho.\n- **Pagamento Manual:** Configure uma chave PIX para que os membros possam pagar e enviar o comprovativo num canal privado, aguardando a aprovação da staff.\n- **Gestão de Cupons:** Crie e gira cupons de desconto para as suas vendas.\n\n**Recursos Premium (Exclusivos):**\n- **Automação com Mercado Pago:** Integre sua conta para gerar pagamentos PIX automáticos. O bot verifica o pagamento e entrega os produtos instantaneamente, 24/7.\n- **Dashboard de Analytics:** Acompanhe o desempenho da sua loja com dados sobre faturamento, produtos mais vendidos e muito mais.\n- **Personalização Visual:** Altere a cor, título, descrição e imagem da sua vitrine.\n- **Monitor de Inatividade:** Configure o bot para fechar automaticamente carrinhos abandonados após um certo tempo.`
+    topic: "[Koda] Módulo de Loja (StoreFlow)",
+    keywords: ["Koda loja", "storeflow", "vender", "produtos", "comprar", "carrinho", "pagamento", "mercado pago", "pix", "cupom"],
+    content: `O **StoreFlow** é um módulo de loja completo integrado ao Koda, permitindo que os servidores criem um sistema de e-commerce robusto.\n\n**Para Administradores (Grátis):**\n- **Gestão de Produtos:** Crie produtos com nome, preço, descrição e defina se o estoque é infinito ('GHOST') ou limitado ('REAL').\n- **Vitrine de Produtos:** Publique uma vitrine interativa onde os membros podem selecionar múltiplos itens para adicionar ao carrinho.\n- **Pagamento Manual:** Configure uma chave PIX para que os membros possam pagar e enviar o comprovativo num canal privado, aguardando a aprovação da staff.\n- **Gestão de Cupons:** Crie e gira cupons de desconto para as suas vendas.\n\n**Recursos Premium (Exclusivos):**\n- **Automação com Mercado Pago:** Integre sua conta para gerar pagamentos PIX automáticos. O bot verifica o pagamento e entrega os produtos instantaneamente, 24/7.\n- **Dashboard de Analytics:** Acompanhe o desempenho da sua loja com dados sobre faturamento, produtos mais vendidos e muito mais.\n- **Personalização Visual:** Altere a cor, título, descrição e imagem da sua vitrine.\n- **Monitor de Inatividade:** Configure o bot para fechar automaticamente carrinhos abandonados após um certo tempo.`
 },
 {
-    topic: "[BasicFlow] Módulo de Sugestões",
-    keywords: ["basicflow sugestões", "sugestão", "ideia", "feedback", "votar", "comunidade", "aprovar sugestão"],
-    content: `O sistema de Sugestões do BasicFlow é uma ferramenta completa e gratuita para gerir o feedback da sua comunidade.\n\n**Como funciona para os Membros:**\n1.  Clicam no botão "Fazer uma Sugestão" na vitrine.\n2.  Preenchem um formulário com o título e a descrição da ideia.\n3.  A sugestão é publicada num canal, onde todos podem votar com 👍 (Upvote) ou 👎 (Downvote).\n4.  Qualquer membro pode iniciar uma **thread de discussão** para debater a ideia sem poluir o canal principal.\n\n**Como funciona para a Staff:**\n- A staff pode gerir o ciclo de vida da sugestão com botões para **Aprovar**, **Negar** ou colocar **Em Análise**.\n- Todas as ações são registadas num canal de logs para total transparência.\n- Os administradores podem configurar o canal de envio, o cargo da staff, um cooldown para evitar spam e se o bot deve ou não mencionar @everyone a cada nova sugestão.`
+    topic: "[Koda] Módulo de Sugestões",
+    keywords: ["Koda sugestões", "sugestão", "ideia", "feedback", "votar", "comunidade", "aprovar sugestão"],
+    content: `O sistema de Sugestões do Koda é uma ferramenta completa e gratuita para gerir o feedback da sua comunidade.\n\n**Como funciona para os Membros:**\n1.  Clicam no botão "Fazer uma Sugestão" na vitrine.\n2.  Preenchem um formulário com o título e a descrição da ideia.\n3.  A sugestão é publicada num canal, onde todos podem votar com 👍 (Upvote) ou 👎 (Downvote).\n4.  Qualquer membro pode iniciar uma **thread de discussão** para debater a ideia sem poluir o canal principal.\n\n**Como funciona para a Staff:**\n- A staff pode gerir o ciclo de vida da sugestão com botões para **Aprovar**, **Negar** ou colocar **Em Análise**.\n- Todas as ações são registadas num canal de logs para total transparência.\n- Os administradores podem configurar o canal de envio, o cargo da staff, um cooldown para evitar spam e se o bot deve ou não mencionar @everyone a cada nova sugestão.`
 },
 {
-    topic: "O Criador do BasicFlow",
+    topic: "O Criador do Koda",
     keywords: ["quem te criou", "desenvolvedor", "criador", "zepiqueno", "zé pequeno", "factionflow", "policeflow"],
-    content: `Fui desenvolvido pelo brilhante **ZÉPIQUENO**, um talentoso desenvolvedor Full Stack e especialista em NodeJS. Ele é a mente por trás não só de mim, o **BasicFlow**, mas também de outros projetos incríveis como o **FactionFlow** e o **PoliceFlow**, que revolucionam a gestão de comunidades e servidores de RP. A sua visão e expertise são a base de toda a minha inteligência e funcionalidade.`
+    content: `Fui desenvolvido pelo brilhante **ZÉPIQUENO**, um talentoso desenvolvedor Full Stack e especialista em NodeJS. Ele é a mente por trás não só de mim, o **Koda**, mas também de outros projetos incríveis como o **FactionFlow** e o **PoliceFlow**, que revolucionam a gestão de comunidades e servidores de RP. A sua visão e expertise são a base de toda a minha inteligência e funcionalidade.`
 },
 
     // ===============================================================================================
-    // ================================ CONHECIMENTO DO BASICFLOW ====================================
+    // ================================ CONHECIMENTO DO Koda ====================================
     // ===============================================================================================
     { 
-        topic: "[BasicFlow] Sistema Premium e Ativação", 
-        keywords: ["basicflow premium", "ativar basicflow", "key basicflow", "licença basicflow", "comprar"], 
-        content: `O Premium do BasicFlow é ativado com uma chave de licença (key/cupom) e desbloqueia funcionalidades avançadas.\n\n**Para ativar sua chave no BasicFlow:**\n1. Use o comando \`/configurar\`.\n2. No menu principal, clique no botão verde **"Ativar Key"**.\n3. Cole sua chave na janela que aparecer e envie.\n\n**Funcionalidades Premium do BasicFlow:** Módulo de Moderação completo (Punições Personalizadas, Painel de Sanções Ativas), Guardian AI (IA de moderação e chat), Estatísticas detalhadas, customização de visuais, e recursos avançados para Tickets e Bate-Ponto.` 
+        topic: "[Koda] Sistema Premium e Ativação", 
+        keywords: ["Koda premium", "ativar Koda", "key Koda", "licença Koda", "comprar"], 
+        content: `O Premium do Koda é ativado com uma chave de licença (key/cupom) e desbloqueia funcionalidades avançadas.\n\n**Para ativar sua chave no Koda:**\n1. Use o comando \`/configurar\`.\n2. No menu principal, clique no botão verde **"Ativar Key"**.\n3. Cole sua chave na janela que aparecer e envie.\n\n**Funcionalidades Premium do Koda:** Módulo de Moderação completo (Punições Personalizadas, Painel de Sanções Ativas), Guardian AI (IA de moderação e chat), Estatísticas detalhadas, customização de visuais, e recursos avançados para Tickets e Bate-Ponto.` 
     },
     { 
-        topic: "[BasicFlow] Sistema de Tickets", 
-        keywords: ["basicflow ticket", "basicflow suporte", "atendimento"], 
-        content: `O sistema de tickets do BasicFlow agiliza o suporte no servidor.\n\n**Para Usuários:**\n1. Procure o painel "Central de Atendimento" e clique em **"Abrir Ticket"**.\n2. Se houver departamentos (Premium), selecione a área do problema.\n3. Um canal privado será criado para você e a equipe de suporte.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Tickets"**.\n2. Configure a **Categoria** dos tickets, o **Cargo de Suporte** e o **Canal de Logs**.\n3. Use **"Publicar Painel"** para criar o painel de abertura de tickets. Em "Config. Premium", você pode ativar Departamentos, Mensagens de Saudação, Auto-Fechamento, Avaliações e o Assistente de IA.` 
+        topic: "[Koda] Sistema de Tickets", 
+        keywords: ["Koda ticket", "Koda suporte", "atendimento"], 
+        content: `O sistema de tickets do Koda agiliza o suporte no servidor.\n\n**Para Usuários:**\n1. Procure o painel "Central de Atendimento" e clique em **"Abrir Ticket"**.\n2. Se houver departamentos (Premium), selecione a área do problema.\n3. Um canal privado será criado para você e a equipe de suporte.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Tickets"**.\n2. Configure a **Categoria** dos tickets, o **Cargo de Suporte** e o **Canal de Logs**.\n3. Use **"Publicar Painel"** para criar o painel de abertura de tickets. Em "Config. Premium", você pode ativar Departamentos, Mensagens de Saudação, Auto-Fechamento, Avaliações e o Assistente de IA.` 
     },
     { 
-        topic: "[BasicFlow] Sistema de Bate-Ponto", 
-        keywords: ["basicflow ponto", "bater ponto", "serviço"], 
-        content: `O Bate-Ponto do BasicFlow registra o tempo de serviço dos membros.\n\n**Para Usuários:**\n1. No painel de Bate-Ponto, clique em **"Iniciar Serviço"**.\n2. Você receberá um painel em sua DM para **"Pausar"**, **"Retomar"** e **"Finalizar"** o serviço.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Bate-Ponto"**.\n2. Defina o **Canal de Logs** e o **Cargo em Serviço**.\n3. Ative e publique o painel. Em "Config. Premium", você pode ativar a verificação de inatividade (AFK).` 
+        topic: "[Koda] Sistema de Bate-Ponto", 
+        keywords: ["Koda ponto", "bater ponto", "serviço"], 
+        content: `O Bate-Ponto do Koda registra o tempo de serviço dos membros.\n\n**Para Usuários:**\n1. No painel de Bate-Ponto, clique em **"Iniciar Serviço"**.\n2. Você receberá um painel em sua DM para **"Pausar"**, **"Retomar"** e **"Finalizar"** o serviço.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Bate-Ponto"**.\n2. Defina o **Canal de Logs** e o **Cargo em Serviço**.\n3. Ative e publique o painel. Em "Config. Premium", você pode ativar a verificação de inatividade (AFK).` 
     },
     { 
-        topic: "[BasicFlow] Sistema de Registros (Whitelist)", 
-        keywords: ["basicflow registro", "whitelist", "aprovar"], 
-        content: `Este módulo do BasicFlow automatiza a entrada de novos membros.\n\n**Para Usuários:**\n1. No painel de "Sistema de Registro", clique em **"Iniciar Registro"**.\n2. Preencha o formulário com seu **Nome no RP** e **ID no servidor RP**.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Registros"**.\n2. Configure o **Canal de Aprovações**, o **Cargo de Aprovado** e o **Canal de Logs**.` 
+        topic: "[Koda] Sistema de Registros (Whitelist)", 
+        keywords: ["Koda registro", "whitelist", "aprovar"], 
+        content: `Este módulo do Koda automatiza a entrada de novos membros.\n\n**Para Usuários:**\n1. No painel de "Sistema de Registro", clique em **"Iniciar Registro"**.\n2. Preencha o formulário com seu **Nome no RP** e **ID no servidor RP**.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Registros"**.\n2. Configure o **Canal de Aprovações**, o **Cargo de Aprovado** e o **Canal de Logs**.` 
     },
     { 
-        topic: "[BasicFlow] Módulo de Moderação", 
-        keywords: ["basicflow moderação", "dossiê", "histórico", "notas", "punir", "banir", "kickar", "silenciar", "punições personalizadas", "revogar"], 
-        content: `As ferramentas de moderação do BasicFlow centralizam as ações da equipe.\n\n**Para a Staff:**\n- **Comandos:** Use \`/ban\`, \`/kick\`, \`/timeout\` e \`/warn\` para punições rápidas.\n- **Dossiê:** Clique com o botão direito em um usuário e vá em "Apps > Ver Dossiê" para ver o histórico completo de punições, adicionar notas internas ou gerenciar o histórico (remover ocorrências ou resetar).\n\n**Recursos Premium:**\n- **Punições Personalizadas:** Crie modelos de punição (ex: "Mute Leve" com 30min) para padronizar as ações.\n- **Punições Ativas:** Visualize e revogue todos os mutes e bans temporários que ainda estão ativos.\n- **Monitor de Expiração:** O bot remove automaticamente as punições quando o tempo delas acaba.` 
+        topic: "[Koda] Módulo de Moderação", 
+        keywords: ["Koda moderação", "dossiê", "histórico", "notas", "punir", "banir", "kickar", "silenciar", "punições personalizadas", "revogar"], 
+        content: `As ferramentas de moderação do Koda centralizam as ações da equipe.\n\n**Para a Staff:**\n- **Comandos:** Use \`/ban\`, \`/kick\`, \`/timeout\` e \`/warn\` para punições rápidas.\n- **Dossiê:** Clique com o botão direito em um usuário e vá em "Apps > Ver Dossiê" para ver o histórico completo de punições, adicionar notas internas ou gerenciar o histórico (remover ocorrências ou resetar).\n\n**Recursos Premium:**\n- **Punições Personalizadas:** Crie modelos de punição (ex: "Mute Leve" com 30min) para padronizar as ações.\n- **Punições Ativas:** Visualize e revogue todos os mutes e bans temporários que ainda estão ativos.\n- **Monitor de Expiração:** O bot remove automaticamente as punições quando o tempo delas acaba.` 
     },
     { 
-        topic: "[BasicFlow] Guardian AI", 
-        keywords: ["basicflow guardian", "ia", "moderação automática", "chat por menção"], 
-        content: `O Guardian AI do BasicFlow é um sistema de moderação e interação (Premium).\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Guardian AI"**.\n2. **Chat com IA por Menção:** Ative para que o bot converse com os membros quando for mencionado.\n3. **Moderação Automática:** Em "Sistema de Regras", crie "Políticas" para infrações como toxicidade ou spam, com "Passos" de punição que escalonam conforme a reincidência do usuário.` 
+        topic: "[Koda] Guardian AI", 
+        keywords: ["Koda guardian", "ia", "moderação automática", "chat por menção"], 
+        content: `O Guardian AI do Koda é um sistema de moderação e interação (Premium).\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Guardian AI"**.\n2. **Chat com IA por Menção:** Ative para que o bot converse com os membros quando for mencionado.\n3. **Moderação Automática:** Em "Sistema de Regras", crie "Políticas" para infrações como toxicidade ou spam, com "Passos" de punição que escalonam conforme a reincidência do usuário.` 
     },
     {
-        topic: "[BasicFlow] Sistema de Tags por Cargo (RoleTags)",
-        keywords: ["basicflow roletags", "tags", "tag", "apelido", "nickname", "sincronizar"],
-        content: `Este sistema do BasicFlow adiciona um prefixo (tag) ao apelido dos membros com base no cargo mais alto que eles possuem.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Tags por Cargo"**.\n2. Clique em **"Adicionar / Editar"** para associar uma tag (ex: "[ADM]") a um cargo (ex: "Administrador").\n3. Para aplicar as tags a todos os membros de uma vez, use **"Sincronizar Todos"**.`
+        topic: "[Koda] Sistema de Tags por Cargo (RoleTags)",
+        keywords: ["Koda roletags", "tags", "tag", "apelido", "nickname", "sincronizar"],
+        content: `Este sistema do Koda adiciona um prefixo (tag) ao apelido dos membros com base no cargo mais alto que eles possuem.\n\n**Para Administradores:**\n1. No \`/configurar\`, abra o menu **"Tags por Cargo"**.\n2. Clique em **"Adicionar / Editar"** para associar uma tag (ex: "[ADM]") a um cargo (ex: "Administrador").\n3. Para aplicar as tags a todos os membros de uma vez, use **"Sincronizar Todos"**.`
     },
     {
-        topic: "[BasicFlow] Estatísticas",
-        keywords: ["basicflow estatísticas", "stats", "gráficos", "análise"],
-        content: "O módulo de Estatísticas (Premium) do BasicFlow gera gráficos e dados sobre a atividade do servidor, como contagem de membros, mensagens trocadas, tickets abertos e registros de ponto. Ele pode ser acessado pelo menu principal do `/configurar`."
+        topic: "[Koda] Estatísticas",
+        keywords: ["Koda estatísticas", "stats", "gráficos", "análise"],
+        content: "O módulo de Estatísticas (Premium) do Koda gera gráficos e dados sobre a atividade do servidor, como contagem de membros, mensagens trocadas, tickets abertos e registros de ponto. Ele pode ser acessado pelo menu principal do `/configurar`."
     },
 
     // ===============================================================================================

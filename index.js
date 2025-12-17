@@ -210,7 +210,7 @@ client.on(Events.GuildCreate, async guild => {
             )
             .setTimestamp();
         const payload = {
-            username: 'BasicFlow Alertas',
+            username: 'Koda Alertas',
             avatar_url: client.user.displayAvatarURL(),
             embeds: [joinEmbed]
         };
@@ -243,7 +243,7 @@ client.on(Events.GuildDelete, async guild => {
             )
             .setTimestamp();
         const payload = {
-            username: 'BasicFlow Alertas',
+            username: 'Koda Alertas',
             avatar_url: client.user.displayAvatarURL(),
             embeds: [leaveEmbed]
         };

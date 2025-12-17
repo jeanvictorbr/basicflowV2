@@ -9,7 +9,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 // Função auxiliar para criar o embed de uma atualização
 function createUpdateEmbed(update, client) {
     const embed = {
-        "author": { "name": "BasicFlow - Diário de Atualizações", "icon_url": client.user.displayAvatarURL() },
+        "author": { "name": "Koda - Diário de Atualizações", "icon_url": client.user.displayAvatarURL() },
         "title": `🚀 Nova Atualização: ${update.title}`,
         "color": 0x3498DB,
         "fields": [
@@ -67,7 +67,7 @@ module.exports = {
         await targetChannel.send({
             "embeds": [{
                 "title": '🎉 Canal de Atualizações Configurado!',
-                "description": `A partir de agora, todas as novidades sobre o **BasicFlow** serão enviadas aqui.\n\nPara que você não perca nada, estou enviando as 3 últimas atualizações registradas.\n\n*Configurado por ${interaction.user}*`,
+                "description": `A partir de agora, todas as novidades sobre o **Koda** serão enviadas aqui.\n\nPara que você não perca nada, estou enviando as 3 últimas atualizações registradas.\n\n*Configurado por ${interaction.user}*`,
                 "color": 0x23a55a // Verde
             }]
         });

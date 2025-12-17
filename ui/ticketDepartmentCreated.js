@@ -18,7 +18,7 @@ module.exports = function ticketDepartmentCreated(deptName, roleIds) {
                 ],
                 color: 0x57F287, // Green
                 footer: {
-                    text: 'BasicFlow Ticket System'
+                    text: 'Koda Ticket System'
                 }
             }
         ],

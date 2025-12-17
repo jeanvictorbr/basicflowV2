@@ -71,7 +71,7 @@ async function approvePurchase(client, guildId, cartChannelId, staffMember = nul
             if (product.role_id_to_grant) {
                 const role = await guild.roles.fetch(product.role_id_to_grant).catch(() => null);
                 if (role) {
-                    await member.roles.add(role, 'Compra na Loja BasicFlow');
+                    await member.roles.add(role, 'Compra na Loja Koda');
                     deliveredRoles.push(role.name);
                     
                     if (product.role_duration_days && product.role_duration_days > 0) {

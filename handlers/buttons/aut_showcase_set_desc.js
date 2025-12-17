@@ -11,7 +11,7 @@ module.exports = {
                     type: 4, custom_id: 'description', label: 'Descrição (Use > para citação)',
                     style: 2, required: true, 
                     placeholder: '> Para ter acesso completo aos canais...',
-                    value: '> Para ter acesso completo aos canais deste servidor e confirmar sua identidade, clique no botão abaixo e autorize o BasicFlow.'
+                    value: '> Para ter acesso completo aos canais deste servidor e confirmar sua identidade, clique no botão abaixo e autorize o Koda.'
                 }]
             }]
         };

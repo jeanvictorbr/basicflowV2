@@ -17,7 +17,7 @@ module.exports = async (interaction) => {
         .setColor('#2b2d31')
         .setTitle('🎻 Instalação da Orquestra de Música')
         .setDescription('Para que o sistema de música funcione perfeitamente e suporte vários canais simultâneos, você precisa adicionar os **Bots Auxiliares (Workers)** abaixo.\n\n⚠️ **Eles não precisam de configurar nada**, apenas convide-os para o servidor.')
-        .setFooter({ text: 'Sistema Multi-Client • BasicFlow' });
+        .setFooter({ text: 'Sistema Multi-Client • Koda' });
 
     // 3. Cria os botões de link dinamicamente
     const rows = [];

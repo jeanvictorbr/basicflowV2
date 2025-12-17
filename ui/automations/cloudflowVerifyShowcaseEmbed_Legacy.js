@@ -5,7 +5,7 @@
 function getCloudflowVerifyShowcaseEmbed_Legacy(config) {
     // Puxa as configurações
     const title = config?.title || "## 🛡️ Verificação CloudFlow";
-    const description = config?.description || "> Para ter acesso completo aos canais deste servidor e confirmar sua identidade, clique no botão abaixo e autorize o BasicFlow.";
+    const description = config?.description || "> Para ter acesso completo aos canais deste servidor e confirmar sua identidade, clique no botão abaixo e autorize o Koda.";
     const footerText = config?.footer || "Sua verificação é segura e seus dados estão protegidos.";
     const imageUrl = config?.image || null; // Usado aqui
 

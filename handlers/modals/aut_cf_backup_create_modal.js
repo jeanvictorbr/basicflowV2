@@ -66,7 +66,7 @@ module.exports = {
                              `**Nome do Backup:** ${backupName}\n` +
                              `**ID do Backup:** \`${newBackupId}\`\n\n` +
                              `**SENHA (GUARDE BEM):** ||${password}||\n\n` +
-                             `**Aviso:** Você pode usar este ID e Senha para restaurar este backup em **qualquer servidor** que possua o BasicFlow.`
+                             `**Aviso:** Você pode usar este ID e Senha para restaurar este backup em **qualquer servidor** que possua o Koda.`
                 });
             } catch (dmError) {
             // --- FIM DA CORREÇÃO ---

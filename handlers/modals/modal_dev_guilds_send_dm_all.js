@@ -17,7 +17,7 @@ module.exports = {
 
         const dmEmbed = new EmbedBuilder()
             .setColor('Gold')
-            .setTitle('📢 Mensagem da Equipe BasicFlow')
+            .setTitle('📢 Mensagem da Equipe Koda')
             .setDescription(messageContent)
             .setFooter({ text: 'Esta é uma mensagem automática enviada pelo desenvolvedor.' })
             .setTimestamp();

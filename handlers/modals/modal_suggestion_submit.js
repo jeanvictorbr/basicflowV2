@@ -50,7 +50,7 @@ module.exports = {
                 )
                 .setTimestamp()
                 .setImage("https://media.discordapp.net/attachments/1310610658844475404/1424391049648017571/E99EBFA9-97D6-42F2-922C-6AC4EEC1651A.png?ex=68e9b5ca&is=68e8644a&hm=e884e0f49fe63d1c0cd2b6b0a2ab52245243c7c74064d8c8186383a6fc2c1d3a&=&format=webp&quality=lossless")
-                .setFooter({ text: 'BasicFlow - Sugestões' });
+                .setFooter({ text: 'Koda - Sugestões' });
 
             const voteButtons = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`suggestion_upvote`).setLabel('1').setStyle(ButtonStyle.Success).setEmoji('👍'),
