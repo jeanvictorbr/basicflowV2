@@ -1,7 +1,7 @@
 {
-  "name": "Koda-v2-completo",
+  "name": "basicflow-v2-completo",
   "version": "2.0.1",
-  "description": "Bot multifuncional Koda V2",
+  "description": "Bot multifuncional BasicFlow V2",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

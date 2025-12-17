@@ -7,7 +7,7 @@ const EPHEMERAL_FLAG = 1 << 6;
 // Função auxiliar para criar o embed de uma atualização
 function createUpdateEmbed(update, client) {
     const embed = {
-        "author": { "name": "Koda - Diário de Atualizações", "icon_url": client.user.displayAvatarURL() },
+        "author": { "name": "BasicFlow - Diário de Atualizações", "icon_url": client.user.displayAvatarURL() },
         "title": `🚀 Nova Atualização: ${update.title}`,
         "color": 0x3498DB,
         "fields": [], // Começa com os campos vazios

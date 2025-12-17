@@ -70,7 +70,7 @@ module.exports = (session, member) => {
                     }
                 ],
                 footer: {
-                    text: "Koda Time Tracking • Stable",
+                    text: "BasicFlow Time Tracking • Stable",
                     icon_url: member.guild.iconURL()
                 },
                 timestamp: new Date().toISOString()

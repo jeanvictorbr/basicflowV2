@@ -64,7 +64,7 @@ module.exports = {
 
                 try {
                     await axios.post(process.env.PREMIUM_LOG_WEBHOOK_URL, {
-                        username: "Koda Store",
+                        username: "BasicFlow Store",
                         embeds: [logEmbed]
                     });
                 } catch (webhookErr) {

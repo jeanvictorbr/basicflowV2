@@ -43,7 +43,7 @@ async function checkExpiringFeatures(client) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    username: 'Koda Licenças',
+                    username: 'BasicFlow Licenças',
                     avatar_url: client.user.displayAvatarURL(),
                     embeds: [expiryEmbed]
                 }),

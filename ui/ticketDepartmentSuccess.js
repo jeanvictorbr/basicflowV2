@@ -12,7 +12,7 @@ module.exports = function ticketDepartmentSuccess(deptName, roleIds) {
                 fields: [
                     { name: 'Cargos Vinculados', value: rolesFormatted || 'Nenhum' }
                 ],
-                footer: { text: 'Koda' }
+                footer: { text: 'BasicFlow' }
             }
         ],
         components: [] // Limpa os botões

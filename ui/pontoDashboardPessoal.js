@@ -29,7 +29,7 @@ module.exports = function generatePontoDashboard(interaction, session, status = 
             { name: '⏳ Tempo Total', value: `\`${timeData.formatted}\``, inline: true },
             { name: '📅 Início', value: `<t:${Math.floor(parseInt(session.start_time) / 1000)}:f>`, inline: false }
         ],
-        footer: { text: 'Sistema de Ponto • Koda', icon_url: interaction.client.user.displayAvatarURL() },
+        footer: { text: 'Sistema de Ponto • BasicFlow', icon_url: interaction.client.user.displayAvatarURL() },
         timestamp: new Date().toISOString()
     };
 

@@ -97,7 +97,7 @@ module.exports = {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            username: 'Koda Vendas',
+                            username: 'BasicFlow Vendas',
                             avatar_url: interaction.client.user.displayAvatarURL(),
                             embeds: [activationEmbed]
                         })

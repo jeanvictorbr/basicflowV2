@@ -6,7 +6,7 @@ function getCloudflowVerifyShowcaseMenu(settings) {
     // Pega as configurações salvas ou usa os pré-enchidos
     const config = settings.cloudflow_verify_config || {};
     const title = config.title || "## 🛡️ Verificação CloudFlow";
-    const description = config.description || "> Para ter acesso completo aos canais deste servidor e confirmar sua identidade, clique no botão abaixo e autorize o Koda.";
+    const description = config.description || "> Para ter acesso completo aos canais deste servidor e confirmar sua identidade, clique no botão abaixo e autorize o BasicFlow.";
     const footer = config.footer || "Sua verificação é segura e seus dados estão protegidos.";
     const image = config.image || "`Nenhuma`";
     

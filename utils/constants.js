@@ -1,4 +1,4 @@
-// A arquitetura Koda usa estas constantes para respostas V2 e efêmeras.
+// A arquitetura BasicFlow usa estas constantes para respostas V2 e efêmeras.
 const V2_FLAG = 1 << 15;
 const EPHEMERAL_FLAG = 1 << 6;
 
