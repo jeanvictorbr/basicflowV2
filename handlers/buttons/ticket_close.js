@@ -65,6 +65,7 @@ module.exports = {
                     )
                     .setTimestamp();
                 
+                // MANTIDO: Envia o arquivo para o canal de logs
                 await logChannel.send({ embeds: [logEmbed], files: [attachment] });
             }
         }
@@ -76,8 +77,7 @@ module.exports = {
             if (settings.tickets_feedback_enabled) {
                 await user.send(generateFeedbackRequester(ticket)).catch(() => {});
             }
-            // Usa um novo attachment para garantir que o buffer não foi consumido
-            await user.send({ content: 'Aqui está a transcrição da sua conversa:', files: [new AttachmentBuilder(transcriptBuffer, { name: `transcript-${ticket.channel_id}.html` })] }).catch(() => {});
+            // REMOVIDO: A linha que enviava o "attachment" para o usuário foi apagada aqui.
         }
         
         // Lógica de exclusão correta

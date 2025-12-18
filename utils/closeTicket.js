@@ -1,7 +1,7 @@
-// Crie este novo arquivo em: utils/closeTicket.js
 const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const db = require('../database.js');
 const createTranscript = require('./createTranscript.js');
+const generateFeedbackRequester = require('../ui/ticketFeedbackRequester.js'); // Importado para enviar a "Nota"
 
 async function closeTicket(client, channelId, closer, reason) {
     const channel = await client.channels.fetch(channelId).catch(() => null);
@@ -26,8 +26,10 @@ async function closeTicket(client, channelId, closer, reason) {
 
         const opener = await guild.members.fetch(ticket.user_id).catch(() => null);
         const transcriptBuffer = await createTranscript(channel);
+        // O anexo é criado AQUI, mas será usado APENAS no canal de logs
         const attachment = new AttachmentBuilder(transcriptBuffer, { name: `transcript-${channel.name}.html` });
 
+        // --- ENVIO PARA O CANAL DE LOGS (Com Anexo) ---
         if (settings.tickets_canal_logs) {
             const logChannel = await guild.channels.fetch(settings.tickets_canal_logs).catch(() => null);
             if (logChannel) {
@@ -40,15 +42,34 @@ async function closeTicket(client, channelId, closer, reason) {
                         { name: 'Ticket ID', value: `\`#${String(ticket.ticket_number).padStart(4, '0')}\``, inline: true },
                         { name: 'Aberto por', value: opener ? `${opener}` : '`Usuário saiu`', inline: true },
                         { name: 'Fechado por', value: `${closer}`, inline: true },
+                        { name: 'Motivo', value: reason || 'Não especificado', inline: true },
                         { name: 'Histórico de Ações', value: finalActionLog.substring(0, 1024) }
                     )
                     .setTimestamp();
-                await logChannel.send({ embeds: [logEmbed], files: [attachment] });
+                // AQUI MANTÉM O ARQUIVO
+                await logChannel.send({ embeds: [logEmbed], files: [attachment] }); 
             }
         }
         
-        if (settings.tickets_autoclose_dm_user && opener && reason === 'Inatividade') {
-            await opener.send(`Olá! Seu ticket \`#${String(ticket.ticket_number).padStart(4, '0')}\` no servidor **${guild.name}** foi fechado automaticamente por inatividade. Se ainda precisar de ajuda, pode abrir um novo.`).catch(() => {});
+        // --- ENVIO PARA O PV DO USUÁRIO (SEM Anexo, COM Nota/Feedback) ---
+        if (opener) {
+            try {
+                // Gera a interface de Nota/Feedback
+                const feedbackUI = generateFeedbackRequester(channel.name); 
+                
+                const dmPayload = {
+                    content: `Olá **${opener.user.username}**, seu ticket **${channel.name}** no servidor **${guild.name}** foi encerrado.\n\nMotivo: ${reason}`,
+                    // files: [attachment] <--- REMOVIDO: Não envia o arquivo no PV
+                };
+
+                // Adiciona os Embeds e Componentes da Nota/Feedback
+                if (feedbackUI.embeds) dmPayload.embeds = feedbackUI.embeds;
+                if (feedbackUI.components) dmPayload.components = feedbackUI.components;
+
+                await opener.send(dmPayload);
+            } catch (err) {
+                // Ignora erro se DM estiver fechada
+            }
         }
 
         await channel.delete(`Ticket fechado: ${reason}`);
