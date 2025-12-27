@@ -128,7 +128,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
         .setColor(config.color || '#2ECC71')
         .setTitle(finalTitle)
         .setDescription(finalDescription)
-        .setImage(config.image_url || null)
+        .setImage(config.image_url && config.image_url.includes('http') ? config.image_url : null)
         .setThumbnail(isPremium && config.thumbnail_url ? config.thumbnail_url : member.user.displayAvatarURL())
         .setFooter({ text: finalFooter })
         .setTimestamp();
