@@ -1,5 +1,5 @@
 // File: index.js
-// CONTEÚDO COMPLETO E CORRIGIDO
+// CONTEÚDO COMPLETO E CORRIGIDO COM OTIMIZAÇÃO DE RAM
 require('dotenv').config();
 const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
@@ -11,7 +11,8 @@ const MusicOrchestrator = require('./utils/MusicOrchestrator.js');
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
 const { EPHEMERAL_FLAG } = require('./utils/constants');
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder, PermissionsBitField, ActivityType } = require('discord.js');
+// ADICIONADO 'Options' NA IMPORTAÇÃO ABAIXO
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder, PermissionsBitField, ActivityType, Options } = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
@@ -23,26 +24,57 @@ const { syncUsedKeys } = require('./utils/keyStockMonitor.js');
 const { logInteraction } = require('./utils/analyticsUtils.js');
 const MODULES = require('./config/modules.js');
 const { updateModuleStatusCache } = require('./utils/moduleStatusCache.js');
-const { splitMessage } = require('./utils/messageSplitter'); //
+const { splitMessage } = require('./utils/messageSplitter');
 const { startStatsMonitor } = require('./utils/statsMonitor.js');
-const { startVerificationLoop } = require('./utils/verificationLoop'); // <--- ADICIONE IS
+const { startVerificationLoop } = require('./utils/verificationLoop');
 const hasFeature = require('./utils/featureCheck.js');
 const db = require('./database.js');
 const http = require('http');
 const { MercadoPagoConfig, Payment } = require('mercadopago');
 const { approvePurchase } = require('./utils/approvePurchase.js');
 const { startGiveawayMonitor } = require('./utils/giveawayManager');
-// --- IMPORTAÇÃO DA CORREÇÃO DE PONTO ---
 const restorePontoSessions = require('./utils/pontoRestore.js'); 
 
-// --- IMPORTAÇÕES ADICIONADAS PARA O OAUTH2 FUNCIONAR ---
 const url = require('url');
 const crypto = require('crypto');
-const axios = require('axios'); // Mais seguro que fetch nativo
-// -
+const axios = require('axios');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers] });
-automationsMonitor.start(client); //
+// --- OTIMIZAÇÃO DE MEMÓRIA APLICADA AQUI ---
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.DirectMessages, 
+        GatewayIntentBits.GuildVoiceStates, 
+        GatewayIntentBits.GuildMembers
+    ],
+    // Configuração para limitar o uso de RAM (Cache)
+    makeCache: Options.cacheWithLimits({
+        ...Options.DefaultMakeCacheSettings,
+        // Mantém apenas as últimas 20 mensagens por canal (Suficiente para IA e comandos)
+        // Isso impede que o bot guarde milhares de mensagens antigas na RAM
+        MessageManager: 20, 
+        // Desativa cache de reações (economiza objetos)
+        ReactionManager: 0,
+        // Limita threads arquivadas
+        ThreadManager: {
+            maxSize: 25,
+            keepOverLimit: (thread) => thread.isActive(),
+        },
+    }),
+    // Limpeza automática (Garbage Collection) a cada hora
+    sweepers: {
+        ...Options.DefaultSweeperSettings,
+        messages: {
+            interval: 3600, // Limpa a cada 1 hora
+            lifetime: 1800, // Remove mensagens com mais de 30 minutos da memória
+        },
+    },
+});
+// -------------------------------------------
+
+automationsMonitor.start(client);
 client.pontoIntervals = new Map();
 client.afkCheckTimers = new Map();
 client.afkToleranceTimers = new Map();
@@ -145,7 +177,6 @@ client.on(Events.GuildMemberRemove, async (member) => {
     const settingsResult = await db.query('SELECT goodbye_enabled, goodbye_channel_id, goodbye_message_text FROM guild_settings WHERE guild_id = $1', [member.guild.id]);
     const settings = settingsResult.rows[0];
     
-
     // Verifica se o sistema está ativado e se o canal está configurado
     if (!settings || !settings.goodbye_enabled || !settings.goodbye_channel_id) return;
 
@@ -159,7 +190,7 @@ client.on(Events.GuildMemberRemove, async (member) => {
     const messageText = (settings.goodbye_message_text || '👋 {user.tag} deixou o servidor.')
         .replace(/{user.mention}/g, `<@${member.id}>`)
         .replace(/{user.tag}/g, member.user.tag)
-        .replace(/{user.name}/g, member.user.username) // Adicionado {user.name} como opção
+        .replace(/{user.name}/g, member.user.username)
         .replace(/{server.name}/g, member.guild.name)
         .replace(/{member.count}/g, member.guild.memberCount.toString());
 
@@ -176,7 +207,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     // Verifica se os cargos do membro realmente mudaram.
     // Isso evita que a função rode em atualizações de status, apelido, etc.
     const rolesChanged = oldMember.roles.cache.size !== newMember.roles.cache.size ||
-                         !oldMember.roles.cache.every((role) => newMember.roles.cache.has(role.id));
+                          !oldMember.roles.cache.every((role) => newMember.roles.cache.has(role.id));
 
     if (rolesChanged) {
         try {
@@ -775,7 +806,6 @@ client.on(Events.InteractionCreate, async interaction => {
     server.listen(PORT, () => {
         console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
     });
-// Substitua este bloco inteiro no seu arquivo index.js
 
 client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot) return;
