@@ -60,7 +60,7 @@ const client = new Client({
         // Limita threads arquivadas
         ThreadManager: {
             maxSize: 25,
-            keepOverLimit: (thread) => thread.isActive(),
+            keepOverLimit: (thread) => !thread.archived,
         },
     }),
     // Limpeza automática (Garbage Collection) a cada hora
