@@ -389,7 +389,7 @@ console.log('--- Handlers Carregados ---');
 client.once(Events.ClientReady, async () => {
     startPontoUpdateLoop(client);
     startGiveawayMonitor(client);
-    startVerificationLoop(client);
+   // startVerificationLoop(client);
     startStatsMonitor(client);
     await db.synchronizeDatabase();
     try {
