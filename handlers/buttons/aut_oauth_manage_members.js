@@ -1,4 +1,3 @@
-// File: handlers/buttons/aut_oauth_manage_members.js
 const axios = require('axios');
 
 // SEU ID DE DEVELOPER (Substitua pelo seu real se precisar)
@@ -12,10 +11,19 @@ module.exports = {
 };
 
 async function loadMembersPage(interaction, page, isGlobal = false) {
-    if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+    // Tenta deferir apenas se ainda não foi feito
+    try {
+        if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
+    } catch(e) {}
 
     const guildId = interaction.guild.id;
-    let authUrl = process.env.AUTH_SYSTEM_URL.trim().replace(/\/$/, '').replace('/auth/callback', '');
+    // Tratamento básico da URL
+    let authUrl = process.env.AUTH_SYSTEM_URL ? process.env.AUTH_SYSTEM_URL.trim().replace(/\/$/, '').replace('/auth/callback', '') : '';
+
+    if (!authUrl) {
+        // Se não tiver URL configurada, avisa sem crashar
+        return interaction.followUp({ content: '❌ URL do sistema (AUTH_SYSTEM_URL) não configurada no .env', ephemeral: true });
+    }
     
     try {
         const response = await axios.get(`${authUrl}/api/users`, {
@@ -26,6 +34,7 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
         const components = [];
         const title = isGlobal ? "🌍 Painel Global (Developer)" : "👥 Gerenciamento Local";
 
+        // Componentes V2 (Headers e Textos)
         components.push({ "type": 10, "content": `## ${title}` });
         components.push({ "type": 10, "content": `> **Total:** ${total} membros` });
         components.push({ "type": 14, "divider": true, "spacing": 2 });
@@ -41,6 +50,8 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
             "custom_id": isGlobal ? "aut_oauth_mass_transfer_global_start" : "aut_oauth_mass_transfer_start" 
         });
 
+        // --- [COMENTADO] BOTÃO DE TROCA DE MODO (PAINEL GLOBAL) ---
+        /*
         // Botão de Troca de Modo (Aparece só para você/Dono)
         if (interaction.user.id === DEVELOPER_ID || interaction.user.id === interaction.guild.ownerId) {
             if (!isGlobal) {
@@ -49,6 +60,9 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
                 actionButtons.push({ "type": 2, "style": 2, "label": "Voltar para Local", "emoji": { "name": "🏠" }, "custom_id": "aut_oauth_manage_members" });
             }
         }
+        */
+        // ----------------------------------------------------------
+
         components.push({ "type": 1, "components": actionButtons });
         components.push({ "type": 14, "divider": true, "spacing": 1 });
 
@@ -79,11 +93,23 @@ async function loadMembersPage(interaction, page, isGlobal = false) {
             ]
         });
 
-        await interaction.editReply({ components: components, embeds: [], content: "" });
+        // Envio seguro: content: null evita conflito com componentes V2
+        await interaction.editReply({ components: components, embeds: [], content: null });
 
     } catch (error) {
-        console.error(error);
-        await interaction.editReply({ content: "❌ Erro de conexão com API.", components: [] });
+        console.error('[OAuth Handler] Erro de API:', error.message);
+        
+        // CORREÇÃO CRÍTICA DO CRASH:
+        // Se der erro na API (500), não tente editar a estrutura complexa com string simples usando editReply.
+        // Use followUp ephemeral para alertar o usuário sem quebrar o form body.
+        if (interaction.deferred || interaction.replied) {
+            await interaction.followUp({ 
+                content: "❌ **Erro de Conexão:** A API de verificação retornou um erro (possivelmente SSL/Server Error). Tente novamente mais tarde.", 
+                ephemeral: true 
+            }).catch(() => {});
+        } else {
+            await interaction.reply({ content: "❌ Erro ao conectar na API.", ephemeral: true }).catch(() => {});
+        }
     }
 }
 
