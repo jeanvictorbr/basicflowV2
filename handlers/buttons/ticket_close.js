@@ -14,12 +14,10 @@ module.exports = {
             return interaction.reply({ content: '❌ Erro: Canal principal não identificado.', ephemeral: true }).catch(() => {});
         }
 
-        // 2. Deferir (Pensando...)
+        // 2. Deferir
         try {
             if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true });
-        } catch (e) {
-            return; 
-        }
+        } catch (e) { return; }
 
         // 3. Buscar Ticket no Banco
         const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [channelId])).rows[0];
@@ -55,8 +53,7 @@ module.exports = {
             console.error('[Ticket Close] Erro no transcript:', err);
         }
 
-        // 7. ENVIO DE LOGS (CORRIGIDO)
-        // O erro estava aqui: usava nome errado da variável. Agora verificamos os dois.
+        // 7. ENVIO DE LOGS PARA A STAFF (COM ARQUIVO)
         const logChannelId = settings.tickets_canal_logs || settings.tickets_log_channel;
 
         if (logChannelId) {
@@ -86,8 +83,8 @@ module.exports = {
                         )
                         .setTimestamp();
 
-                    // Prepara o envio com ou sem arquivo
                     const payload = { embeds: [logEmbed] };
+                    // AQUI SIM envia o arquivo (Logs da Staff)
                     if (attachment) {
                         payload.files = [attachment];
                     } else {
@@ -101,19 +98,15 @@ module.exports = {
             }
         }
         
-        // 8. ENVIO PARA O USUÁRIO (Privado)
-        // Restaurada a lógica de enviar o arquivo pro usuário também
+        // 8. ENVIO PARA O USUÁRIO (SEM ARQUIVO)
         const user = await interaction.client.users.fetch(ticket.user_id).catch(() => null);
         if (user) {
+            // Apenas mensagem de texto, SEM anexo
             const userPayload = { content: `Seu atendimento no servidor **${interaction.guild.name}** foi finalizado.` };
             
-            // Só anexa se o arquivo existir e for válido
-            if (attachment) {
-                userPayload.files = [attachment];
-            }
-
             await user.send(userPayload).catch(() => {});
             
+            // Envia Feedback se estiver ativo
             if (settings.tickets_feedback_enabled) {
                 try {
                     const feedbackMsg = generateFeedbackRequester(ticket);
@@ -134,6 +127,6 @@ module.exports = {
             } catch (e) {}
         }, 10000); // 10s delay
 
-        await interaction.editReply('✅ Atendimento finalizado e logs enviados!').catch(() => {});
+        await interaction.editReply('✅ Atendimento finalizado!').catch(() => {});
     }
 };
