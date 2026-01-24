@@ -483,7 +483,7 @@ client.once(Events.ClientReady, async () => {
         const statuses = [
             { name: `👥 Atendendo ${statusCache.members.toLocaleString('pt-BR')} Usuários`, type: ActivityType.Playing },
             { name: `🎫 ${statusCache.tickets} Tickets Abertos`, type: ActivityType.Watching },
-            { name: `🛡️ ${statusCache.pontos} Staffs Online`, type: ActivityType.Competing }
+            { name: `⏰ ${statusCache.pontos} Pontos Abertos`, type: ActivityType.Competing }
         ];
 
         client.user.setPresence({
