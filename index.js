@@ -503,7 +503,7 @@ client.once(Events.ClientReady, async () => {
             // Status 2: Tickets Abertos
             { name: `🎫 ${statusCache.tickets} Tickets Abertos`, type: ActivityType.Watching },
             // Status 3: Staffs Online (Ponto)
-            { name: `🛡️ ${statusCache.pontos} Staffs em Serviço`, type: ActivityType.Competing }
+            { name: `⏰ ${statusCache.pontos} Pontos Abertos`, type: ActivityType.Competing }
         ];
 
         // Define o status atual
