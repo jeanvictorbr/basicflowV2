@@ -461,22 +461,68 @@ client.once(Events.ClientReady, async () => {
     // 🚦 INÍCIO DA "FILA INDIANA" (STAGGERING) PARA NÃO DERRUBAR A RAM 🚦
     // ===================================================================
     
-    const updateBotStatus = async () => {
+// ===================================================================
+    // 🚦 SISTEMA DE STATUS ROTATIVO (MEMBROS -> TICKETS -> PONTO) 🚦
+    // ===================================================================
+    
+    // 1. Variáveis de Cache (Guardam os números para não pesar o banco)
+    let statusCache = { members: 0, tickets: 0, pontos: 0 };
+    let statusIndex = 0;
+
+    // 2. Função Pesada: Busca dados no Banco (Só roda a cada 5 minutos)
+    const fetchStatusData = async () => {
         try {
-            const ticketResult = await db.query("SELECT count(*) FROM tickets WHERE status = 'open'");
-            client.globalOpenTickets = parseInt(ticketResult.rows[0].count) || 0;
-            const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+            // Conta Tickets Abertos
+            const ticketRes = await db.query("SELECT count(*) FROM tickets WHERE status = 'open'");
+            // Conta Sessões de Ponto Ativas (checkout_time IS NULL)
+            const pontoRes = await db.query("SELECT count(*) FROM ponto_sessions WHERE checkout_time IS NULL");
             
-            client.user.setPresence({
-                activities: [{ name: `Atendendo ${totalMembers.toLocaleString('pt-BR')} | ${client.globalOpenTickets} Tickets`, type: ActivityType.Playing }],
-                status: 'online'
-            });
-        } catch(e) {}
+            // Atualiza o Cache
+            statusCache.tickets = parseInt(ticketRes.rows[0].count) || 0;
+            statusCache.pontos = parseInt(pontoRes.rows[0].count) || 0;
+            statusCache.members = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+            
+            // Atualiza variável global (para uso interno em outros arquivos se precisar)
+            client.globalOpenTickets = statusCache.tickets;
+        } catch (e) { 
+            console.error('[Status Fetch] Erro ao buscar dados:', e.message); 
+        }
     };
 
-    // 1. Status (Imediato + 5 min)
-    updateBotStatus();
-    setInterval(updateBotStatus, 5 * 60 * 1000);
+    // 3. Função Leve: Troca o visual (Roda a cada 15 segundos)
+    const rotateVisualStatus = () => {
+        const statuses = [
+            // Status 1: Total de Membros
+            { name: `👥 Atendendo ${statusCache.members.toLocaleString('pt-BR')} Usuários`, type: ActivityType.Playing },
+            // Status 2: Tickets Abertos
+            { name: `🎫 ${statusCache.tickets} Tickets Abertos`, type: ActivityType.Watching },
+            // Status 3: Staffs Online (Ponto)
+            { name: `🛡️ ${statusCache.pontos} Staffs em Serviço`, type: ActivityType.Competing }
+        ];
+
+        // Define o status atual
+        client.user.setPresence({
+            activities: [statuses[statusIndex]],
+            status: 'online'
+        });
+
+        // Passa para o próximo índice (0 -> 1 -> 2 -> 0...)
+        statusIndex = (statusIndex + 1) % statuses.length;
+    };
+
+    // --- INICIALIZAÇÃO DOS TIMERS DE STATUS ---
+    
+    // Busca dados agora (com await para garantir que temos dados antes de mostrar)
+    await fetchStatusData(); 
+    // Agenda busca pesada a cada 5 minutos
+    setInterval(fetchStatusData, 5 * 60 * 1000);
+
+    // Mostra o primeiro status agora
+    rotateVisualStatus();
+    // Agenda a troca visual a cada 15 segundos
+    setInterval(rotateVisualStatus, 15 * 1000);
+
+    // ===================================================================
 
     // 2. Chaves e Tokens (Inicia em 10s -> Roda a cada 1 min)
     setTimeout(() => {
