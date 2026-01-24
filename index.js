@@ -469,21 +469,27 @@ client.once(Events.ClientReady, async () => {
     let statusCache = { members: 0, tickets: 0, pontos: 0 };
     let statusIndex = 0;
 
-    // 2. Função Pesada: Busca dados no Banco (Só roda a cada 5 minutos)
+  // 2. Função Pesada: Busca dados no Banco (Só roda a cada 5 minutos)
     const fetchStatusData = async () => {
         try {
             // Conta Tickets Abertos
             const ticketRes = await db.query("SELECT count(*) FROM tickets WHERE status = 'open'");
-            // Conta Sessões de Ponto Ativas (checkout_time IS NULL)
-            const pontoRes = await db.query("SELECT count(*) FROM ponto_sessions WHERE checkout_time IS NULL");
+            
+            // CORREÇÃO AQUI: Troquei 'checkout_time' por 'end_time'
+            // Se ainda der erro, troque 'end_time' por 'saida'
+            const pontoRes = await db.query("SELECT count(*) FROM ponto_sessions WHERE end_time IS NULL");
             
             // Atualiza o Cache
             statusCache.tickets = parseInt(ticketRes.rows[0].count) || 0;
             statusCache.pontos = parseInt(pontoRes.rows[0].count) || 0;
             statusCache.members = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
             
-            // Atualiza variável global (para uso interno em outros arquivos se precisar)
+            // Atualiza variável global
             client.globalOpenTickets = statusCache.tickets;
+            
+            // Debug: Mostra no terminal para você confirmar que funcionou
+            console.log(`[Status Cache] Atualizado! Tickets: ${statusCache.tickets} | Pontos: ${statusCache.pontos} | Membros: ${statusCache.members}`);
+            
         } catch (e) { 
             console.error('[Status Fetch] Erro ao buscar dados:', e.message); 
         }
