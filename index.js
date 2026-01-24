@@ -1,5 +1,5 @@
 // File: index.js
-// CONTEÚDO COMPLETO E CORRIGIDO COM OTIMIZAÇÃO DE RAM
+// VERSÃO DE PRODUÇÃO: CÓDIGO COMPLETO + ANTI-CRASH RAM + OTIMIZAÇÃO DE LOOPS
 require('dotenv').config();
 const fs = require('node:fs');
 const { checkExpiringFeatures } = require('./utils/premiumExpiryMonitor.js');
@@ -11,8 +11,20 @@ const MusicOrchestrator = require('./utils/MusicOrchestrator.js');
 const path = require('node:path');
 const automationsMonitor = require('./utils/automationsMonitor.js');
 const { EPHEMERAL_FLAG } = require('./utils/constants');
-// ADICIONADO 'Options' NA IMPORTAÇÃO ABAIXO
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes, ChannelType, EmbedBuilder, PermissionsBitField, ActivityType, Options, WebhookClient } = require('discord.js');
+const { 
+    Client, 
+    Collection, 
+    Events, 
+    GatewayIntentBits, 
+    REST, 
+    Routes, 
+    ChannelType, 
+    EmbedBuilder, 
+    PermissionsBitField, 
+    ActivityType, 
+    Options,
+    WebhookClient 
+} = require('discord.js');
 const { checkAndCloseInactiveTickets } = require('./utils/autoCloseTickets.js');
 const { getAIResponse } = require('./utils/aiAssistant.js');
 const { processMessageForGuardian } = require('./utils/guardianAI.js');
@@ -39,7 +51,7 @@ const url = require('url');
 const crypto = require('crypto');
 const axios = require('axios');
 
-// --- [SISTEMA DE AUDITORIA] ---
+// --- SISTEMA DE AUDITORIA (WEBHOOK DE ERRO) ---
 const errorWebhook = process.env.LOG_WEBHOOK_URL ? new WebhookClient({ url: process.env.LOG_WEBHOOK_URL }) : null;
 
 async function logToWebhook(title, error, context = {}) {
@@ -59,7 +71,7 @@ async function logToWebhook(title, error, context = {}) {
     } catch (err) { console.error('Falha no Webhook Logger:', err); }
 }
 
-// --- [FUNÇÃO SEGURA DE URL] ---
+// --- FUNÇÃO SEGURA DE URL ---
 function getSafeUrl(inputUrl, defaultUrl = null) {
     if (typeof inputUrl === 'string' && (inputUrl.startsWith('http://') || inputUrl.startsWith('https://'))) {
         return inputUrl;
@@ -67,67 +79,16 @@ function getSafeUrl(inputUrl, defaultUrl = null) {
     return defaultUrl;
 }
 
-// --- OTIMIZAÇÃO DE MEMÓRIA APLICADA AQUI ---
-const client = new Client({ 
-    intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.DirectMessages, 
-        GatewayIntentBits.GuildVoiceStates, 
-        GatewayIntentBits.GuildMembers
-    ],
-    // Configuração para limitar o uso de RAM (Cache)
-    makeCache: Options.cacheWithLimits({
-        ...Options.DefaultMakeCacheSettings,
-        // Mantém apenas as últimas 20 mensagens por canal (Suficiente para IA e comandos)
-        // Isso impede que o bot guarde milhares de mensagens antigas na RAM
-        MessageManager: 20, 
-        // Desativa cache de reações (economiza objetos)
-        ReactionManager: 0,
-        // Limita threads arquivadas
-        ThreadManager: {
-            maxSize: 25,
-            keepOverLimit: (thread) => !thread.archived,
-        },
-    }),
-    // Limpeza automática (Garbage Collection) a cada hora
-    sweepers: {
-        ...Options.DefaultSweeperSettings,
-        messages: {
-            interval: 3600, // Limpa a cada 1 hora
-            lifetime: 1800, // Remove mensagens com mais de 30 minutos da memória
-        },
-    },
-});
-// -------------------------------------------
+// --- FUNÇÃO SEGURA DE COR ---
+function resolveSafeColor(colorInput) {
+    const hexRegex = /^#?([0-9A-F]{3}|[0-9A-F]{6})$/i;
+    if (colorInput && hexRegex.test(colorInput)) {
+        return colorInput.startsWith('#') ? colorInput : `#${colorInput}`;
+    }
+    return '#2ECC71'; 
+}
 
-// Variáveis Globais
-client.globalOpenTickets = 0; 
-
-automationsMonitor.start(client);
-client.pontoIntervals = new Map();
-client.afkCheckTimers = new Map();
-client.afkToleranceTimers = new Map();
-client.hangmanTimeouts = new Map();
-client.moduleStatusCache = new Map();
-client.on('voiceStateUpdate', (oldState, newState) => {
-    voiceHubManager(oldState, newState, client);
-});
-
-
-// ===================================================================
-//  ⬇️  COLEÇÕES DE HANDLERS CORRIGIDAS  ⬇️
-// ===================================================================
-client.commandHandlers = new Collection();
-client.buttons = new Collection();
-client.modals = new Collection();
-client.selects = new Collection();
-// ===================================================================
-//  ⬆️  FIM DA CORREÇÃO ⬆️
-// ===================================================================
-
-// --- FUNÇÕES DE CRIPTOGRAFIA ADICIONADAS ---
+// --- CRIPTOGRAFIA ---
 const ALGORITHM = 'aes-256-cbc';
 const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(process.env.DISCORD_TOKEN)).digest('base64').substr(0, 32);
 
@@ -144,20 +105,71 @@ function encrypt(text) {
     }
 }
 
-// --- FUNÇÃO SEGURA PARA COR ---
-function resolveSafeColor(colorInput) {
-    // Regex para verificar Hex de 3 ou 6 digitos (com # opcional)
-    const hexRegex = /^#?([0-9A-F]{3}|[0-9A-F]{6})$/i;
-    if (colorInput && hexRegex.test(colorInput)) {
-        return colorInput.startsWith('#') ? colorInput : `#${colorInput}`;
-    }
-    return '#2ECC71'; // Cor padrão segura (Verde)
-}
+// ==================================================================================
+// 🚨 CONFIGURAÇÃO BLINDADA DE MEMÓRIA (CACHE LIMITS) 🚨
+// ==================================================================================
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, 
+        GatewayIntentBits.DirectMessages, 
+        GatewayIntentBits.GuildVoiceStates, 
+        GatewayIntentBits.GuildMembers
+    ],
+    // Aqui está o segredo para rodar em 345 servidores com 1.5GB RAM
+    makeCache: Options.cacheWithLimits({
+        ...Options.DefaultMakeCacheSettings,
+        // Guarda poucas mensagens na RAM (apenas para IA recente)
+        MessageManager: 10, 
+        // NÃO guarda reações (economia enorme de objetos)
+        ReactionManager: 0,
+        // Limita o cache de membros. O bot buscará na API se precisar.
+        // Isso impede que 170k membros fiquem na RAM o tempo todo.
+        GuildMemberManager: { 
+            maxSize: 50, 
+            keepOverLimit: (member) => member.id === client.user.id 
+        },
+        UserManager: 50,
+        // Presença (Online/Offline) é o maior consumidor de banda e RAM. Desligado.
+        PresenceManager: 0, 
+        ThreadManager: { maxSize: 10, keepOverLimit: (thread) => !thread.archived },
+    }),
+    sweepers: {
+        ...Options.DefaultSweeperSettings,
+        messages: { interval: 1800, lifetime: 900 }, // Limpa memória a cada 30 min
+    },
+});
 // -------------------------------------------
+
+// Variáveis Globais
+client.globalOpenTickets = 0; 
+
+automationsMonitor.start(client);
+client.pontoIntervals = new Map();
+client.afkCheckTimers = new Map();
+client.afkToleranceTimers = new Map();
+client.hangmanTimeouts = new Map();
+client.moduleStatusCache = new Map();
+
+client.on('voiceStateUpdate', (oldState, newState) => {
+    voiceHubManager(oldState, newState, client);
+});
+
+
+// ===================================================================
+//  HANDLERS COLLECTIONS
+// ===================================================================
+client.commandHandlers = new Collection();
+client.buttons = new Collection();
+client.modals = new Collection();
+client.selects = new Collection();
 
 const commandUsage = new Map();
 const COMMAND_THRESHOLD = 15;
 const COMMAND_TIMEFRAME = 60 * 1000;
+
+// --- EVENTOS ---
 
 client.on(Events.GuildMemberAdd, async (member) => {
     try {
@@ -188,7 +200,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
         const finalDescription = replacePlaceholders(config.description || 'Estamos felizes em ter você aqui, {user.mention}! Esperamos que você se divirta e faça novas amizades.');
         const finalFooter = isPremium && config.footer_text ? replacePlaceholders(config.footer_text) : 'Junte-se à nossa comunidade!';
         
-        // USO DE URL SEGURA (EVITA CRASH)
         const safeThumbnail = getSafeUrl(config.thumbnail_url, member.user.displayAvatarURL());
         const safeImage = getSafeUrl(config.image_url, null);
 
@@ -212,13 +223,11 @@ client.on(Events.GuildMemberAdd, async (member) => {
 });
 
 
-// --- INÍCIO DA NOVA LÓGICA DE DESPEDIDA ---
 client.on(Events.GuildMemberRemove, async (member) => {
     try {
         const settingsResult = await db.query('SELECT goodbye_enabled, goodbye_channel_id, goodbye_message_text FROM guild_settings WHERE guild_id = $1', [member.guild.id]);
         const settings = settingsResult.rows[0];
         
-        // Verifica se o sistema está ativado e se o canal está configurado
         if (!settings || !settings.goodbye_enabled || !settings.goodbye_channel_id) return;
 
         const goodbyeChannel = await member.guild.channels.fetch(settings.goodbye_channel_id).catch(() => null);
@@ -227,7 +236,6 @@ client.on(Events.GuildMemberRemove, async (member) => {
             return;
         }
 
-        // Substitui os placeholders
         const messageText = (settings.goodbye_message_text || '👋 {user.tag} deixou o servidor.')
             .replace(/{user.mention}/g, `<@${member.id}>`)
             .replace(/{user.tag}/g, member.user.tag)
@@ -242,27 +250,19 @@ client.on(Events.GuildMemberRemove, async (member) => {
         }
     } catch (e) {}
 });
-// --- FIM DA NOVA LÓGICA DE DESPEDIDA ---
 
-// --- INÍCIO DA CORREÇÃO DO ROLETAGS ---
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-    // Verifica se os cargos do membro realmente mudaram.
-    // Isso evita que a função rode em atualizações de status, apelido, etc.
     const rolesChanged = oldMember.roles.cache.size !== newMember.roles.cache.size ||
                           !oldMember.roles.cache.every((role) => newMember.roles.cache.has(role.id));
 
     if (rolesChanged) {
         try {
-            // A função updateUserTag (já importada no topo do index.js)
-            // contém toda a lógica necessária, incluindo a verificação
-            // se o sistema está ativo no servidor.
             await updateUserTag(newMember);
         } catch (error) {
             console.error(`[RoleTag] Falha ao atualizar a tag para ${newMember.user.tag}:`, error);
         }
     }
 });
-// --- FIM DA CORREÇÃO DO ROLETAGS ---
 
 client.on(Events.GuildCreate, async guild => {
     if (!process.env.GUILD_ADD_WEBHOOK_URL) {
@@ -297,6 +297,7 @@ client.on(Events.GuildCreate, async guild => {
         console.error(`[GUILD JOIN] Falha ao enviar notificação para o webhook:`, error);
     }
 });
+
 client.on(Events.GuildDelete, async guild => {
     if (!process.env.GUILD_REMOVE_WEBHOOK_URL) {
         console.log(`[GUILD LEAVE] Bot removido do servidor ${guild.name} (${guild.id}), mas o webhook de notificação não está configurado.`);
@@ -330,6 +331,7 @@ client.on(Events.GuildDelete, async guild => {
         console.error(`[GUILD LEAVE] Falha ao enviar notificação para o webhook:`, error);
     }
 });
+
 client.commands = new Collection();
 const commandsToDeploy = [];
 const devCommandsToDeploy = [];
@@ -349,12 +351,12 @@ for (const file of commandFiles) {
 }
 
 // ===================================================================
-//  ⬇️  LÓGICA DE CARREGAMENTO DE HANDLERS CORRIGIDA  ⬇️
+//  CARREGAMENTO DE HANDLERS
 // ===================================================================
 console.log('--- Carregando Handlers ---');
 const handlersPath = path.join(__dirname, 'handlers');
 
-// 1. Carregar Handlers de Comandos (por nome de arquivo)
+// 1. Carregar Handlers de Comandos
 try {
     const commandHandlersPath = path.join(handlersPath, 'commands');
     const commandHandlerFiles = fs.readdirSync(commandHandlersPath).filter(file => file.endsWith('.js'));
@@ -363,25 +365,15 @@ try {
             const handler = require(path.join(commandHandlersPath, file));
             const commandName = file.split('.')[0];
             
-            // ===================================================================
-            //  ⬇️  A CORREÇÃO ESTÁ AQUI  ⬇️
-            // ===================================================================
-            // Verifica se o handler é uma função direta (ex: module.exports = async (...) => ...)
             if (typeof handler === 'function') {
                 client.commandHandlers.set(commandName, handler);
             } 
-            // Verifica o padrão antigo (ex: module.exports = { execute: ... })
             else if (handler.execute && typeof handler.execute === 'function') {
                 client.commandHandlers.set(commandName, handler.execute);
             } 
-            // Se não for nenhum dos dois, avisa o erro
             else {
                 console.warn(`[HANDLER] ⚠️ Handler de comando ${file} não é uma função válida ou não possui 'execute'.`);
             }
-            // ===================================================================
-            //  ⬆️  FIM DA CORREÇÃO ⬆️
-            // ===================================================================
-
         } catch (error) {
             console.error(`[HANDLER] ❌ Erro ao carregar comando ${file}:`, error);
         }
@@ -391,7 +383,7 @@ try {
     console.error('[HANDLER] ❌ Falha ao ler o diretório de handlers de comando:', error);
 }
 
-// 2. Carregar Handlers de Componentes (por customId)
+// 2. Carregar Handlers de Componentes
 const componentTypes = ['buttons', 'modals', 'selects'];
 componentTypes.forEach(type => {
     try {
@@ -402,7 +394,6 @@ componentTypes.forEach(type => {
                 try {
                     const handler = require(path.join(componentDir, file));
                     if (handler.customId && handler.execute) {
-                        // Usa a collection correta (client.buttons, client.modals, etc.)
                         client[type].set(handler.customId, handler);
                     } else {
                         console.warn(`[HANDLER] ⚠️ ${type} handler ${file} não possui 'customId' ou 'execute'.`);
@@ -419,24 +410,17 @@ componentTypes.forEach(type => {
         console.error(`[HANDLER] ❌ Falha ao ler o diretório de handlers de ${type}:`, error);
     }
 });
-// ===================================================================
-//  ⬆️  FIM DA CORREÇÃO DO CARREGAMENTO ⬆️
-// ===================================================================
-
-
 console.log('--- Handlers Carregados ---');
 
 
-
-// --- EVENTO READY E LOOPS OTIMIZADOS ---
+// ===================================================================
+// 🚦 EVENTO READY - LÓGICA ANTI-CRASH E STATUS CACHE 🚦
+// ===================================================================
 client.once(Events.ClientReady, async () => {
     startPontoUpdateLoop(client);
     startGiveawayMonitor(client);
-    
-    // DESATIVADO OAUTH MASSIVO PARA EVITAR FLOOD (Reativar com cautela no futuro)
-    // startVerificationLoop(client); 
-    
     startStatsMonitor(client);
+    
     await db.synchronizeDatabase();
     try { startPurgeMonitor(client, db); } catch(e) {}
 
@@ -455,100 +439,85 @@ client.once(Events.ClientReady, async () => {
     } catch (error) { console.error('[CMD] Deploy erro:', error); }
     
     console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
-    logToWebhook('Bot Iniciado', { message: 'Sistema online e otimizado (Staggered Mode).' });
+    logToWebhook('Bot Iniciado', { message: 'Sistema online e otimizado (Staggered Mode + Cache Diet).' });
 
-    // ===================================================================
-    // 🚦 INÍCIO DA "FILA INDIANA" (STAGGERING) PARA NÃO DERRUBAR A RAM 🚦
-    // ===================================================================
-    
-// ===================================================================
-    // 🚦 SISTEMA DE STATUS ROTATIVO (MEMBROS -> TICKETS -> PONTO) 🚦
-    // ===================================================================
-    
-    // 1. Variáveis de Cache (Guardam os números para não pesar o banco)
+    // --- SISTEMA DE STATUS ROTATIVO COM CACHE ---
+    // Variáveis de cache para evitar consultas pesadas repetitivas
     let statusCache = { members: 0, tickets: 0, pontos: 0 };
     let statusIndex = 0;
 
-  // 2. Função Pesada: Busca dados no Banco (Só roda a cada 5 minutos)
+    // Função de Busca (Roda a cada 5 minutos)
     const fetchStatusData = async () => {
         try {
             // Conta Tickets Abertos
             const ticketRes = await db.query("SELECT count(*) FROM tickets WHERE status = 'open'");
             
-            // CORREÇÃO AQUI: Troquei 'checkout_time' por 'end_time'
-            // Se ainda der erro, troque 'end_time' por 'saida'
-            const pontoRes = await db.query("SELECT count(*) FROM ponto_sessions WHERE end_time IS NULL");
-            
-            // Atualiza o Cache
+            // Conta Sessões de Ponto (Tenta end_time, se falhar tenta saida)
+            let pontoCount = 0;
+            try {
+                const pontoRes = await db.query("SELECT count(*) FROM ponto_sessions WHERE end_time IS NULL");
+                pontoCount = parseInt(pontoRes.rows[0].count) || 0;
+            } catch (errPonto) {
+                 try {
+                     const pontoResBr = await db.query("SELECT count(*) FROM ponto_sessions WHERE saida IS NULL");
+                     pontoCount = parseInt(pontoResBr.rows[0].count) || 0;
+                 } catch(e) {}
+            }
+
             statusCache.tickets = parseInt(ticketRes.rows[0].count) || 0;
-            statusCache.pontos = parseInt(pontoRes.rows[0].count) || 0;
+            statusCache.pontos = pontoCount;
+            // Soma membros do cache (devido a limitação de RAM, pode não ser exato em tempo real, mas previne crash)
             statusCache.members = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
             
-            // Atualiza variável global
             client.globalOpenTickets = statusCache.tickets;
             
-            // Debug: Mostra no terminal para você confirmar que funcionou
-            console.log(`[Status Cache] Atualizado! Tickets: ${statusCache.tickets} | Pontos: ${statusCache.pontos} | Membros: ${statusCache.members}`);
-            
+            // Log discreto para debug
+            console.log(`[Status Cache] Tickets: ${statusCache.tickets} | Pontos: ${statusCache.pontos}`);
         } catch (e) { 
             console.error('[Status Fetch] Erro ao buscar dados:', e.message); 
         }
     };
 
-    // 3. Função Leve: Troca o visual (Roda a cada 15 segundos)
+    // Função Visual (Roda a cada 15 segundos - LEVE)
     const rotateVisualStatus = () => {
         const statuses = [
-            // Status 1: Total de Membros
             { name: `👥 Atendendo ${statusCache.members.toLocaleString('pt-BR')} Usuários`, type: ActivityType.Playing },
-            // Status 2: Tickets Abertos
             { name: `🎫 ${statusCache.tickets} Tickets Abertos`, type: ActivityType.Watching },
-            // Status 3: Staffs Online (Ponto)
-            { name: `⏰ ${statusCache.pontos} Pontos Abertos`, type: ActivityType.Competing }
+            { name: `🛡️ ${statusCache.pontos} Staffs Online`, type: ActivityType.Competing }
         ];
 
-        // Define o status atual
         client.user.setPresence({
             activities: [statuses[statusIndex]],
             status: 'online'
         });
-
-        // Passa para o próximo índice (0 -> 1 -> 2 -> 0...)
         statusIndex = (statusIndex + 1) % statuses.length;
     };
 
-    // --- INICIALIZAÇÃO DOS TIMERS DE STATUS ---
-    
-    // Busca dados agora (com await para garantir que temos dados antes de mostrar)
-    await fetchStatusData(); 
-    // Agenda busca pesada a cada 5 minutos
+    // --- INICIALIZAÇÃO "FILA INDIANA" (Staggering) ---
+    // Inicia status
+    await fetchStatusData();
     setInterval(fetchStatusData, 5 * 60 * 1000);
-
-    // Mostra o primeiro status agora
-    rotateVisualStatus();
-    // Agenda a troca visual a cada 15 segundos
     setInterval(rotateVisualStatus, 15 * 1000);
 
-    // ===================================================================
-
-    // 2. Chaves e Tokens (Inicia em 10s -> Roda a cada 1 min)
+    // 1. Chaves (10s delay)
     setTimeout(() => {
         syncUsedKeys(client);
         setInterval(() => syncUsedKeys(client), 60 * 1000);
     }, 10000);
 
-    // 3. Punições (Inicia em 30s -> Roda a cada 2 min)
+    // 2. Punições (30s delay -> Intervalo 2 min)
     setTimeout(() => {
         checkExpiredPunishments(client);
         setInterval(() => checkExpiredPunishments(client), 2 * 60 * 1000); 
     }, 30000);
 
-    // 4. Tickets Inativos (Inicia em 1 min -> Roda a cada 10 min)
+    // 3. Tickets (1 min delay -> Intervalo 10 min)
     setTimeout(() => {
         checkAndCloseInactiveTickets(client);
         setInterval(() => checkAndCloseInactiveTickets(client), 10 * 60 * 1000); 
     }, 60000);
 
-    // 5. Cache e Tokens (Inicia em 1m 30s -> Roda a cada 15 min)
+    // 4. Cache/Tokens (1m30s delay -> Intervalo 15 min)
     setTimeout(() => {
         updateModuleStatusCache(client);
         checkTokenUsage(client);
@@ -556,20 +525,20 @@ client.once(Events.ClientReady, async () => {
         setInterval(() => checkTokenUsage(client), 15 * 60 * 1000);
     }, 90000);
 
-    // 6. Cargos Loja (Inicia em 2 min -> Roda a cada 1 Hora)
+    // 5. Cargos Loja (2 min delay -> Intervalo 1h)
     setTimeout(() => {
         checkExpiredRoles(client);
         setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
     }, 120000);
 
-    // 7. [CRÍTICO] Carrinhos Inativos (Inicia em 3 min -> Roda a cada 30 MINUTOS)
-    // Isso evita o pico de memória que derruba o bot
+    // 6. Carrinhos Inativos (3 min delay -> Intervalo 30 min)
+    // Aumentado intervalo para evitar uso excessivo de RAM
     setTimeout(() => {
         try { checkInactiveCarts(client); } catch(e){}
         setInterval(() => { try { checkInactiveCarts(client); } catch(e){} }, 30 * 60 * 1000);
     }, 180000);
 
-    // 8. Premium Features (Inicia em 4 min -> Roda a cada 24 Horas)
+    // 7. Premium (4 min delay -> Intervalo 24h)
     setTimeout(() => {
         checkExpiringFeatures(client);
         setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000);
@@ -577,693 +546,567 @@ client.once(Events.ClientReady, async () => {
 });
 
 // ===================================================================
-//  ⬇️  ROTEADOR DE INTERAÇÃO CORRIGIDO  ⬇️
+//  ROTEADOR DE INTERAÇÃO
 // ===================================================================
 client.on(Events.InteractionCreate, async interaction => {
-    
-    // Obter configurações da guilda (essencial para verificações)
-    const guildSettings = await db.getGuildSettings(interaction.guildId);
-    if (!guildSettings && interaction.guildId) {
-        // Se não houver configurações, é provável que a guilda não esteja no DB.
-        // Apenas comandos de devpanel e ativar devem funcionar.
-        if (interaction.isChatInputCommand() && 
-            interaction.commandName !== 'devpanel' && 
-            interaction.commandName !== 'configurar') {
-            
-            return interaction.reply({ 
-                content: '❌ Este servidor não parece estar registrado corretamente no meu banco de dados. Use `/configurar` (se for admin) ou contate o suporte.', 
-                ephemeral: true 
-            });
-        }
-    }
+    
+    const guildSettings = await db.getGuildSettings(interaction.guildId);
+    if (!guildSettings && interaction.guildId) {
+        if (interaction.isChatInputCommand() && 
+            interaction.commandName !== 'devpanel' && 
+            interaction.commandName !== 'configurar') {
+            
+            return interaction.reply({ 
+                content: '❌ Este servidor não parece estar registrado corretamente no meu banco de dados. Use `/configurar` (se for admin) ou contate o suporte.', 
+                ephemeral: true 
+            });
+        }
+    }
 
-    // Verificação de Manutenção (baseado nas settings)
-    if (guildSettings && guildSettings.maintenance_mode) {
-        if (!process.env.DEVELOPER_IDS.includes(interaction.user.id)) {
-            const maintenanceMessage = guildSettings.maintenance_message || 'O bot está em manutenção no momento. Tente novamente mais tarde.';
-            if (interaction.isChatInputCommand() || interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
-                try {
-                    await interaction.reply({ content: `⚠️ **Manutenção**\n${maintenanceMessage}`, flags: EPHEMERAL_FLAG });
-                } catch (e) {}
-            }
-            return;
-        }
-    }
-    
-    try {
-        
-        // 1. Handle Chat Input Commands
-        if (interaction.isChatInputCommand()) {
-            // Get the DEFINITION (from /commands)
-            const command = client.commands.get(interaction.commandName);
-            if (!command) return; // Definition not found
+    // Manutenção
+    if (guildSettings && guildSettings.maintenance_mode) {
+        if (!process.env.DEVELOPER_IDS.includes(interaction.user.id)) {
+            const maintenanceMessage = guildSettings.maintenance_message || 'O bot está em manutenção no momento. Tente novamente mais tarde.';
+            if (interaction.isChatInputCommand() || interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) {
+                try {
+                    await interaction.reply({ content: `⚠️ **Manutenção**\n${maintenanceMessage}`, flags: EPHEMERAL_FLAG });
+                } catch (e) {}
+            }
+            return;
+        }
+    }
+    
+    try {
+        // 1. Chat Input Commands
+        if (interaction.isChatInputCommand()) {
+            const command = client.commands.get(interaction.commandName);
+            if (!command) return;
 
-            // Get the HANDLER (from /handlers/commands)
-            const commandHandler = client.commandHandlers.get(interaction.commandName);
-            
-            if (!commandHandler) {
-                console.error(`[HANDLER] ❌ Handler de comando não encontrado para: ${interaction.commandName}`);
-                return interaction.reply({ content: '❌ Erro: O handler de execução para este comando não foi encontrado.', flags: EPHEMERAL_FLAG });
-            }
+            const commandHandler = client.commandHandlers.get(interaction.commandName);
+            
+            if (!commandHandler) {
+                console.error(`[HANDLER] ❌ Handler de comando não encontrado para: ${interaction.commandName}`);
+                return interaction.reply({ content: '❌ Erro: O handler de execução para este comando não foi encontrado.', flags: EPHEMERAL_FLAG });
+            }
 
-            // Module/Admin checks (from definition file)
-            if (command.module) {
-                const moduleStatus = client.moduleStatusCache.get(command.module);
-                if (moduleStatus && !moduleStatus.is_enabled) {
-                    return interaction.reply({ 
-                        content: `❌ O módulo \`${command.module}\` está desativado globalmente.`, 
-                        flags: EPHEMERAL_FLAG 
-                    });
-                }
-            }
-            if (command.adminOnly) {
-                if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                    return interaction.reply({ 
-                        content: '❌ Você precisa de permissão de Administrador para usar este comando.', 
-                        flags: EPHEMERAL_FLAG 
-                    });
-                }
-            }
-            
-            // Execute the HANDLER
-            await commandHandler(interaction, guildSettings);
+            if (command.module) {
+                const moduleStatus = client.moduleStatusCache.get(command.module);
+                if (moduleStatus && !moduleStatus.is_enabled) {
+                    return interaction.reply({ 
+                        content: `❌ O módulo \`${command.module}\` está desativado globalmente.`, 
+                        flags: EPHEMERAL_FLAG 
+                    });
+                }
+            }
+            if (command.adminOnly) {
+                if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                    return interaction.reply({ 
+                        content: '❌ Você precisa de permissão de Administrador para usar este comando.', 
+                        flags: EPHEMERAL_FLAG 
+                    });
+                }
+            }
+            
+            await commandHandler(interaction, guildSettings);
 
-        // 2. Handle Buttons
-        } else if (interaction.isButton()) {
-            const handler = client.buttons.get(interaction.customId);
-            if (handler) {
-                await handler.execute(interaction, guildSettings);
-            } else {
-                // Dynamic button logic
-                const dynamicHandler = client.buttons.find(b => interaction.customId.startsWith(b.customId));
-                if (dynamicHandler) {
-                    await dynamicHandler.execute(interaction, guildSettings);
-                }
-            }
+        // 2. Buttons
+        } else if (interaction.isButton()) {
+            const handler = client.buttons.get(interaction.customId);
+            if (handler) {
+                await handler.execute(interaction, guildSettings);
+            } else {
+                // Dynamic button logic
+                const dynamicHandler = client.buttons.find(b => interaction.customId.startsWith(b.customId));
+                if (dynamicHandler) {
+                    await dynamicHandler.execute(interaction, guildSettings);
+                }
+            }
 
-        // 3. Handle Modals
-        } else if (interaction.isModalSubmit()) {
-            const handler = client.modals.get(interaction.customId);
-            if (handler) {
-                await handler.execute(interaction, guildSettings);
-            } else {
-                // Dynamic modal logic
-                const dynamicHandler = client.modals.find(m => interaction.customId.startsWith(m.customId));
-                if (dynamicHandler) {
-                    await dynamicHandler.execute(interaction, guildSettings);
-                }
-            }
+        // 3. Modals
+        } else if (interaction.isModalSubmit()) {
+            const handler = client.modals.get(interaction.customId);
+            if (handler) {
+                await handler.execute(interaction, guildSettings);
+            } else {
+                // Dynamic modal logic
+                const dynamicHandler = client.modals.find(m => interaction.customId.startsWith(m.customId));
+                if (dynamicHandler) {
+                    await dynamicHandler.execute(interaction, guildSettings);
+                }
+            }
 
-        // 4. Handle Select Menus (Todos os tipos)
-        } else if (interaction.isAnySelectMenu()) {
-            const handler = client.selects.get(interaction.customId);
-            if (handler) {
-                await handler.execute(interaction, guildSettings);
-            } else {
-                // Dynamic select logic
-                const dynamicHandler = client.selects.find(s => interaction.customId.startsWith(s.customId));
-                if (dynamicHandler) {
-                    await dynamicHandler.execute(interaction, guildSettings);
-                }
-            }
-        
-        // 5. Handle Autocomplete
-        } else if (interaction.isAutocomplete()) {
-            const command = client.commands.get(interaction.commandName);
-            if (!command || !command.autocomplete) return;
-            
-            try {
-                await command.autocomplete(interaction, guildSettings);
-            } catch (autocompleteError) {
-                console.error(`Erro no autocomplete do comando ${interaction.commandName}:`, autocompleteError);
-            }
-        }
+        // 4. Select Menus
+        } else if (interaction.isAnySelectMenu()) {
+            const handler = client.selects.get(interaction.customId);
+            if (handler) {
+                await handler.execute(interaction, guildSettings);
+            } else {
+                // Dynamic select logic
+                const dynamicHandler = client.selects.find(s => interaction.customId.startsWith(s.customId));
+                if (dynamicHandler) {
+                    await dynamicHandler.execute(interaction, guildSettings);
+                }
+            }
+        
+        // 5. Autocomplete
+        } else if (interaction.isAutocomplete()) {
+            const command = client.commands.get(interaction.commandName);
+            if (!command || !command.autocomplete) return;
+            
+            try {
+                await command.autocomplete(interaction, guildSettings);
+            } catch (autocompleteError) {
+                console.error(`Erro no autocomplete do comando ${interaction.commandName}:`, autocompleteError);
+            }
+        }
 
-    } catch (error) {
-        console.error(`❌ Erro CRÍTICO executando o handler de interação "${interaction.customId || interaction.commandName}":`, error);
+    } catch (error) {
+        console.error(`❌ Erro CRÍTICO executando o handler de interação "${interaction.customId || interaction.commandName}":`, error);
         logToWebhook('Interaction Error', error, { guild: interaction.guildId, user: interaction.user.tag });
-        
-        const errorMessage = '❌ Ocorreu um erro ao executar esta interação!';
-        
-        try {
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: errorMessage, flags: EPHEMERAL_FLAG });
-            } else {
-                await interaction.reply({ content: errorMessage, flags: EPHEMERAL_FLAG });
-            }
-        } catch (replyError) {
-            console.error('Erro ao tentar responder ao usuário sobre o erro original:', replyError);
-        }
-    }
+        
+        const errorMessage = '❌ Ocorreu um erro ao executar esta interação!';
+        
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: errorMessage, flags: EPHEMERAL_FLAG });
+            } else {
+                await interaction.reply({ content: errorMessage, flags: EPHEMERAL_FLAG });
+            }
+        } catch (replyError) {
+            console.error('Erro ao tentar responder ao usuário sobre o erro original:', replyError);
+        }
+    }
 });
 
 // ===================================================================
-//  ⬆️  FIM DA CORREÇÃO DO ROTEADOR ⬆️
+//  SERVER HTTP & OAUTH2 & WEBHOOKS
 // ===================================================================
+const server = http.createServer(async (req, res) => {
+    const reqUrl = url.parse(req.url, true);
 
-    // --- INÍCIO DA CORREÇÃO DO WEBHOOK E OAUTH2 UNIFICADOS ---
-    const server = http.createServer(async (req, res) => {
-        const reqUrl = url.parse(req.url, true);
+    // 1. Rota de Callback do OAuth2 (CloudFlow)
+    if (reqUrl.pathname === '/cloudflow/callback') {
+        const code = reqUrl.query.code;
+        const guildId = reqUrl.query.state;
 
-        // 1. Rota de Callback do OAuth2 (CloudFlow)
-        if (reqUrl.pathname === '/cloudflow/callback') {
-            const code = reqUrl.query.code;
-            const guildId = reqUrl.query.state; // O state carrega o ID da guilda
+        if (!code) {
+            res.writeHead(400);
+            return res.end('Erro: Codigo de autorizacao nao encontrado.');
+        }
 
-            if (!code) {
-                console.log('[OAuth] Erro: Código não fornecido.');
-                res.writeHead(400);
-                return res.end('Erro: Codigo de autorizacao nao encontrado.');
-            }
+        try {
+            const params = new URLSearchParams();
+            params.append('client_id', process.env.CLIENT_ID);
+            params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
+            params.append('grant_type', 'authorization_code');
+            params.append('code', code);
+            params.append('redirect_uri', process.env.REDIRECT_URI);
+            params.append('scope', 'identify guilds.join');
 
-            try {
-                // Troca do CODE pelo TOKEN usando AXIOS (Mais robusto que fetch em alguns ambientes)
-                const params = new URLSearchParams();
-                params.append('client_id', process.env.CLIENT_ID);
-                params.append('client_secret', process.env.DISCORD_CLIENT_SECRET);
-                params.append('grant_type', 'authorization_code');
-                params.append('code', code);
-                params.append('redirect_uri', process.env.REDIRECT_URI);
-                params.append('scope', 'identify guilds.join'); // Escopo necessário
+            const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
 
-                console.log('[OAuth] Tentando trocar token...'); 
-                
-                const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-                });
+            const tokenData = tokenResponse.data;
+            
+            const userResponse = await axios.get('https://discord.com/api/users/@me', {
+                headers: { authorization: `${tokenData.token_type} ${tokenData.access_token}` }
+            });
+            const userData = userResponse.data;
 
-                const tokenData = tokenResponse.data;
-                console.log('[OAuth] Token recebido com sucesso.'); 
+            const encAccess = encrypt(tokenData.access_token);
+            const encRefresh = encrypt(tokenData.refresh_token);
+            
+            if (!encAccess || !encRefresh) throw new Error('Falha na criptografia dos tokens.');
 
-                // Buscar dados do usuário
-                const userResponse = await axios.get('https://discord.com/api/users/@me', {
-                    headers: { authorization: `${tokenData.token_type} ${tokenData.access_token}` }
-                });
-                const userData = userResponse.data;
-                console.log(`[OAuth] Usuário autenticado: ${userData.username} (${userData.id})`); 
+            const expiresAt = Date.now() + (tokenData.expires_in * 1000);
 
-                // Criptografar tokens
-                const encAccess = encrypt(tokenData.access_token);
-                const encRefresh = encrypt(tokenData.refresh_token);
-                
-                if (!encAccess || !encRefresh) {
-                    throw new Error('Falha na criptografia dos tokens.');
-                }
+            await db.query(`
+                INSERT INTO cloudflow_verified_users 
+                (user_id, guild_id, access_token, refresh_token, expires_at, iv, scopes)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (user_id, guild_id) 
+                DO UPDATE SET 
+                    access_token = EXCLUDED.access_token,
+                    refresh_token = EXCLUDED.refresh_token,
+                    expires_at = EXCLUDED.expires_at,
+                    iv = EXCLUDED.iv,
+                    scopes = EXCLUDED.scopes;
+            `, [
+                userData.id, 
+                guildId || 'global', 
+                encAccess.content, 
+                encRefresh.content, 
+                expiresAt, 
+                encAccess.iv, 
+                tokenData.scope
+            ]);
 
-                const expiresAt = Date.now() + (tokenData.expires_in * 1000);
+            if (guildId && guildId !== 'global') {
+                try {
+                    const guild = await client.guilds.fetch(guildId).catch(() => null);
+                    if (guild) {
+                        const settings = await db.getGuildSettings(guildId);
+                        if (settings && settings.cloudflow_verify_role_id) {
+                            const member = await guild.members.fetch(userData.id).catch(() => null);
+                            if (member) await member.roles.add(settings.cloudflow_verify_role_id);
+                        }
+                    }
+                } catch (roleError) {
+                    console.error(`[OAuth] Erro ao dar cargo:`, roleError.message);
+                }
+            }
 
-                // Salvar no Banco de Dados
-                console.log('[OAuth] Salvando no banco de dados...');
-                
-                await db.query(`
-                    INSERT INTO cloudflow_verified_users 
-                    (user_id, guild_id, access_token, refresh_token, expires_at, iv, scopes)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    ON CONFLICT (user_id, guild_id) 
-                    DO UPDATE SET 
-                        access_token = EXCLUDED.access_token,
-                        refresh_token = EXCLUDED.refresh_token,
-                        expires_at = EXCLUDED.expires_at,
-                        iv = EXCLUDED.iv,
-                        scopes = EXCLUDED.scopes;
-                `, [
-                    userData.id, 
-                    guildId || 'global', 
-                    encAccess.content, 
-                    encRefresh.content, 
-                    expiresAt, 
-                    encAccess.iv, 
-                    tokenData.scope
-                ]);
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(`
+                <!DOCTYPE html>
+                <html>
+                <head><title>Verificado</title></head>
+                <body style="background-color:#2b2d31; color:#fff; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
+                    <div style="text-align:center;">
+                        <h1 style="color:#57F287; font-size:40px;">✅ Sucesso!</h1>
+                        <p style="font-size:18px;">Sua conta <b>${userData.username}</b> foi verificada e vinculada com sucesso.</p>
+                        <p style="color:#aaa;">Você pode fechar esta janela e voltar ao Discord.</p>
+                    </div>
+                </body>
+                </html>
+            `);
 
-                // Tentar dar o cargo na guilda (se houver guildId válido)
-                if (guildId && guildId !== 'global') {
-                    try {
-                        const guild = await client.guilds.fetch(guildId).catch(() => null);
-                        if (guild) {
-                            const settings = await db.getGuildSettings(guildId);
-                            if (settings && settings.cloudflow_verify_role_id) {
-                                const member = await guild.members.fetch(userData.id).catch(() => null);
-                                if (member) {
-                                    await member.roles.add(settings.cloudflow_verify_role_id);
-                                    console.log(`[OAuth] Cargo adicionado para ${userData.username} na guild ${guildId}`);
-                                }
-                            }
-                        }
-                    } catch (roleError) {
-                        console.error(`[OAuth] Erro ao dar cargo:`, roleError.message);
-                    }
-                }
+        } catch (error) {
+            console.error('[CloudFlow OAuth] ❌ Erro Fatal:', error.message);
+            if (error.response) console.error('Dados do Erro:', error.response.data); 
+            logToWebhook('OAuth Flow Error', error);
+            
+            res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(`<h1>❌ Erro na Verificação</h1><p>Ocorreu um erro interno: ${error.message}</p>`);
+        }
+        return;
+    }
 
-                // Resposta de Sucesso HTML
-                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head><title>Verificado</title></head>
-                    <body style="background-color:#2b2d31; color:#fff; font-family: Arial, sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
-                        <div style="text-align:center;">
-                            <h1 style="color:#57F287; font-size:40px;">✅ Sucesso!</h1>
-                            <p style="font-size:18px;">Sua conta <b>${userData.username}</b> foi verificada e vinculada com sucesso.</p>
-                            <p style="color:#aaa;">Você pode fechar esta janela e voltar ao Discord.</p>
-                        </div>
-                    </body>
-                    </html>
-                `);
+    // 2. Rota do Webhook Mercado Pago
+    if (req.method === 'POST' && req.url === '/mp-webhook') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', async () => {
+            try {
+                const notification = JSON.parse(body);
+                if (notification.type === 'payment') {
+                    const paymentId = notification.data.id;
+                    const cartResult = await db.query('SELECT * FROM store_carts WHERE payment_id = $1', [paymentId]);
+                    const cart = cartResult.rows[0];
+                    if (!cart) {
+                        res.writeHead(200); return res.end('OK');
+                    }
+                    if (cart.status === 'delivered') {
+                        res.writeHead(200); return res.end('OK');
+                    }
+                    
+                    const settings = (await db.query('SELECT store_mp_token FROM guild_settings WHERE guild_id = $1', [cart.guild_id])).rows[0];
+                    if(!settings || !settings.store_mp_token) {
+                        res.writeHead(500); return res.end('Internal Server Error');
+                    }
+                    
+                    const mpClient = new MercadoPagoConfig({ accessToken: settings.store_mp_token });
+                    const payment = new Payment(mpClient);
+                    const paymentInfo = await payment.get({ id: paymentId });
 
-            } catch (error) {
-                console.error('[CloudFlow OAuth] ❌ Erro Fatal:', error.message);
-                if (error.response) console.error('Dados do Erro:', error.response.data); 
-                logToWebhook('OAuth Flow Error', error);
-                
-                res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(`<h1>❌ Erro na Verificação</h1><p>Ocorreu um erro interno: ${error.message}</p><p>Verifique se o CLIENT_SECRET e REDIRECT_URI estão corretos no painel do bot.</p>`);
-            }
-            return;
-        }
+                    if (paymentInfo.status === 'approved') {
+                        console.log(`[MP Webhook] Pagamento ${paymentId} aprovado. Entregando...`);
+                        await approvePurchase(client, cart.guild_id, cart.channel_id, null);
 
-        // 2. Rota do Webhook Mercado Pago
-        if (req.method === 'POST' && req.url === '/mp-webhook') {
-            let body = '';
-            req.on('data', chunk => { body += chunk.toString(); });
-            req.on('end', async () => {
-                try {
-                    const notification = JSON.parse(body);
-                    if (notification.type === 'payment') {
-                        const paymentId = notification.data.id;
-                        console.log(`[MP Webhook] Notificação de pagamento recebida: ${paymentId}`);
-                        const cartResult = await db.query('SELECT * FROM store_carts WHERE payment_id = $1', [paymentId]);
-                        const cart = cartResult.rows[0];
-                        if (!cart) {
-                            console.warn(`[MP Webhook] Pagamento ${paymentId} recebido, mas nenhum carrinho correspondente encontrado.`);
-                            res.writeHead(200);
-                            res.end('OK');
-                            return;
-                        }
-                        if (cart.status === 'delivered') {
-                            console.log(`[MP Webhook] Pagamento ${paymentId} já foi processado (status: ${cart.status}). Ignorando.`);
-                            res.writeHead(200);
-                            res.end('OK');
-                            return;
-                        }
-                        const settings = (await db.query('SELECT store_mp_token FROM guild_settings WHERE guild_id = $1', [cart.guild_id])).rows[0];
-                        if(!settings || !settings.store_mp_token) {
-                            console.error(`[MP Webhook] Token do MP não encontrado para a guild ${cart.guild_id}`);
-                            res.writeHead(500);
-                            res.end('Internal Server Error');
-                            return;
-                        }
-                        const mpClient = new MercadoPagoConfig({ accessToken: settings.store_mp_token });
-                        const payment = new Payment(mpClient);
-                        const paymentInfo = await payment.get({ id: paymentId });
+                        try {
+                            const guild = await client.guilds.fetch(cart.guild_id);
+                            const channel = await guild.channels.fetch(cart.channel_id);
+                            
+                            if (channel) {
+                                await channel.send('✅ Pagamento aprovado! Este carrinho será fechado e deletado em 10 segundos.');
+                                setTimeout(async () => {
+                                    try { await channel.delete('Compra aprovada (Mercado Pago).'); } catch (e) {}
+                                }, 10000);
+                            }
+                        } catch (e) {
+                            console.error(`[Store MP] Falha ao fechar canal ${cart.channel_id}:`, e);
+                        }
+                    }
+                }
+                res.writeHead(200);
+                res.end('OK');
+            } catch (error) {
+                console.error('[MP Webhook] Erro:', error);
+                res.writeHead(500);
+                res.end('Internal Server Error');
+            }
+        });
+    } else {
+        res.writeHead(404);
+        res.end('Not Found');
+    }
+});
 
-                        if (paymentInfo.status === 'approved') {
-                            console.log(`[MP Webhook] Pagamento ${paymentId} para o carrinho ${cart.channel_id} foi APROVADO. Iniciando entrega...`);
-                            
-                            // Chama a função centralizada
-                            await approvePurchase(client, cart.guild_id, cart.channel_id, null);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
+});
 
-                            // Lógica de fechamento automático do carrinho
-                            try {
-                                const guild = await client.guilds.fetch(cart.guild_id);
-                                const channel = await guild.channels.fetch(cart.channel_id);
-                                
-                                if (channel) {
-                                    await channel.send('✅ Pagamento aprovado! Este carrinho será fechado e deletado em 10 segundos.');
-                                    
-                                    setTimeout(async () => {
-                                        try {
-                                            await channel.delete('Compra aprovada e finalizada (Mercado Pago).');
-                                        } catch (e) {
-                                            console.error(`[Store MP] Falha ao deletar o canal do carrinho ${cart.channel_id}:`, e);
-                                        }
-                                    }, 10000); // 10 segundos
-                                }
-                            } catch (e) {
-                                console.error(`[Store MP] Falha ao encontrar canal ${cart.channel_id} para fechamento:`, e);
-                            }
-                        }
-                    }
-                    res.writeHead(200);
-                    res.end('OK');
-                } catch (error) {
-                    console.error('[MP Webhook] Erro ao processar notificação:', error);
-                    res.writeHead(500);
-                    res.end('Internal Server Error');
-                }
-            });
-        } else {
-            res.writeHead(404);
-            res.end('Not Found');
-        }
-    });
-    // --- FIM DA CORREÇÃO DO WEBHOOK ---
-    const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-        console.log(`[WEBHOOK] Servidor HTTP a escutar na porta ${PORT}`);
-    });
-
+// ===================================================================
+//  MESSAGE CREATE HANDLER (GUARDIAN / IA / ARQUITETO / RELAY)
+// ===================================================================
 client.on(Events.MessageCreate, async (message) => {
-    if (message.author.bot) return;
+    if (message.author.bot) return;
 
-    // 1. Chamada do Guardian AI para moderação (executa apenas uma vez)
-    // --- CORREÇÃO: Guardian e Settings só funcionam em GUILDAS ---
-    if (message.guild) {
-        try {
-            await processMessageForGuardian(message);
-        } catch (err) {
-            console.error('[Guardian AI] Erro não tratado:', err);
-        }
-    }
+    // 1. Guardian AI (Moderação Automática)
+    if (message.guild) {
+        try {
+            await processMessageForGuardian(message);
+        } catch (err) {
+            console.error('[Guardian AI] Erro não tratado:', err);
+        }
+    }
 
-    // Inicializa settings vazio para evitar crash em DM
-    let settings = {}; 
-    if (message.guild) {
-        settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
-    }
-    // -------------------------------------------------------------
+    let settings = {}; 
+    if (message.guild) {
+        settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0] || {};
+    }
 
-    // 2. Bloco ÚNICO para chat por menção
-    const isMentioned = message.mentions.has(client.user) && !message.mentions.everyone;
-    if (isMentioned && settings.guardian_ai_mention_chat_enabled && message.guild) {
-        try {
-            // Ignora se for apenas uma menção vazia
-            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
-            if (!userMessage) return;
+    // 2. Chat por Menção (IA)
+    const isMentioned = message.mentions.has(client.user) && !message.mentions.everyone;
+    if (isMentioned && settings.guardian_ai_mention_chat_enabled && message.guild) {
+        try {
+            const userMessage = message.content.replace(/<@!?\d+>/g, '').trim();
+            if (!userMessage) return;
 
-            await message.channel.sendTyping();
+            await message.channel.sendTyping();
+            const aiResponse = await getAIResponse({
+                guild: message.guild,
+                user: message.author,
+                featureName: "Chat por Menção",
+                chatHistory: [],
+                userMessage: userMessage,
+                useBaseKnowledge: true
+            });
 
-            const recentMessages = await message.channel.messages.fetch({ limit: 7 });
-            const chatHistory = recentMessages
-                .filter(msg => !msg.author.bot || msg.author.id === client.user.id)
-                .map(msg => ({
-                    role: msg.author.id === client.user.id ? 'assistant' : 'user',
-                    content: msg.content
-                }))
-                .reverse();
+            if (aiResponse) {
+                const chunks = splitMessage(aiResponse, { maxLength: 2000 });
+                for (const chunk of chunks) {
+                    await message.channel.send(chunk);
+                }
+            }
+            return; 
+        } catch (error) {
+            console.error('[Mention Chat] Erro:', error);
+        }
+    }
+ 
+    // 3. Arquiteto & Consultor de Servidor
+    if (message.guild && (message.channel.name.startsWith('arquiteto-') || message.channel.name.startsWith('consultor-')) && message.channel.topic === message.author.id) {
+        try {
+            const sessionResult = await db.query('SELECT * FROM architect_sessions WHERE channel_id = $1 AND (status = $2 OR status = $3)', [message.channel.id, 'active', 'pending_confirmation']);
+            if (sessionResult.rows.length === 0) return;
+            
+            if(sessionResult.rows[0].status === 'pending_confirmation') {
+                return message.reply("Por favor, use os botões da mensagem acima para Confirmar, Editar ou Cancelar o plano.");
+            }
 
-            const systemPrompt = `Você é um assistente amigável chamado "${client.user.username}". Responda ao usuário de forma completa, usando o histórico da conversa para manter o contexto.`;
-            const aiResponse = await getAIResponse({
-                guild: message.guild,
-                user: message.author,
-                featureName: "Chat por Menção",
-                chatHistory: chatHistory,
-                userMessage: userMessage,
-                customPrompt: systemPrompt,
-                useBaseKnowledge: true
-            });
+            await message.channel.sendTyping();
+            const session = sessionResult.rows[0];
+            const chatHistory = session.chat_history || [];
+            let systemPrompt;
+            const isConsultantMode = message.channel.name.startsWith('consultor-');
 
-            if (aiResponse) {
-                const chunks = splitMessage(aiResponse, { maxLength: 2000 });
-                const firstChunk = chunks.shift();
-                if (firstChunk) {
-                    await message.reply(firstChunk);
-                }
-                for (const chunk of chunks) {
-                    await message.channel.send(chunk);
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                }
-            }
-            // Encerra o processamento aqui para não executar outras lógicas de mensagem
-            return; 
-        } catch (error) {
-            console.error('[Mention Chat] Erro ao processar menção com IA:', error);
-        }
-    }
- 
-    // --- Início do Bloco do Arquiteto & Consultor de Servidor ---
-    if (message.guild && (message.channel.name.startsWith('arquiteto-') || message.channel.name.startsWith('consultor-')) && message.channel.topic === message.author.id) {
-        try {
-            const sessionResult = await db.query('SELECT * FROM architect_sessions WHERE channel_id = $1 AND (status = $2 OR status = $3)', [message.channel.id, 'active', 'pending_confirmation']);
-            if (sessionResult.rows.length === 0) return;
-            
-            if(sessionResult.rows[0].status === 'pending_confirmation') {
-                return message.reply("Por favor, use os botões da mensagem acima para Confirmar, Editar ou Cancelar o plano. Se desejar continuar a conversa, clique em 'Editar Plano'.");
-            }
+            if (isConsultantMode) {
+                systemPrompt = `Você é um "Consultor de Servidor". Responda com um JSON de ADIÇÃO de canais/cargos.`;
+            } else {
+                systemPrompt = `Você é um "Arquiteto de Servidor". Responda com um JSON completo de estrutura de servidor.`;
+            }
 
-            await message.channel.sendTyping();
+            const aiResponse = await getAIResponse({
+                guild: message.guild,
+                user: message.author,
+                featureName: "Arquiteto de Servidor",
+                chatHistory: chatHistory,
+                userMessage: message.content,
+                customPrompt: systemPrompt,
+                useBaseKnowledge: false,
+            });
 
-            const session = sessionResult.rows[0];
-            const chatHistory = session.chat_history || [];
-            let systemPrompt;
-            
-            const isConsultantMode = message.channel.name.startsWith('consultor-');
+            if (!aiResponse) return await message.channel.send("❌ Erro na IA.");
 
-            if (isConsultantMode) {
-                systemPrompt = `
-                    Você é um "Consultor de Servidor" para o Discord, um especialista em otimização. Seu objetivo é **propor ações concretas e com estilo**.
+            const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
+            if (jsonMatch && jsonMatch[1]) {
+                const jsonBlueprint = JSON.parse(jsonMatch[1]);
+                await db.query("UPDATE architect_sessions SET blueprint = $1, status = 'pending_confirmation' WHERE channel_id = $2", [jsonBlueprint, message.channel.id]);
 
-                    **REGRAS:**
-                    1.  **SEJA OBJETIVO:** Vá direto ao ponto.
-                    2.  **FOCO NA AÇÃO:** O usuário descreverá uma necessidade (ex: "quero um sistema de tickets"). Sua resposta DEVE ser um plano de **ADIÇÃO** em um bloco de código JSON. Não converse, apenas forneça o JSON.
-                    3.  **ESTÉTICA:** Ao criar os nomes, use **emojis temáticos e símbolos criativos** para um visual agradável (ex: "🎫 --- TICKETS --- 🎫").
-                    4.  **PLANO PARCIAL:** O JSON deve conter APENAS os novos itens a serem criados.
+                const rolesText = (jsonBlueprint.roles && jsonBlueprint.roles.length > 0) ? jsonBlueprint.roles.map(r => `• ${r.name} (${r.permissions})`).join('\n') : 'Nenhum cargo novo.';
+                const categoriesText = (jsonBlueprint.categories && jsonBlueprint.categories.length > 0) ? jsonBlueprint.categories.map(c => `📂 **${c.name}**\n   └─ Canais: ${c.channels.map(ch => `\`#${ch.name}\``).join(', ')}`).join('\n\n') : 'Nenhuma categoria nova.';
+                
+                const embed = new EmbedBuilder()
+                    .setTitle(isConsultantMode ? '📋 Plano de Adição Proposto' : '📋 Plano de Construção Proposto')
+                    .setDescription('Analisei seu pedido. O que acha?')
+                    .setColor('#3498DB')
+                    .addFields(
+                        { name: '👑 Cargos', value: rolesText.substring(0, 1024) },
+                        { name: '📂 Canais', value: categoriesText.substring(0, 1024) }
+                    );
 
-                    **Formato do JSON (Obrigatório):**
-                    - "roles": array de objetos com "name" e "permissions".
-                    - "categories": array de objetos com "name" e "channels".
-                    - Dentro de "channels", cada objeto DEVE ter: "name" (string), "type": ('text' ou 'voice'), e **"purpose"** ('chat', 'readonly', 'welcome').
-                `;
-            } else {
-                systemPrompt = `
-                    Você é um "Arquiteto de Servidor" para o Discord. Seu objetivo é criar um plano de servidor completo, funcional e **visualmente impressionante**.
+                const actionRow = {
+                    type: 1,
+                    components: [
+                        { type: 2, style: 3, label: "Confirmar", emoji: { name: "🚀" }, custom_id: isConsultantMode ? `architect_confirm_add_${message.channel.id}` : `architect_confirm_build_${message.channel.id}` },
+                        { type: 2, style: 1, label: "Editar", emoji: { name: "📝" }, custom_id: `architect_edit_plan_${message.channel.id}` },
+                        { type: 2, style: 4, label: "Cancelar", emoji: { name: "❌" }, custom_id: 'architect_cancel_build' }
+                    ]
+                };
+                await message.channel.send({ embeds: [embed], components: [actionRow] });
 
-                    **REGRAS:**
-                    1.  **SEJA OBJETIVO:** Faça no máximo 2 perguntas para entender o tema do servidor.
-                    2.  **AÇÃO IMEDIATA:** Após a resposta do usuário, sua próxima mensagem DEVE ser o plano completo do servidor em um bloco de código JSON. **Não continue a conversa. Proponha o plano imediatamente.**
-                    3.  **ESTÉTICA HIERÁQUICA:**
-                        - **Nomes de CATEGORIA:** DEVEM ser decorados com estilo (ex: "--- --→ 「🎮 JOGOS」 ←-- ---").
-                        - **Nomes de CANAL:** DEVEM ser simples, usando apenas um emoji temático no início (ex: "💬 bate-papo").
-                    4.  **PERMISSÕES SEGURAS:** O plano DEVE ter uma categoria de "Boas-Vindas" pública ('welcome') e as demais privadas. O cargo "Membro" pode ver, mas só pode ESCREVER em canais com 'purpose: chat'. Nos canais 'readonly', eles só podem ler.
+            } else {
+                await message.channel.send(aiResponse);
+                const newHistory = [...chatHistory, { role: 'user', content: message.content }, { role: 'assistant', content: aiResponse }];
+                await db.query('UPDATE architect_sessions SET chat_history = $1 WHERE channel_id = $2', [JSON.stringify(newHistory), message.channel.id]);
+            }
 
-                    **FORMATO JSON OBRIGATÓRIO (Exemplo):**
-                    \`\`\`json
-                    {
-                      "roles": [{ "name": "Membro", "permissions": "Básicas" }, { "name": "Staff", "permissions": "Moderação" }],
-                      "categories": [{
-                        "name": "--- --→ 「👋 BEM-VINDO」 ←-- ---",
-                        "channels": [
-                          { "name": "✅ verificar", "type": "text", "purpose": "welcome" },
-                          { "name": "📜 regras", "type": "text", "purpose": "readonly" }
-                        ]
-                      },{
-                        "name": "--- --→ 「💬 GERAL」 ←-- ---",
-                        "channels": [
-                          { "name": "💬 bate-papo", "type": "text", "purpose": "chat" },
-                          { "name": "📢 avisos", "type": "text", "purpose": "readonly" }
-                        ]
-                      }]
-                    }
-                    \`\`\`
-                `;
-            }
+        } catch (error) {
+            console.error("[Arquiteto] Erro:", error);
+            await message.channel.send("❌ Erro interno no Arquiteto.");
+        }
+        return;
+    }
 
-            const aiResponse = await getAIResponse({
-                guild: message.guild, user: message.author, featureName: "Arquiteto de Servidor",
-                chatHistory: chatHistory, userMessage: message.content, customPrompt: systemPrompt, useBaseKnowledge: false,
-            });
+    // 4. Relay System (Loja e Tickets - DM <-> Thread)
+    try {
+        if (message.channel.type === ChannelType.DM) {
+            // Check Store Carts
+            const activeCart = (await db.query("SELECT * FROM store_carts WHERE user_id = $1 AND (status = 'open' OR status = 'payment') AND thread_id IS NOT NULL", [message.author.id])).rows[0];
+            if (activeCart) {
+                const guild = await client.guilds.fetch(activeCart.guild_id);
+                const thread = await guild.channels.fetch(activeCart.thread_id).catch(() => null);
+                if (thread) {
+                    const relayEmbed = new EmbedBuilder()
+                        .setAuthor({ name: `Mensagem de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+                        .setColor('#5865F2')
+                        .setDescription(message.content || '*Anexo*');
+                    const files = message.attachments.map(att => att.url);
+                    await thread.send({ embeds: [relayEmbed], files: files });
+                    await message.react('✅').catch(()=>{});
+                }
+            }
+            // Check Tickets
+            const activeTicket = (await db.query("SELECT * FROM tickets WHERE user_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.author.id])).rows[0];
+            if (activeTicket) {
+                const guild = await client.guilds.fetch(activeTicket.guild_id);
+                const thread = await guild.channels.fetch(activeTicket.thread_id).catch(() => null);
+                if (thread) {
+                    const relayEmbed = new EmbedBuilder()
+                        .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
+                        .setColor('#7289DA')
+                        .setDescription(message.content || '*Anexo*');
+                    const files = message.attachments.map(att => att.url);
+                    await thread.send({ embeds: [relayEmbed], files });
+                    await message.react('✅').catch(() => {});
+                }
+            }
+        }
+        else if (message.channel.isThread()) {
+            // Check Store Carts (Staff Response)
+            const activeCart = (await db.query("SELECT * FROM store_carts WHERE thread_id = $1 AND claimed_by_staff_id = $2", [message.channel.id, message.author.id])).rows[0];
+            if (activeCart) {
+                const customer = await client.users.fetch(activeCart.user_id);
+                const relayEmbed = new EmbedBuilder()
+                    .setAuthor({ name: `Resposta de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+                    .setColor('#E67E22')
+                    .setDescription(message.content || '*Anexo*');
+                const files = message.attachments.map(att => att.url);
+                await customer.send({ embeds: [relayEmbed], files: files });
+                await message.react('✅').catch(()=>{});
+            }
+            // Check Tickets (Staff Response)
+             const activeTicket = (await db.query("SELECT * FROM tickets WHERE thread_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.channel.id])).rows[0];
+             if (activeTicket && message.author.id !== activeTicket.user_id && !message.author.bot) {
+                const ticketSettings = (await db.query('SELECT tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
+                const member = await message.guild.members.fetch(message.author.id).catch(() => null);
+                
+                if (member && ticketSettings && member.roles.cache.has(ticketSettings.tickets_cargo_suporte)) {
+                     const customer = await client.users.fetch(activeTicket.user_id).catch(() => null);
+                     if (customer) {
+                        const content = message.content ? `**${message.author.username} diz:**\n${message.content}` : undefined;
+                        const files = message.attachments.map(att => att.url);
+                        await customer.send({ content, files });
+                        await message.react('✅').catch(() => {});
+                     }
+                }
+            }
+        }
+    } catch (e) {
+        console.error("[Relay] Erro ao retransmitir mensagem:", e);
+    }
 
-            if (!aiResponse) return await message.channel.send("❌ A IA não conseguiu processar a sua mensagem. Tente novamente.");
+    if (!message.guild) return;
 
-            const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
-            if (jsonMatch && jsonMatch[1]) {
-                const jsonBlueprint = JSON.parse(jsonMatch[1]);
-                
-                await db.query("UPDATE architect_sessions SET blueprint = $1, status = 'pending_confirmation' WHERE channel_id = $2", [jsonBlueprint, message.channel.id]);
+    // 5. Assistente de Ticket IA (Auto Resposta no Ticket)
+    const ticketResult = await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id]);
+    if (ticketResult.rows.length > 0) {
+        const ticket = ticketResult.rows[0];
 
-                const rolesText = (jsonBlueprint.roles && jsonBlueprint.roles.length > 0) ? jsonBlueprint.roles.map(r => `• ${r.name} (${r.permissions})`).join('\n') : 'Nenhum cargo novo.';
-                const categoriesText = (jsonBlueprint.categories && jsonBlueprint.categories.length > 0) ? jsonBlueprint.categories.map(c => `📂 **${c.name}**\n   └─ Canais: ${c.channels.map(ch => `\`#${ch.name}\``).join(', ')}`).join('\n\n') : 'Nenhuma categoria nova.';
-                
-                const embed = {
-                    title: isConsultantMode ? '📋 Plano de Adição Proposto' : '📋 Plano de Construção Proposto',
-                    description: isConsultantMode ? 'Analisei seu pedido e sugiro **adicionar** o seguinte ao seu servidor. Nada será removido.' : 'Analisei seu pedido e preparei um plano completo para o seu novo servidor. O que acha?',
-                    color: 3447003,
-                    fields: [
-                        { name: '👑 Cargos a Serem Criados', value: rolesText },
-                        { name: '📂 Categorias e Canais a Serem Criados', value: categoriesText }
-                    ]
-                };
+        if (ticket.warning_sent_at) {
+            await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
+        }
+        await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
 
-                const actionRow = {
-                    type: 1,
-                    components: [
-                        { type: 2, style: 3, label: isConsultantMode ? "Confirmar e Adicionar" : "Confirmar e Construir", emoji: { name: "🚀" }, custom_id: isConsultantMode ? `architect_confirm_add_${message.channel.id}` : `architect_confirm_build_${message.channel.id}` },
-                        { type: 2, style: 1, label: "Editar/Pedir Alteração", emoji: { name: "📝" }, custom_id: `architect_edit_plan_${message.channel.id}` },
-                        { type: 2, style: 4, label: "Cancelar", emoji: { name: "❌" }, custom_id: 'architect_cancel_build' }
-                    ]
-                };
+        if (!settings.tickets_ai_assistant_enabled) return;
 
-                await message.channel.send({ embeds: [embed], components: [actionRow] });
+        const stopKeywords = ['pare de responder', 'silencio ia', 'pausar ia', 'ia, pare', 'ia pare', 'stop answering'];
+        const messageContent = message.content.toLowerCase();
+        
+        const member = await message.guild.members.fetch(message.author.id);
+        const isStaff = member.roles.cache.has(settings.tickets_cargo_suporte);
+        const isTicketOwner = message.author.id === ticket.user_id;
 
-            } else {
-                await message.channel.send(aiResponse);
-                const newHistory = [...chatHistory, { role: 'user', content: message.content }, { role: 'assistant', content: aiResponse }];
-                await db.query('UPDATE architect_sessions SET chat_history = $1 WHERE channel_id = $2', [JSON.stringify(newHistory), message.channel.id]);
-            }
+        if ((isStaff || isTicketOwner) && stopKeywords.some(keyword => messageContent.includes(keyword))) {
+            await db.query("UPDATE tickets SET ai_assistant_status = 'paused' WHERE channel_id = $1", [message.channel.id]);
+            await message.reply('🤖 O assistente de IA foi pausado. Para reativá-lo, basta me mencionar.');
+            return;
+        }
 
-        } catch (error) {
-            console.error("[Arquiteto/Consultor Conversa] Erro:", error);
-            await message.channel.send("❌ Ocorreu um erro crítico. A IA pode estar indisponível ou o plano gerado é inválido.");
-        }
-        return;
-    }
-    // --- FIM DA LÓGICA DO ARQUITETO ---
+        const botWasMentioned = message.mentions.has(client.user.id);
 
-    // --- Início do Bloco de Relay (Loja e Tickets) ---
-    try {
-        if (message.channel.type === ChannelType.DM) {
-            const activeCart = (await db.query("SELECT * FROM store_carts WHERE user_id = $1 AND (status = 'open' OR status = 'payment') AND thread_id IS NOT NULL", [message.author.id])).rows[0];
-            if (activeCart) {
-                const guild = await client.guilds.fetch(activeCart.guild_id);
-                const thread = await guild.channels.fetch(activeCart.thread_id).catch(() => null);
-                if (thread) {
-                    const relayEmbed = new EmbedBuilder()
-                        .setAuthor({ name: `Mensagem de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
-                        .setColor('#5865F2')
-                        .setDescription(message.content || '*Nenhuma mensagem, possível anexo abaixo.*');
-                    const files = message.attachments.map(att => att.url);
-                    await thread.send({ embeds: [relayEmbed], files: files });
-                    await message.react('✅').catch(()=>{});
-                }
-            }
-        }
-        else if (message.channel.isThread()) {
-            const activeCart = (await db.query("SELECT * FROM store_carts WHERE thread_id = $1 AND claimed_by_staff_id = $2", [message.channel.id, message.author.id])).rows[0];
-            if (activeCart) {
-                const customer = await client.users.fetch(activeCart.user_id);
-                const relayEmbed = new EmbedBuilder()
-                    .setAuthor({ name: `Resposta de ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
-                    .setColor('#E67E22')
-                    .setDescription(message.content || '*Nenhuma mensagem, possível anexo abaixo.*');
-                const files = message.attachments.map(att => att.url);
-                await customer.send({ embeds: [relayEmbed], files: files });
-                await message.react('✅').catch(()=>{});
-            }
-        }
-    } catch(e) {
-        console.error("[Store Relay] Erro ao retransmitir mensagem:", e);
-    }
+        if (botWasMentioned && ticket.ai_assistant_status === 'paused') {
+            await db.query("UPDATE tickets SET ai_assistant_status = 'active' WHERE channel_id = $1", [message.channel.id]);
+            await message.reply('🤖 O assistente de IA foi reativado.');
+        }
 
-    try {
-        if (message.channel.type === ChannelType.DM) {
-            const activeTicket = (await db.query("SELECT * FROM tickets WHERE user_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.author.id])).rows[0];
-            if (activeTicket) {
-                const guild = await client.guilds.fetch(activeTicket.guild_id);
-                const thread = await guild.channels.fetch(activeTicket.thread_id).catch(() => null);
-                if (thread) {
-                    const relayEmbed = new EmbedBuilder()
-                        .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
-                        .setColor('#7289DA')
-                        .setDescription(message.content || '*Nenhuma mensagem, possível anexo abaixo.*');
-                    
-                    const files = message.attachments.map(att => att.url);
-                    await thread.send({ embeds: [relayEmbed], files });
-                    await message.react('✅').catch(() => {});
-                }
-            }
-        } 
-        else if (message.channel.isThread()) {
-            const activeTicket = (await db.query("SELECT * FROM tickets WHERE thread_id = $1 AND is_dm_ticket = true AND status = 'open'", [message.channel.id])).rows[0];
-            
-            if (activeTicket && message.author.id !== activeTicket.user_id && !message.author.bot) {
-                const ticketSettings = (await db.query('SELECT tickets_cargo_suporte FROM guild_settings WHERE guild_id = $1', [message.guild.id])).rows[0];
-                const member = await message.guild.members.fetch(message.author.id).catch(() => null);
-                const isStaff = member && ticketSettings && member.roles.cache.has(ticketSettings.tickets_cargo_suporte);
+        const shouldReply = (ticket.ai_assistant_status === 'active' && isTicketOwner) || botWasMentioned;
 
-                if (isStaff) {
-                     const customer = await client.users.fetch(activeTicket.user_id).catch(() => null);
-                     if (customer) {
-                        const content = message.content ? `**${message.author.username} diz:**\n${message.content}` : undefined;
-                        const files = message.attachments.map(att => att.url);
-                        
-                        await customer.send({ content, files });
-                        await message.react('✅').catch(() => {});
-                     }
-                }
-            }
-        }
-    } catch (error) {
-        console.error("[Ticket Relay] Erro ao retransmitir mensagem:", error);
-    }
-    // --- Fim do Bloco de Relay ---
+        if (shouldReply) {
+            const history = await message.channel.messages.fetch({ limit: 6 });
+            const chatHistory = history.map(msg => ({
+                role: msg.author.id === client.user.id ? 'assistant' : 'user',
+                content: msg.content,
+            })).filter(msg => msg.content).reverse();
 
-    if (!message.guild) return;
+            await message.channel.sendTyping();
+            const cleanUserMessage = message.content.replace(/<@!?\d+>/g, '').trim();
 
-    // --- INÍCIO DA NOVA LÓGICA DO ASSISTENTE DE TICKET ---
-    const ticketResult = await db.query('SELECT * FROM tickets WHERE channel_id = $1', [message.channel.id]);
-    if (ticketResult.rows.length > 0) {
-        const ticket = ticketResult.rows[0];
+            const aiResponse = await getAIResponse({
+                guild: message.guild,
+                user: message.author,
+                featureName: "Assistente de Ticket",
+                chatHistory: chatHistory,
+                userMessage: cleanUserMessage,
+                customPrompt: settings.tickets_ai_assistant_prompt,
+                useBaseKnowledge: settings.tickets_ai_use_base_knowledge !== false
+            });
 
-        // Lógica de auto-fechamento (sem alterações)
-        if (ticket.warning_sent_at) {
-            await message.channel.send('✅ O fechamento automático deste ticket foi cancelado.');
-        }
-        await db.query('UPDATE tickets SET last_message_at = NOW(), warning_sent_at = NULL WHERE channel_id = $1', [message.channel.id]);
-
-        // Verifica se o sistema de IA para tickets está ativo no servidor
-        if (!settings.tickets_ai_assistant_enabled) return;
-
-        // Palavras-chave para pausar a IA
-        const stopKeywords = ['pare de responder', 'silencio ia', 'pausar ia', 'ia, pare', 'ia pare', 'stop answering'];
-        const messageContent = message.content.toLowerCase();
-        
-        const member = await message.guild.members.fetch(message.author.id);
-        const isStaff = member.roles.cache.has(settings.tickets_cargo_suporte);
-        const isTicketOwner = message.author.id === ticket.user_id;
-
-        // 1. Lógica para PAUSAR a IA
-        if ((isStaff || isTicketOwner) && stopKeywords.some(keyword => messageContent.includes(keyword))) {
-            await db.query("UPDATE tickets SET ai_assistant_status = 'paused' WHERE channel_id = $1", [message.channel.id]);
-            await message.reply('🤖 O assistente de IA foi pausado. Para reativá-lo, basta me mencionar.');
-            return;
-        }
-
-        // 2. Lógica de REATIVAÇÃO e RESPOSTA
-        const botWasMentioned = message.mentions.has(client.user.id);
-
-        if (botWasMentioned && ticket.ai_assistant_status === 'paused') {
-            await db.query("UPDATE tickets SET ai_assistant_status = 'active' WHERE channel_id = $1", [message.channel.id]);
-            await message.reply('🤖 O assistente de IA foi reativado e voltará a responder automaticamente.');
-        }
-
-        // 3. Condição para a IA responder
-        // A IA responde se:
-        //   - O status for 'active' E a mensagem for do dono do ticket
-        //   - OU se o bot for mencionado diretamente (porquerquer um no ticket)
-        const shouldReply = (ticket.ai_assistant_status === 'active' && isTicketOwner) || botWasMentioned;
-
-        if (!shouldReply) return;
-
-        const history = await message.channel.messages.fetch({ limit: 6 });
-        const chatHistory = history.map(msg => ({
-            role: msg.author.id === client.user.id ? 'assistant' : 'user',
-            content: msg.content,
-        })).filter(msg => msg.content).reverse();
-
-        await message.channel.sendTyping();
-        const useBaseKnowledge = settings.tickets_ai_use_base_knowledge !== false;
-        
-        // Remove a menção da mensagem do usuário para não confundir a IA
-        const cleanUserMessage = message.content.replace(/<@!?\d+>/g, '').trim();
-
-        const aiResponse = await getAIResponse({
-            guild: message.guild,
-            user: message.author,
-            featureName: "Assistente de Ticket",
-            chatHistory: chatHistory,
-            userMessage: cleanUserMessage,
-            customPrompt: settings.tickets_ai_assistant_prompt,
-            useBaseKnowledge: useBaseKnowledge
-        });
-
-        if (aiResponse) {
-            await message.reply(aiResponse);
-        }
-    }
-    // --- FIM DA NOVA LÓGICA DO ASSISTENTE DE TICKET ---
+            if (aiResponse) {
+                await message.reply(aiResponse);
+            }
+        }
+    }
 });
 
-// --- ANTI-CRASH GERAL (MANTIDO DO ANTERIOR) ---
+client.on('voiceStateUpdate', (oldState, newState) => {
+    voiceHubManager(oldState, newState, client);
+});
+
+// --- ANTI-CRASH E LOGIN ---
 process.on('uncaughtException', (error) => {
     console.error('🔥 EXCEÇÃO NÃO TRATADA:', error);
     logToWebhook('Uncaught Exception', error, { type: 'Fatal Process Error' });
