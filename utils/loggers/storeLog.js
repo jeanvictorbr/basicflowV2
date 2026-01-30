@@ -1,14 +1,13 @@
 /*
  * Caminho: utils/loggers/storeLog.js
- * Descrição: Arquivo corrigido para alinhar com o schema.js
+ * Descrição: Arquivo unificado de logs da loja (Vendas + Auditoria)
  */
 const db = require('../../database.js');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-// Função auxiliar corrigida
+// Função auxiliar para buscar o canal de log
 async function getLogChannel(client, guildId, column_name) {
     try {
-        // CORREÇÃO: Consulta guild_settings
         const settings = await db.query(`SELECT ${column_name} FROM guild_settings WHERE guild_id = $1`, [guildId]);
         if (settings.rows.length === 0 || !settings.rows[0][column_name]) return null;
 
@@ -24,10 +23,66 @@ async function getLogChannel(client, guildId, column_name) {
     }
 }
 
-// Log de Compra Aprovada (Privado)
-// NOTA: Esta função foi simplificada, pois a lógica principal de log agora está
-// dentro do 'utils/approvePurchase.js' para garantir que os logs só ocorram
-// se a transação do banco de dados for bem-sucedida.
+// =====================================================================
+//                 LOGS DE AUDITORIA (ADMINISTRAÇÃO)
+// =====================================================================
+
+/**
+ * Registra ações administrativas (Criar/Deletar/Editar produtos).
+ * Usa o mesmo canal de logs da loja ('store_log_channel_id').
+ */
+async function logStoreAction(client, guildId, actionType, user, details) {
+    const logChannel = await getLogChannel(client, guildId, 'store_log_channel_id');
+    if (!logChannel) return;
+
+    let color, title, emoji;
+
+    switch (actionType) {
+        case 'CREATE':
+            color = '#2ECC71'; // Verde
+            title = 'Item Criado';
+            emoji = '✨';
+            break;
+        case 'DELETE':
+            color = '#E74C3C'; // Vermelho
+            title = 'Item Removido';
+            emoji = '🗑️';
+            break;
+        case 'EDIT':
+            color = '#F1C40F'; // Amarelo
+            title = 'Item Editado';
+            emoji = '✏️';
+            break;
+        case 'STOCK':
+            color = '#3498DB'; // Azul
+            title = 'Estoque Alterado';
+            emoji = '📦';
+            break;
+        default:
+            color = '#95A5A6';
+            title = 'Log da Loja';
+            emoji = '🛒';
+    }
+
+    const embed = new EmbedBuilder()
+        .setColor(color)
+        .setTitle(`${emoji} Auditoria: ${title}`)
+        .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL() })
+        .setTimestamp()
+        .setFooter({ text: `ID do Staff: ${user.id}` });
+
+    if (details.name) embed.addFields({ name: 'Nome do Item/Categoria', value: `\`${details.name}\``, inline: true });
+    if (details.price) embed.addFields({ name: 'Preço', value: `R$ ${details.price}`, inline: true });
+    if (details.changes) embed.addFields({ name: 'Alterações', value: details.changes });
+    
+    await logChannel.send({ embeds: [embed] }).catch(err => console.error("[Store Log] Falha ao enviar log de auditoria:", err));
+}
+
+// =====================================================================
+//                 LOGS DE TRANSAÇÃO (VENDAS)
+// =====================================================================
+
+// Log de Compra Aprovada (Simples console log, pois a lógica principal está em approvePurchase.js)
 async function logPurchase(client, guildId, userId, cartChannelId, totalPrice, products, deliveredProducts, paymentMethod, staffId) {
     console.log(`[Store Log] Compra ${cartChannelId} aprovada para ${userId}.`);
 }
@@ -126,7 +181,6 @@ async function logManualPayment(client, guildId, userId, cartChannelId, totalPri
         )
         .setColor("Purple");
     
-    // CORREÇÃO: Os handlers de aprovação/recusa são estáticos e pegam o ID do canal da interação.
     const components = [
         new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`store_staff_approve_payment`).setLabel("Aprovar Pagamento").setStyle(ButtonStyle.Success),
@@ -156,6 +210,7 @@ async function logStockError(client, guildId, productName, productId, quantityNe
 }
 
 module.exports = {
+    logStoreAction, // Nova função de Auditoria
     logPurchase,
     logRefund,
     logCartCreation,

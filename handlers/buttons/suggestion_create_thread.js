@@ -1,45 +1,56 @@
-// Substitua o conteúdo em: handlers/buttons/suggestion_create_thread.js
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const db = require('../../database.js');
+// handlers/buttons/suggestion_create_thread.js
+const { ChannelType, MessageFlags } = require('discord.js');
 
 module.exports = {
     customId: 'suggestion_create_thread',
-    async execute(interaction) {
-        await interaction.deferUpdate();
-
-        const suggestionResult = await db.query('SELECT * FROM suggestions WHERE message_id = $1', [interaction.message.id]);
-        if (suggestionResult.rows.length === 0) return;
-        const suggestion = suggestionResult.rows[0];
-
-        // Se a thread já existe, não faz nada. O botão já é um link.
-        if (suggestion.thread_id) return;
-        
+    execute: async (interaction, client) => {
         try {
-            const threadName = `[#${suggestion.id}] Discussão: ${suggestion.title}`.substring(0, 100);
-            const thread = await interaction.message.startThread({
-                name: threadName,
-                autoArchiveDuration: 1440,
-                reason: `Discussão para a sugestão #${suggestion.id}`
+            const message = interaction.message;
+            
+            // Verifica se já existe um tópico na mensagem
+            if (message.hasThread) {
+                return interaction.reply({ 
+                    content: '❌ Já existe uma discussão criada para esta sugestão.', 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+
+            // Pega o título do embed para o nome do tópico
+            const suggestionEmbed = message.embeds[0];
+            const title = suggestionEmbed && suggestionEmbed.title ? suggestionEmbed.title : 'Sugestão';
+            
+            // Limpa o título para não quebrar o limite de caracteres ou ficar feio
+            const cleanTitle = title.replace('Sugestão de ', '').slice(0, 50);
+
+            // 1. Cria o Tópico PÚBLICO (Herda quem pode ver a categoria/canal)
+            const thread = await message.startThread({
+                name: `💬 Discussão: ${cleanTitle}`,
+                autoArchiveDuration: 1440, // 24 horas sem atividade
+                type: ChannelType.PublicThread, // PublicThread = Quem vê o canal, vê a thread
+                reason: `Discussão iniciada por ${interaction.user.tag}`
             });
-            
-            await thread.send({ content: `💬 <@${interaction.user.id}> iniciou uma discussão sobre a sugestão \`#${suggestion.id}\` de <@${suggestion.user_id}>.` });
 
-            await db.query('UPDATE suggestions SET thread_id = $1 WHERE id = $2', [thread.id, suggestion.id]);
+            // 2. Adiciona o autor da interação
+            try {
+                await thread.members.add(interaction.user.id);
+            } catch (err) {
+                console.log("Não foi possível adicionar o membro automaticamente (ele pode entrar manualmente).");
+            }
 
-            const discussionButtonRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setLabel('Ver Discussão')
-                    .setStyle(ButtonStyle.Link)
-                    .setURL(thread.url)
-                    .setEmoji('👀')
-            );
-            
-            await interaction.editReply({ components: [interaction.message.components[0], interaction.message.components[1], discussionButtonRow] });
+            // 3. Responde com o link
+            await interaction.reply({ 
+                content: `✅ **Discussão Criada!**\n\nQualquer membro que possa ver este canal poderá entrar e comentar no tópico abaixo.\n🔗 [Clique aqui para ir à discussão](${thread.url})`, 
+                flags: MessageFlags.Ephemeral 
+            });
 
         } catch (error) {
-            console.error('Falha ao criar a thread de discussão:', error);
-            // Este erro pode acontecer se o usuário clicar duas vezes muito rápido. O followUp ajuda a notificar.
-            await interaction.followUp({ content: '❌ Ocorreu um erro ao criar a discussão. Talvez ela já tenha sido criada.', ephemeral: true }).catch(() => {});
+            console.error('Erro ao criar thread:', error);
+            if (!interaction.replied) {
+                await interaction.reply({ 
+                    content: '❌ Ocorreu um erro ao criar o tópico. Verifique se tenho permissão de "Criar Tópicos Públicos".', 
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
         }
     }
 };

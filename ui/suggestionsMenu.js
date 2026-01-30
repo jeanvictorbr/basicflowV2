@@ -1,4 +1,4 @@
-// Substitua o conteúdo em: ui/suggestionsMenu.js
+// ui/suggestionsMenu.js
 module.exports = function generateSuggestionsMenu(settings) {
     const systemStatus = settings.suggestions_enabled ? '✅ Ativado' : '❌ Desativado';
     const toggleButton = settings.suggestions_enabled ? { label: 'Desativar Sistema', style: 4 } : { label: 'Ativar Sistema', style: 3 };
@@ -13,6 +13,9 @@ module.exports = function generateSuggestionsMenu(settings) {
     // Novo texto para o cooldown
     const cooldownMinutes = settings.suggestions_cooldown_minutes ?? 2;
     const cooldownText = cooldownMinutes > 0 ? `\`${cooldownMinutes} minuto(s)\`` : '`Desativado`';
+
+    // Status da Imagem
+    const vitrineImageStatus = settings.vitrine_image ? '`🖼️ Personalizada`' : '`🖼️ Padrão`';
 
     const isConfigured = settings.suggestions_channel && settings.suggestions_log_channel && settings.suggestions_staff_role;
 
@@ -53,12 +56,19 @@ module.exports = function generateSuggestionsMenu(settings) {
                     "accessory": { "type": 2, "style": 2, "label": "Definir Cargo", "custom_id": "suggestions_set_staff_role" },
                     "components": [{ "type": 10, "content": `**Cargo de Gerenciamento:**\n> ${staffRole}` }]
                 },
-                // --- NOVA SEÇÃO DE COOLDOWN ---
+                // --- SEÇÃO DE COOLDOWN ---
                 { "type": 14, "divider": true, "spacing": 1 },
                 {
                     "type": 9,
                     "accessory": { "type": 2, "style": 2, "label": "Definir Cooldown", "custom_id": "suggestions_set_cooldown" },
                     "components": [{ "type": 10, "content": `**Cooldown de Uso:**\n> ${cooldownText}` }]
+                },
+                // --- NOVA SEÇÃO DE IMAGEM ---
+                { "type": 14, "divider": true, "spacing": 1 },
+                {
+                    "type": 9,
+                    "accessory": { "type": 2, "style": 2, "label": "Alterar Imagem", "custom_id": "suggestions_set_image", "emoji": { "name": "🖼️" } },
+                    "components": [{ "type": 10, "content": `**Imagem da Vitrine:**\n> ${vitrineImageStatus}` }]
                 },
                 // --- FIM DA SEÇÃO ---
                 { "type": 14, "divider": true, "spacing": 2 },

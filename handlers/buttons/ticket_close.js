@@ -1,3 +1,4 @@
+// Substitua completamente o conteúdo em: handlers/buttons/ticket_close.js
 const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const db = require('../../database.js');
 const createTranscript = require('../../utils/createTranscript.js');
@@ -7,126 +8,86 @@ const { formatDuration } = require('../../utils/formatDuration.js');
 module.exports = {
     customId: 'ticket_close',
     async execute(interaction) {
-        // 1. Identificar o ID do Ticket
+        // LÓGICA INTELIGENTE: Identifica o canal principal do ticket,
+        // seja ele o canal da interação ou o pai da thread.
         const channelId = interaction.channel.isThread() ? interaction.channel.parentId : interaction.channel.id;
         
         if (!channelId) {
-            return interaction.reply({ content: '❌ Erro: Canal principal não identificado.', ephemeral: true }).catch(() => {});
+            return interaction.reply({ content: '❌ Erro: Não foi possível identificar o canal principal do ticket.', ephemeral: true });
         }
 
-        // 2. Deferir
-        try {
-            if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true });
-        } catch (e) { return; }
+        await interaction.deferReply({ ephemeral: true });
 
-        // 3. Buscar Ticket no Banco
         const ticket = (await db.query('SELECT * FROM tickets WHERE channel_id = $1', [channelId])).rows[0];
         if (!ticket || ticket.status === 'closed') {
-            return interaction.editReply('❌ Ticket não encontrado ou já está fechado.').catch(() => {});
+            return interaction.editReply('❌ Ticket não encontrado ou já está fechado.');
         }
 
-        // 4. Marcar como fechado
+        // Marca o ticket como fechado IMEDIATAMENTE para evitar ações duplicadas.
         await db.query(`UPDATE tickets SET status = 'closed', closed_at = NOW() WHERE channel_id = $1`, [channelId]);
 
         const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [interaction.guild.id])).rows[0] || {};
         
-        // 5. Definir canal do Transcript
-        let transcriptChannel = interaction.channel;
-        if (ticket.is_dm_ticket) {
-            transcriptChannel = await interaction.guild.channels.fetch(ticket.thread_id).catch(() => null);
-        }
+        // Define o canal correto para gerar a transcrição
+        const transcriptChannel = ticket.is_dm_ticket 
+            ? await interaction.guild.channels.fetch(ticket.thread_id).catch(() => null) 
+            : interaction.channel;
 
         if (!transcriptChannel) {
-            return interaction.editReply('⚠️ Canal do ticket não encontrado. Fechado no banco.').catch(() => {});
+            return interaction.editReply('❌ O canal de origem para a transcrição não foi encontrado.');
         }
 
-        // 6. Gerar Transcript (COM PROTEÇÃO)
-        let attachment = null;
-        let transcriptBuffer = null;
+        const transcriptBuffer = await createTranscript(transcriptChannel);
+        const attachment = new AttachmentBuilder(transcriptBuffer, { name: `transcript-${ticket.channel_id}.html` });
 
-        try {
-            transcriptBuffer = await createTranscript(transcriptChannel, interaction.guild);
-            if (transcriptBuffer) {
-                attachment = new AttachmentBuilder(transcriptBuffer, { name: `transcript-${ticket.channel_id}.html` });
-            }
-        } catch (err) {
-            console.error('[Ticket Close] Erro no transcript:', err);
-        }
-
-        // 7. ENVIO DE LOGS PARA A STAFF (COM ARQUIVO)
-        const logChannelId = settings.tickets_canal_logs || settings.tickets_log_channel;
-
-        if (logChannelId) {
-            try {
-                const logChannel = await interaction.guild.channels.fetch(logChannelId).catch(() => null);
+        // LOG EMBED ENRIQUECIDO E UNIFICADO
+        if (settings.tickets_canal_logs) {
+            const logChannel = await interaction.guild.channels.fetch(settings.tickets_canal_logs).catch(() => null);
+            if (logChannel) {
+                const user = await interaction.client.users.fetch(ticket.user_id).catch(() => null);
+                const claimedBy = ticket.claimed_by ? await interaction.client.users.fetch(ticket.claimed_by).catch(() => null) : null;
                 
-                if (logChannel) {
-                    const user = await interaction.client.users.fetch(ticket.user_id).catch(() => null);
-                    const claimedBy = ticket.claimed_by ? await interaction.client.users.fetch(ticket.claimed_by).catch(() => null) : null;
-                    
-                    let durationMs = 0;
-                    try {
-                        const creationTimestamp = (BigInt(ticket.channel_id) >> 22n) + 1420070400000n;
-                        durationMs = Date.now() - Number(creationTimestamp);
-                    } catch (e) {}
+                const creationTimestamp = (BigInt(ticket.channel_id) >> 22n) + 1420070400000n;
+                const durationMs = Date.now() - Number(creationTimestamp);
 
-                    const logEmbed = new EmbedBuilder()
-                        .setColor('Orange')
-                        .setTitle(ticket.is_dm_ticket ? '📄 Atendimento via DM Finalizado' : `📄 Ticket #${ticket.ticket_number || 'N/A'} Finalizado`)
-                        .setAuthor({ name: user?.tag || 'Usuário Desconhecido', iconURL: user?.displayAvatarURL() })
-                        .addFields(
-                            { name: 'Cliente', value: user ? `${user}` : '`Saiu do Servidor`', inline: true },
-                            { name: 'Atendente', value: claimedBy ? `${claimedBy}` : '`Ninguém assumiu`', inline: true },
-                            { name: 'Fechado por', value: `${interaction.user}`, inline: true },
-                            { name: 'ID do Canal', value: `\`${ticket.channel_id}\``, inline: false},
-                            { name: 'Duração', value: `\`${formatDuration(durationMs)}\``, inline: true },
-                        )
-                        .setTimestamp();
-
-                    const payload = { embeds: [logEmbed] };
-                    // AQUI SIM envia o arquivo (Logs da Staff)
-                    if (attachment) {
-                        payload.files = [attachment];
-                    } else {
-                        logEmbed.setFooter({ text: '⚠️ Transcript não gerado (Erro ou Vazio)' });
-                    }
-
-                    await logChannel.send(payload);
-                }
-            } catch (err) {
-                console.error('[Ticket Log] Falha ao enviar log:', err.message);
+                const logEmbed = new EmbedBuilder()
+                    .setColor('Orange')
+                    .setTitle(ticket.is_dm_ticket ? '📄 Atendimento via DM Finalizado' : `📄 Ticket #${ticket.ticket_number} Finalizado`)
+                    .setAuthor({ name: user?.tag || 'Usuário Desconhecido', iconURL: user?.displayAvatarURL() })
+                    .setThumbnail(user?.displayAvatarURL() || null)
+                    .addFields(
+                        { name: 'Cliente', value: user ? `${user}` : '`Não encontrado`', inline: true },
+                        { name: 'Atendente', value: claimedBy ? `${claimedBy}` : '`Ninguém assumiu`', inline: true },
+                        { name: 'Finalizado por', value: `${interaction.user}`, inline: true },
+                        { name: 'ID do Canal', value: `\`${ticket.channel_id}\``, inline: false},
+                        { name: 'Duração Total', value: `\`${formatDuration(durationMs)}\``, inline: false },
+                        { name: 'Histórico de Ações', value: ticket.action_log ? ticket.action_log.substring(0, 1024) : 'Nenhuma ação registrada.' }
+                    )
+                    .setTimestamp();
+                
+                // MANTIDO: Envia o arquivo para o canal de logs
+                await logChannel.send({ embeds: [logEmbed], files: [attachment] });
             }
         }
         
-        // 8. ENVIO PARA O USUÁRIO (SEM ARQUIVO)
+        // Envio de notificação e transcrição para o usuário
         const user = await interaction.client.users.fetch(ticket.user_id).catch(() => null);
         if (user) {
-            // Apenas mensagem de texto, SEM anexo
-            const userPayload = { content: `Seu atendimento no servidor **${interaction.guild.name}** foi finalizado.` };
-            
-            await user.send(userPayload).catch(() => {});
-            
-            // Envia Feedback se estiver ativo
+            await user.send(`Seu atendimento no servidor **${interaction.guild.name}** foi finalizado.`).catch(() => {});
             if (settings.tickets_feedback_enabled) {
-                try {
-                    const feedbackMsg = generateFeedbackRequester(ticket);
-                    if(feedbackMsg) await user.send(feedbackMsg).catch(() => {});
-                } catch(e) {}
+                await user.send(generateFeedbackRequester(ticket)).catch(() => {});
             }
+            // REMOVIDO: A linha que enviava o "attachment" para o usuário foi apagada aqui.
         }
         
-        // 9. Deletar Canal (Com Delay de segurança)
-        setTimeout(async () => {
-            try {
-                const channelToDelete = ticket.is_dm_ticket ? transcriptChannel : transcriptChannel; 
-                if (channelToDelete) {
-                    await channelToDelete.delete('Ticket finalizado.').catch(err => {
-                        if (err.code !== 10003) console.error(`Falha ao deletar canal:`, err.message);
-                    });
-                }
-            } catch (e) {}
-        }, 10000); // 10s delay
+        // Lógica de exclusão correta
+        setTimeout(() => {
+            const channelToDelete = ticket.is_dm_ticket ? transcriptChannel.parent : transcriptChannel;
+            if (channelToDelete) {
+                channelToDelete.delete('Ticket finalizado.').catch(err => console.error(`Falha ao deletar canal/thread ${channelToDelete.id}:`, err));
+            }
+        }, 10000);
 
-        await interaction.editReply('✅ Atendimento finalizado!').catch(() => {});
+        await interaction.editReply('✅ Atendimento finalizado com sucesso!');
     }
 };
