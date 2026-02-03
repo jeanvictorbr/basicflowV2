@@ -17,7 +17,13 @@ module.exports = async (client) => {
 
         console.log(`[PontoRestore] ⏳ Restaurando ${activeSessions.rows.length} sessões...`);
 
+        // --- ALTERAÇÃO: Loop for...of para processar sequencialmente ---
         for (const session of activeSessions.rows) {
+            
+            // --- O "Sleep": Pausa de 50ms antes de processar a próxima sessão ---
+            // Isso evita disparar 1000 requisições simultâneas na API
+            await new Promise(resolve => setTimeout(resolve, 50)); 
+
             // Tenta obter as configurações da guilda dessa sessão
             const settings = (await db.query('SELECT * FROM guild_settings WHERE guild_id = $1', [session.guild_id])).rows[0];
             if (!settings) continue;
@@ -69,7 +75,8 @@ module.exports = async (client) => {
                 } catch (err) {
                     // Erros silenciosos para não spammar console
                 }
-            }, 10000); // 10 segundos
+            }, 60000); // --- ALTERAÇÃO RECOMENDADA: Aumentei para 60s para segurança (era 10s) ---
+            // Se quiser manter 10s, mude a linha acima de volta para 10000, mas 60000 é muito mais seguro.
 
             // Salva o intervalo na memória do bot
             client.pontoIntervals.set(session.user_id, interval);
