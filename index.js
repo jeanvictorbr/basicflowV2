@@ -633,7 +633,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
                 console.log('[OAuth] Tentando trocar token...'); 
                 
-                const tokenResponse = await axios.post('[https://discord.com/api/oauth2/token](https://discord.com/api/oauth2/token)', params, {
+                const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
                 });
 
@@ -641,7 +641,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 console.log('[OAuth] Token recebido com sucesso.'); 
 
                 // Buscar dados do usuário
-                const userResponse = await axios.get('[https://discord.com/api/users/@me](https://discord.com/api/users/@me)', {
+                const userResponse = await axios.get('https://discord.com/api/users/@me', {
                     headers: { authorization: `${tokenData.token_type} ${tokenData.access_token}` }
                 });
                 const userData = userResponse.data;
@@ -949,18 +949,31 @@ client.on(Events.MessageCreate, async (message) => {
 
             if (!aiResponse) return await message.channel.send("❌ A IA não conseguiu processar a sua mensagem. Tente novamente.");
 
-            const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
-            if (jsonMatch && jsonMatch[1]) {
-                // Correção de erro: Extrai apenas o objeto JSON ignorando texto anterior (ex: "Result: {")
-                const rawContent = jsonMatch[1];
-                const start = rawContent.indexOf('{');
-                const end = rawContent.lastIndexOf('}');
-                
-                // Garante que existe algo para extrair, senão usa o original
-                const jsonString = (start !== -1 && end !== -1) ? rawContent.substring(start, end + 1) : rawContent;
-                
-                const jsonBlueprint = JSON.parse(jsonString);
-                
+            // ===================================================================
+            //  ⬇️  CORREÇÃO DE PARSING JSON (ARQUITETO)  ⬇️
+            // ===================================================================
+            // Tenta encontrar o bloco de código ou o objeto JSON diretamente
+            let jsonBlueprint = null;
+            
+            // 1. Tenta pegar pelo bloco de código Markdown
+            const codeBlockMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
+            
+            let textToParse = codeBlockMatch ? codeBlockMatch[1] : aiResponse;
+
+            // 2. Limpeza extra: busca o primeiro '{' e o último '}'
+            const start = textToParse.indexOf('{');
+            const end = textToParse.lastIndexOf('}');
+
+            if (start !== -1 && end !== -1) {
+                try {
+                    const jsonString = textToParse.substring(start, end + 1);
+                    jsonBlueprint = JSON.parse(jsonString);
+                } catch (e) {
+                    console.error("Falha ao parsear JSON do Arquiteto (tentativa 1):", e);
+                }
+            }
+
+            if (jsonBlueprint) {
                 await db.query("UPDATE architect_sessions SET blueprint = $1, status = 'pending_confirmation' WHERE channel_id = $2", [jsonBlueprint, message.channel.id]);
 
                 const rolesText = (jsonBlueprint.roles && jsonBlueprint.roles.length > 0) ? jsonBlueprint.roles.map(r => `• ${r.name} (${r.permissions})`).join('\n') : 'Nenhum cargo novo.';
@@ -988,10 +1001,14 @@ client.on(Events.MessageCreate, async (message) => {
                 await message.channel.send({ embeds: [embed], components: [actionRow] });
 
             } else {
+                // Se falhou o parsing, envia como mensagem normal
                 await message.channel.send(aiResponse);
                 const newHistory = [...chatHistory, { role: 'user', content: message.content }, { role: 'assistant', content: aiResponse }];
                 await db.query('UPDATE architect_sessions SET chat_history = $1 WHERE channel_id = $2', [JSON.stringify(newHistory), message.channel.id]);
             }
+            // ===================================================================
+            //  ⬆️  FIM DA CORREÇÃO ⬆️
+            // ===================================================================
 
         } catch (error) {
             console.error("[Arquiteto/Consultor Conversa] Erro:", error);
