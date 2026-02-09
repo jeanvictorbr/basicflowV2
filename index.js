@@ -633,7 +633,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
                 console.log('[OAuth] Tentando trocar token...'); 
                 
-                const tokenResponse = await axios.post('https://discord.com/api/oauth2/token', params, {
+                const tokenResponse = await axios.post('[https://discord.com/api/oauth2/token](https://discord.com/api/oauth2/token)', params, {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
                 });
 
@@ -641,7 +641,7 @@ client.on(Events.InteractionCreate, async interaction => {
                 console.log('[OAuth] Token recebido com sucesso.'); 
 
                 // Buscar dados do usuário
-                const userResponse = await axios.get('https://discord.com/api/users/@me', {
+                const userResponse = await axios.get('[https://discord.com/api/users/@me](https://discord.com/api/users/@me)', {
                     headers: { authorization: `${tokenData.token_type} ${tokenData.access_token}` }
                 });
                 const userData = userResponse.data;
@@ -951,7 +951,15 @@ client.on(Events.MessageCreate, async (message) => {
 
             const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
             if (jsonMatch && jsonMatch[1]) {
-                const jsonBlueprint = JSON.parse(jsonMatch[1]);
+                // Correção de erro: Extrai apenas o objeto JSON ignorando texto anterior (ex: "Result: {")
+                const rawContent = jsonMatch[1];
+                const start = rawContent.indexOf('{');
+                const end = rawContent.lastIndexOf('}');
+                
+                // Garante que existe algo para extrair, senão usa o original
+                const jsonString = (start !== -1 && end !== -1) ? rawContent.substring(start, end + 1) : rawContent;
+                
+                const jsonBlueprint = JSON.parse(jsonString);
                 
                 await db.query("UPDATE architect_sessions SET blueprint = $1, status = 'pending_confirmation' WHERE channel_id = $2", [jsonBlueprint, message.channel.id]);
 
