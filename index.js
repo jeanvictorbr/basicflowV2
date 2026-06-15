@@ -39,37 +39,21 @@ const url = require('url');
 const crypto = require('crypto');
 const axios = require('axios');
 
-// --- OTIMIZAÇÃO DE MEMÓRIA APLICADA AQUI ---
+// --- OTIMIZAÇÃO DE MEMÓRIA ---
 const client = new Client({ 
     intents: [
-        GatewayIntentBits.Guilds, 
-        GatewayIntentBits.GuildMessages, 
-        GatewayIntentBits.MessageContent, 
-        GatewayIntentBits.DirectMessages, 
-        GatewayIntentBits.GuildVoiceStates, 
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, 
+        GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages, 
+        GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers
     ],
-    // Configuração para limitar o uso de RAM (Cache)
     makeCache: Options.cacheWithLimits({
-        ...Options.DefaultMakeCacheSettings,
-        // Mantém apenas as últimas 20 mensagens por canal (Suficiente para IA e comandos)
-        // Isso impede que o bot guarde milhares de mensagens antigas na RAM
         MessageManager: 20, 
-        // Desativa cache de reações (economiza objetos)
         ReactionManager: 0,
-        // Limita threads arquivadas
-        ThreadManager: {
-            maxSize: 25,
-            keepOverLimit: (thread) => !thread.archived,
-        },
+        ThreadManager: { maxSize: 25 },
+        GuildMemberManager: 0 // <--- ESSENCIAL PARA ECONOMIZAR RAM
     }),
-    // Limpeza automática (Garbage Collection) a cada hora
     sweepers: {
-        ...Options.DefaultSweeperSettings,
-        messages: {
-            interval: 3600, // Limpa a cada 1 hora
-            lifetime: 1800, // Remove mensagens com mais de 30 minutos da memória
-        },
+        messages: { interval: 3600, lifetime: 1800 },
     },
 });
 // -------------------------------------------
@@ -380,86 +364,30 @@ componentTypes.forEach(type => {
 // ===================================================================
 //  ⬆️  FIM DA CORREÇÃO DO CARREGAMENTO ⬆️
 // ===================================================================
-
-
-console.log('--- Handlers Carregados ---');
-
-
-
-client.once(Events.ClientReady, async () => {
-    startPontoUpdateLoop(client);
-    startGiveawayMonitor(client);
-    startVerificationLoop(client);
-    startStatsMonitor(client);
-    await db.synchronizeDatabase();
-    try {
-        startPurgeMonitor(client, db); // Inicia o cronjob
-    } catch(e) { console.error('[Monitor] Erro ao iniciar Purge:', e); }
-
-    await updateModuleStatusCache(client);
+client.once(Events.ClientReady, async (c) => {
+    console.log(`🚀 Shard ${c.shard.ids} online como ${c.user.tag}`);
     
-    // --- CORREÇÃO PONTO: RESTAURAR INTERVALOS ---
-    await restorePontoSessions(client);
-    // ---------------------------------------------
-// --- INICIAR ORQUESTRA DE MÚSICA ---
-    try {
-        await MusicOrchestrator.start(); 
-    } catch (e) {
-        console.error('[Music] Falha ao iniciar orquestra:', e);
-    }
-    // -----------------------------------
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-    try {
-        if (process.env.DEV_GUILD_ID) {
-            const allDevGuildCommands = [...commandsToDeploy, ...devCommandsToDeploy];
-            console.log(`[CMD] Iniciando registo de ${allDevGuildCommands.length} comando(s) na guild de desenvolvimento.`);
-            await rest.put(
-                Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.DEV_GUILD_ID),
-                { body: allDevGuildCommands },
-            );
-            console.log(`[CMD] Comandos registados com sucesso na guild de desenvolvimento.`);
-        } else {
-            console.log(`[CMD] Iniciando registo de ${commandsToDeploy.length} comando(s) globais.`);
-            await rest.put(
-                Routes.applicationCommands(process.env.CLIENT_ID),
-                { body: commandsToDeploy },
-            );
-            console.log(`[CMD] Comandos registados globalmente com sucesso.`);
-        }
-    } catch (error) {
-        console.error('[CMD] Erro ao registar comandos:', error);
-    }
-    console.log(`🚀 Bot online! Logado como ${client.user.tag}`);
-
-    // --- INÍCIO DA ALTERAÇÃO DO STATUS EM TEMPO REAL ---
-    const updateBotStatus = () => {
-        // Calcula o total de membros em todos os servidores onde o bot está
-        const totalMembers = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
+    // --- LÓGICA DE SHARDING: APENAS O SHARD 0 RODA LOOPS ---
+    if (c.shard.ids[0] === 0) {
+        startPontoUpdateLoop(client);
+        startGiveawayMonitor(client);
+        startVerificationLoop(client);
+        startStatsMonitor(client);
+        await db.synchronizeDatabase();
+        try { startPurgeMonitor(client, db); } catch(e) { console.error(e); }
+        await updateModuleStatusCache(client);
+        await restorePontoSessions(client);
+        try { await MusicOrchestrator.start(); } catch (e) { console.error(e); }
         
-        // Define o status
-        client.user.setPresence({
-            activities: [{ 
-                name: `Atendendo ${totalMembers.toLocaleString('pt-BR')} usuários`, 
-                type: ActivityType.Playing // Exibirá: "Jogando Atendendo X usuários"
-            }],
-            status: 'online'
-        });
-        // console.log(`[Status] Atualizado para: Atendendo ${totalMembers} usuários`);
-    };
-
-    // Atualiza imediatamente e agenda para rodar a cada 10 minutos
-    updateBotStatus();
-    setInterval(updateBotStatus, 5 * 60 * 1000);
-    // --- FIM DA ALTERAÇÃO DO STATUS ---
-    setInterval(() => checkAndCloseInactiveTickets(client), 5 * 60 * 1000);
-    setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
-    setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
-    setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
-    setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000);
-    
-    setInterval(() => syncUsedKeys(client), 60 * 1000);
-    setInterval(() => updateModuleStatusCache(client), 15 * 60 * 1000);
-    setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
+        setInterval(() => checkAndCloseInactiveTickets(client), 5 * 60 * 1000);
+        setInterval(() => checkExpiredPunishments(client), 1 * 60 * 1000);
+        setInterval(() => checkInactiveCarts(client), 10 * 60 * 1000);
+        setInterval(() => checkExpiredRoles(client), 60 * 60 * 1000);
+        setInterval(() => checkExpiringFeatures(client), 24 * 60 * 60 * 1000);
+        setInterval(() => syncUsedKeys(client), 60 * 1000);
+        setInterval(() => updateModuleStatusCache(client), 15 * 60 * 1000);
+        setInterval(() => checkTokenUsage(client), 15 * 60 * 1000); 
+    }
 });
 
 // ===================================================================
