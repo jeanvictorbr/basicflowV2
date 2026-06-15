@@ -31,3 +31,6 @@ function startPontoUpdateLoop(client) {
         }
     }, 60000); // 60 segundos é mais que suficiente para um log de ponto
 }
+
+// No final do arquivo utils/pontoLogLoop.js
+module.exports = { startPontoUpdateLoop };
